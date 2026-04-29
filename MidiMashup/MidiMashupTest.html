@@ -1,0 +1,2677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIDI Beat Engine</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --bg: #050510;
+    --panel: #0a0a1a;
+    --border: #1a1a3a;
+    --up: #00f5ff;
+    --left: #ff00aa;
+    --right: #aaff00;
+    --down: #ff6600;
+    --perfect: #ffffff;
+    --good: #aaff00;
+    --bad: #ff6600;
+    --miss: #ff0033;
+    --text: #c0c0e0;
+    --note-speed: 6; /* pixels per frame - overridden by JS variable */
+    --track-width: 45%; /* width of the play field (tracks/lanes area) */
+    --setup-card-width: min(1080px, 96vw);
+    --setup-track-list-max-height: 220px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── SETUP SCREEN ── */
+  #setup-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 24px;
+    background: radial-gradient(ellipse at 50% 60%, #0d0d2a 0%, #050510 70%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  #setup-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 39px, #0f0f2a 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, #0f0f2a 40px);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(28px, 5vw, 56px);
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, var(--up), var(--left), var(--right), var(--down));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 20px rgba(0,245,255,0.5));
+    position: relative;
+    z-index: 1;
+  }
+
+  .subtitle {
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    color: #555588;
+    text-transform: uppercase;
+    position: relative;
+    z-index: 1;
+  }
+
+  .setup-card {
+    background: rgba(10,10,26,0.92);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px 36px;
+    width: var(--setup-card-width);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 0 60px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .setup-card h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: #555588;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+
+  .field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field-row label {
+    font-size: 11px;
+    color: #7777aa;
+    letter-spacing: 0.1em;
+  }
+
+  .drop-zone {
+    border: 1px dashed #2a2a4a;
+    border-radius: 4px;
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #4444aa;
+    font-size: 13px;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--up);
+    color: var(--up);
+    background: rgba(0,245,255,0.04);
+  }
+  .drop-zone.loaded { border-color: #33aa33; color: #33aa33; }
+
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--up);
+  }
+
+  .var-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .var-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .var-item label { font-size: 11px; color: #7777aa; }
+  .var-item input[type=number] {
+    background: #080818;
+    border: 1px solid #2a2a4a;
+    color: var(--text);
+    padding: 6px 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    border-radius: 2px;
+    width: 100%;
+  }
+  .var-item input[type=number]:focus { outline: none; border-color: var(--up); }
+
+  #track-selector {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #track-selector.visible { display: flex; }
+  #track-list { display: flex; flex-direction: column; gap: 6px; max-height: var(--setup-track-list-max-height); overflow-y: auto; }
+  .track-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 12px;
+    background: #08081a;
+    border: 1px solid #1a1a3a;
+    border-radius: 2px;
+    font-size: 12px;
+    transition: border-color 0.15s;
+  }
+  .track-item:hover { border-color: #3a3a6a; }
+  .track-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .track-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  .track-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    cursor: pointer;
+    border: none;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .badge-game { background: var(--up); color: #000; }
+  .badge-backing { background: #2a2a4a; color: #aaa; }
+  .badge-off { background: #111; color: #555; border: 1px solid #333; }
+  .track-volume {
+    width: 100px;
+    accent-color: var(--up);
+  }
+  .track-clip {
+    /* Container for clip-picker */
+    flex-basis: 100%;
+    display: block;
+    max-width: 280px;
+  }
+
+  .btn-primary {
+    background: var(--up);
+    color: #000;
+    border: none;
+    padding: 12px 24px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+    width: 100%;
+  }
+  .btn-primary:hover { filter: brightness(1.2); }
+  .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── GAME SCREEN ── */
+  #game-screen {
+    display: none;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  #game-main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
+
+  #hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: rgba(10,10,20,0.95);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  #score-display {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.1em;
+  }
+
+  #combo-display {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    color: var(--up);
+    letter-spacing: 0.2em;
+  }
+
+  #accuracy-display {
+    font-size: 12px;
+    color: #555588;
+  }
+
+  #btn-back {
+    background: transparent;
+    border: 1px solid #2a2a4a;
+    color: #555588;
+    padding: 6px 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+  #btn-back:hover { border-color: var(--miss); color: var(--miss); }
+
+  #play-field {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    width: var(--track-width);
+    margin-left: auto;
+    margin-right: 0;
+  }
+
+  #reference-field {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    width: calc(100% - var(--track-width));
+    border-right: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.05));
+  }
+
+  #reference-field .lane {
+    opacity: 0.72;
+  }
+  #reference-field .lane-label {
+    opacity: 0.16;
+  }
+  #reference-field .target-zone {
+    transform: translateX(-50%) scale(0.82);
+    opacity: 0.7;
+  }
+  #reference-field .note {
+    opacity: 0.65;
+    box-shadow: none;
+  }
+  #reference-field .note.hold {
+    opacity: 0.55;
+  }
+  #reference-field .judgment {
+    display: none;
+  }
+
+  .lane {
+    position: relative;
+    border-right: 1px solid #111122;
+    overflow: hidden;
+  }
+  .lane:last-child { border-right: none; }
+
+  .lane-bg {
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+  }
+  .lane-label {
+    position: absolute;
+    bottom: 64px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    opacity: 0.3;
+  }
+
+  /* Target zones */
+  .target-zone {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 2px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.05s;
+  }
+  .target-zone svg { width: 28px; height: 28px; }
+  .target-zone.hit { transform: translateX(-50%) scale(0.9); filter: brightness(2); }
+
+  /* Strong glow for perfect hits */
+  .target-zone.glow { transform: translateX(-50%) scale(1.06); filter: brightness(2.2); box-shadow: 0 0 30px currentColor, 0 0 60px currentColor; transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease; }
+
+  .lane-up .target-zone    { border-color: var(--up);    box-shadow: 0 0 20px rgba(0,245,255,0.3);  }
+  .lane-left .target-zone  { border-color: var(--left);  box-shadow: 0 0 20px rgba(255,0,170,0.3);  }
+  .lane-right .target-zone { border-color: var(--right); box-shadow: 0 0 20px rgba(170,255,0,0.3);  }
+  .lane-down .target-zone  { border-color: var(--down);  box-shadow: 0 0 20px rgba(255,102,0,0.3);  }
+
+  /* Notes */
+  .note {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+  }
+  .note.hold {
+    width: 38px;
+    border-radius: 18px;
+    align-items: flex-start;
+    padding-top: 8px;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+  .note.hold.active-hold {
+    filter: brightness(1.25);
+  }
+
+  .lane-up    .note { background: radial-gradient(circle, rgba(0,245,255,0.9), rgba(0,100,150,0.5)); box-shadow: 0 0 12px rgba(0,245,255,0.7); }
+  .lane-left  .note { background: radial-gradient(circle, rgba(255,0,170,0.9), rgba(150,0,100,0.5)); box-shadow: 0 0 12px rgba(255,0,170,0.7); }
+  .lane-right .note { background: radial-gradient(circle, rgba(170,255,0,0.9), rgba(100,150,0,0.5)); box-shadow: 0 0 12px rgba(170,255,0,0.7); }
+  .lane-down  .note { background: radial-gradient(circle, rgba(255,102,0,0.9), rgba(150,50,0,0.5));  box-shadow: 0 0 12px rgba(255,102,0,0.7);  }
+
+  /* Judgment text */
+  .judgment {
+    position: absolute;
+    top: 130px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-shadow: 0 0 20px currentColor;
+    pointer-events: none;
+    animation: judgment-pop 0.7s ease-out forwards;
+    white-space: nowrap;
+  }
+  .judgment.perfect { color: var(--perfect); }
+  .judgment.good    { color: var(--good); }
+  .judgment.bad     { color: var(--bad); }
+  .judgment.miss    { color: var(--miss); }
+
+  @keyframes judgment-pop {
+    0%   { opacity: 1; transform: translateX(-50%) scale(1.2) translateY(0); }
+    60%  { opacity: 1; transform: translateX(-50%) scale(1.0) translateY(-20px); }
+    100% { opacity: 0; transform: translateX(-50%) scale(0.9) translateY(-40px); }
+  }
+
+  /* Glow flash on hit */
+  .lane-flash {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.05s;
+  }
+  .lane-up    .lane-flash { background: linear-gradient(to bottom, transparent, rgba(0,245,255,0.08)); }
+  .lane-left  .lane-flash { background: linear-gradient(to bottom, transparent, rgba(255,0,170,0.08)); }
+  .lane-right .lane-flash { background: linear-gradient(to bottom, transparent, rgba(170,255,0,0.08)); }
+  .lane-down  .lane-flash { background: linear-gradient(to bottom, transparent, rgba(255,102,0,0.08)); }
+  .lane-flash.active { opacity: 1; }
+
+  /* Scanlines overlay */
+  #scanlines {
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 1px, transparent 1px, transparent 2px);
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* Results */
+  #results-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 24px;
+  }
+  #results-screen.visible { display: flex; }
+
+  .results-card {
+    background: #080818;
+    border: 1px solid #2a2a4a;
+    padding: 40px 60px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 340px;
+  }
+  .results-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    background: linear-gradient(90deg, var(--up), var(--left));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .results-score {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 48px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .results-stats { display: flex; gap: 24px; justify-content: center; font-size: 13px; }
+  .stat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .stat-label { color: #555588; font-size: 10px; letter-spacing: 0.2em; }
+  .stat-val.perfect { color: var(--perfect); }
+  .stat-val.good    { color: var(--good); }
+  .stat-val.bad     { color: var(--bad); }
+  .stat-val.miss    { color: var(--miss); }
+
+  #progress-bar-wrap {
+    background: #0a0a1a;
+    border-top: 1px solid var(--border);
+    height: 3px;
+    position: relative;
+    flex-shrink: 0;
+  }
+  #progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--up), var(--left));
+    transition: width 0.1s linear;
+    width: 0%;
+  }
+
+  /* ── CLIP PICKER ── */
+  .clip-picker {
+    display: flex;
+    flex-direction: column;
+    max-height: 300px;
+    background: #0a0a0a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .clip-picker-tabs {
+    display: flex;
+    gap: 0;
+    background: #1a1a1a;
+    border-bottom: 1px solid #444;
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+
+  .clip-picker-tab {
+    padding: 8px 12px;
+    background: #242424;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+
+  .clip-picker-tab:hover {
+    background: #2a2a2a;
+    color: #eee;
+  }
+
+  .clip-picker-tab.active {
+    border-bottom-color: #6cf;
+    color: #6cf;
+  }
+
+  .clip-picker-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+
+  .clip-picker-pane {
+    display: none;
+    padding: 8px;
+  }
+
+  .clip-picker-pane.active {
+    display: block;
+  }
+
+  .clip-picker-group {
+    margin-bottom: 8px;
+  }
+
+  .clip-picker-group-label {
+    padding: 6px 8px;
+    background: #1a1a2e;
+    color: #888;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .clip-picker-group-label:hover {
+    color: #aaa;
+  }
+
+  .clip-picker-item, .clip-picker-folder {
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    color: #ccc;
+    text-align: left;
+    cursor: pointer;
+    font-size: 13px;
+    width: 100%;
+    transition: all 0.15s;
+  }
+
+  .clip-picker-item:hover, .clip-picker-folder:hover {
+    background: #2a2a3a;
+    color: #fff;
+  }
+
+  .clip-picker-item.selected {
+    background: #1a1a5e;
+    color: #6cf;
+    font-weight: bold;
+  }
+
+  /* Fullscreen clip picker / collapsed track styles */
+  #track-selector.fullscreen {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    top: 8px;
+    bottom: 8px;
+    background: #0e0e16;
+    z-index: 99999;
+    padding: 18px;
+    border-radius: 8px;
+    box-shadow: 0 12px 60px rgba(0,0,0,0.9);
+    overflow: auto;
+  }
+  #btn-clip-fullscreen { float: right; margin-top: -4px; }
+  .track-item.collapsed { opacity: 0.95; }
+  .track-item.collapsed .track-controls { display: none; }
+  .track-item .collapsed-controls { display: none; gap:8px; align-items:center }
+  .track-item.collapsed .collapsed-controls { display: inline-flex; }
+  .track-item .track-collapse-btn { margin-left:8px; padding:4px 8px; font-size:12px; }
+  .track-summary-label { color: #bcd; margin-left:8px; font-size:13px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle }
+</style>
+</head>
+<body>
+
+<div id="scanlines"></div>
+<div id="loading-overlay" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.6));z-index:10000;color:#fff;font-size:18px;">
+  <div style="background:rgba(10,10,20,0.9);padding:18px 26px;border-radius:8px;box-shadow:0 6px 30px rgba(0,0,0,0.6);">Loading… please wait</div>
+</div>
+
+<!-- ═══════════════ SETUP SCREEN ═══════════════ -->
+<div id="setup-screen">
+  <div class="logo">MIDI Beat Engine</div>
+  <div class="subtitle">Load · Map · Play</div>
+
+  <div class="setup-card">
+    <h2>01 — MIDI File</h2>
+    <div class="drop-zone" id="drop-zone">
+      Drop a .mid / .midi file here, or click to browse
+      <input type="file" id="file-input" accept=".mid,.midi" style="display:none">
+    </div>
+
+    <div id="track-selector">
+        <h2 style="display:inline-block">02 — Track Assignment</h2>
+        <button id="btn-clip-fullscreen" class="btn-primary" style="padding:6px 10px; font-size:13px; margin-left:10px;">Fullscreen Clips</button>
+      <div style="font-size:11px;color:#555588;">Click each track's badge to cycle: GAME → BACKING → OFF. Adjust volume and clip per track.</div>
+      <div id="track-list"></div>
+    </div>
+  </div>
+
+  <div class="setup-card">
+    <h2>03 — Parameters</h2>
+    <div class="var-row">
+      <div class="var-item">
+        <label>Note Speed (px/frame)</label>
+        <input type="number" id="var-speed" value="5" min="1" max="20">
+      </div>
+      <div class="var-item">
+        <label>Hit Window — Perfect (ms)</label>
+        <input type="number" id="var-perfect" value="50" min="10" max="200">
+      </div>
+      <div class="var-item">
+        <label>Hit Window — Good (ms)</label>
+        <input type="number" id="var-good" value="120" min="30" max="400">
+      </div>
+      <div class="var-item">
+        <label>Hit Window — Bad (ms)</label>
+        <input type="number" id="var-bad" value="220" min="50" max="600">
+      </div>
+      <div class="var-item">
+        <label>Pitch Range % (top/bottom)</label>
+        <input type="number" id="var-pitch-range" value="100" min="10" max="100" title="Use top X% of pitch range for lane assignment">
+      </div>
+      <div class="var-item">
+        <label>Min Velocity (0-127)</label>
+        <input type="number" id="var-min-vel" value="30" min="0" max="127" title="Notes below this velocity are ignored">
+      </div>
+      <div class="var-item">
+        <label>Merge Window (ms)</label>
+        <input type="number" id="var-merge-ms" value="120" min="0" max="1000" title="Notes within this gap become a hold note">
+      </div>
+      <div class="var-item">
+        <label>Long Note Threshold (ms)</label>
+        <input type="number" id="var-long-note-threshold" value="180" min="0" max="5000" title="Notes longer than this become long/hold notes">
+      </div>
+      <div class="var-item">
+        <label>Difficulty</label>
+        <select id="var-difficulty" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
+          <option value="normal">Normal</option>
+          <option value="easy">Easy (Auto-play quiet notes)</option>
+          <option value="hard">Hard (No reference, player plays full track)</option>
+          <option value="auto">Auto (Full auto-play)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 12px; width: min(560px, 92vw);">
+    <button class="btn-primary" id="btn-start" disabled style="flex: 1;">START GAME</button>
+    <button class="btn-primary" id="btn-demo" style="flex: 1; background: #4444aa;">DEMO MODE</button>
+  </div>
+</div>
+
+<!-- ═══════════════ GAME SCREEN ═══════════════ -->
+<div id="game-screen">
+  <div id="hud">
+    <div>
+      <div id="score-display">000000</div>
+      <div id="combo-display">COMBO ×0</div>
+    </div>
+    <div id="accuracy-display">ACC —</div>
+    <button id="btn-back">◀ BACK</button>
+  </div>
+  <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+  <div id="game-main">
+    <div id="reference-field"></div>
+    <div id="play-field"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ RESULTS ═══════════════ -->
+<div id="results-screen">
+  <div class="results-card">
+    <div class="results-title">RESULTS</div>
+    <div class="results-score" id="res-score">000000</div>
+    <div class="results-stats">
+      <div class="stat"><div class="stat-label">PERFECT</div><div class="stat-val perfect" id="res-perfect">0</div></div>
+      <div class="stat"><div class="stat-label">GOOD</div><div class="stat-val good" id="res-good">0</div></div>
+      <div class="stat"><div class="stat-label">BAD</div><div class="stat-val bad" id="res-bad">0</div></div>
+      <div class="stat"><div class="stat-label">MISS</div><div class="stat-val miss" id="res-miss">0</div></div>
+    </div>
+    <div style="font-size:12px;color:#555588;" id="res-acc"></div>
+    <button class="btn-primary" id="btn-retry" style="margin-top:8px">RETRY</button>
+    <button class="btn-primary" id="btn-menu" style="background:#1a1a3a;color:var(--text);margin-top:0px">MENU</button>
+  </div>
+</div>
+
+<!-- ════════════════════════ MIDI PARSER (pure JS) ════════════════════════ -->
+<script>
+// ─── Tiny MIDI parser ───────────────────────────────────────────────────────
+function parseMidi(buffer) {
+  const data = new DataView(buffer);
+  let pos = 0;
+
+  function readUint32() { const v = data.getUint32(pos); pos += 4; return v; }
+  function readUint16() { const v = data.getUint16(pos); pos += 2; return v; }
+  function readUint8()  { return data.getUint8(pos++); }
+  function readVarLen() {
+    let val = 0, b;
+    do { b = readUint8(); val = (val << 7) | (b & 0x7f); } while (b & 0x80);
+    return val;
+  }
+
+  const header = readUint32();
+  if (header !== 0x4D546864) throw new Error('Not a MIDI file');
+  readUint32(); // chunk size (always 6)
+  const format   = readUint16();
+  const numTracks= readUint16();
+  const division = readUint16();
+
+  const tracks = [];
+  for (let t = 0; t < numTracks; t++) {
+    const chunkId   = readUint32();
+    if (chunkId !== 0x4D54726B) { pos += data.getUint32(pos) + 4; continue; }
+    const chunkLen  = readUint32();
+    const end       = pos + chunkLen;
+    const events    = [];
+    let tick        = 0;
+    let runningStatus = 0;
+    let trackName   = '';
+
+    while (pos < end) {
+      const delta = readVarLen();
+      tick += delta;
+      let statusByte = data.getUint8(pos);
+
+      if (statusByte & 0x80) { runningStatus = statusByte; pos++; }
+      else { statusByte = runningStatus; }
+
+      const type    = statusByte & 0xf0;
+      const channel = statusByte & 0x0f;
+
+      if (type === 0x90 || type === 0x80) {
+        const note = readUint8();
+        const vel  = readUint8();
+        events.push({ tick, type: (type === 0x90 && vel > 0) ? 'noteOn' : 'noteOff', note, velocity: vel, channel });
+      } else if (type === 0xa0) { readUint8(); readUint8(); }
+      else if (type === 0xb0) { readUint8(); readUint8(); }
+      else if (type === 0xc0) { // Program change
+        const prog = readUint8();
+        events.push({ tick, type: 'programChange', program: prog, channel });
+      }
+      else if (type === 0xd0) { readUint8(); }
+      else if (type === 0xe0) { readUint8(); readUint8(); }
+      else if (statusByte === 0xff) {
+        const metaType = readUint8();
+        const metaLen  = readVarLen();
+        const metaData = [];
+        for (let i = 0; i < metaLen; i++) metaData.push(readUint8());
+        if (metaType === 0x51) { // tempo
+          const us = (metaData[0] << 16) | (metaData[1] << 8) | metaData[2];
+          events.push({ tick, type: 'tempo', bpm: 60000000 / us, us });
+        }
+        if (metaType === 0x03) { // track name
+          trackName = String.fromCharCode(...metaData);
+          events.push({ tick, type: 'trackName', name: trackName });
+        }
+        if (metaType === 0x04) { // instrument name
+          const instr = String.fromCharCode(...metaData);
+          events.push({ tick, type: 'instrumentName', name: instr });
+        }
+        if (metaType === 0x2f) break; // end of track
+      } else if (statusByte === 0xf0 || statusByte === 0xf7) {
+        const len = readVarLen();
+        pos += len;
+      } else { pos++; }
+    }
+    pos = end;
+    tracks.push({ events, trackName });
+  }
+
+  return { format, division, tracks };
+}
+
+// ─── Convert MIDI ticks to milliseconds ─────────────────────────────────────
+function ticksToMs(midi) {
+  const division = midi.division;
+  let currentUs  = 500000; // default 120 BPM
+  let lastTick   = 0;
+  let lastMs     = 0;
+  const map      = [{ tick: 0, us: 500000, ms: 0 }];
+
+  // Collect tempo events across all tracks
+  const tempos = [];
+  for (const track of midi.tracks) {
+    for (const ev of track.events) {
+      if (ev.type === 'tempo') tempos.push(ev);
+    }
+  }
+  tempos.sort((a, b) => a.tick - b.tick);
+
+  for (const t of tempos) {
+    lastMs += (t.tick - lastTick) * currentUs / division / 1000;
+    lastTick = t.tick;
+    currentUs = t.us;
+    map.push({ tick: t.tick, us: t.us, ms: lastMs });
+  }
+
+  function resolve(tick) {
+    let seg = map[0];
+    for (let i = 1; i < map.length; i++) {
+      if (map[i].tick > tick) break;
+      seg = map[i];
+    }
+    return seg.ms + (tick - seg.tick) * seg.us / division / 1000;
+  }
+
+  return resolve;
+}
+
+// ─── Build beatmaps ──────────────────────────────────────────────────────────
+function buildBeatmaps(midi, gameTrackIdx, pitchRangePercent, minVelocity) {
+  const resolve = ticksToMs(midi);
+  const raw = extractTrackNotes(midi, gameTrackIdx, minVelocity, resolve);
+  if (raw.length === 0) return { referenceBeatmap: [], playBeatmap: [], autoPlayBeatmap: [] };
+
+  const split = splitNotesIntoReferenceAndPlay(raw);
+  const referenceBeatmap = assignLanes(split.reference, gameTrackIdx, pitchRangePercent);
+  const playBeatmap = assignLanes(split.play, gameTrackIdx, pitchRangePercent);
+  const autoPlayBeatmap = assignLanes(split.autoPlay, gameTrackIdx, pitchRangePercent);
+  return {
+    referenceBeatmap: markLongNotes(referenceBeatmap, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs),
+    playBeatmap: markLongNotes(playBeatmap, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs),
+    autoPlayBeatmap: markLongNotes(autoPlayBeatmap, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs),
+  };
+}
+
+function buildBeatmap(midi, gameTrackIdx, pitchRangePercent, minVelocity) {
+  return buildBeatmaps(midi, gameTrackIdx, pitchRangePercent, minVelocity).playBeatmap;
+}
+
+function extractTrackNotes(midi, trackIdx, minVelocity, resolve) {
+  const track = midi.tracks[trackIdx];
+  const active = new Map();
+  const notes = [];
+
+  for (const ev of track.events) {
+    const key = `${ev.note}_${ev.channel || 0}`;
+    if (ev.type === 'noteOn' && ev.velocity >= minVelocity) {
+      if (!active.has(key)) active.set(key, []);
+      active.get(key).push({ tick: ev.tick, note: ev.note, velocity: ev.velocity, channel: ev.channel || 0 });
+    } else if (ev.type === 'noteOff' || (ev.type === 'noteOn' && ev.velocity === 0)) {
+      const stack = active.get(key);
+      if (stack && stack.length) {
+        const start = stack.pop();
+        notes.push({
+          time: resolve(start.tick),
+          endTime: resolve(ev.tick),
+          note: start.note,
+          velocity: start.velocity,
+          channel: start.channel,
+          trackIdx,
+        });
+      }
+    }
+  }
+
+  notes.sort((a, b) => a.time - b.time);
+  return notes;
+}
+
+function combineSimultaneousNotes(notes, timeWindowMs = 10) {
+  // Group notes that start at nearly the same time and combine them
+  if (notes.length === 0) return [];
+  
+  const combined = [];
+  let currentGroup = [notes[0]];
+  
+  for (let i = 1; i < notes.length; i++) {
+    if (Math.abs(notes[i].time - notes[i-1].time) <= timeWindowMs) {
+      // Same time window - add to group
+      currentGroup.push(notes[i]);
+    } else {
+      // New time - flush current group
+      if (currentGroup.length === 1) {
+        combined.push(currentGroup[0]);
+      } else {
+        // Combine: use first note's properties but merge pitches into voices array
+        const merged = {
+          ...currentGroup[0],
+          pitches: currentGroup.map(n => ({ note: n.note, velocity: n.velocity })),
+        };
+        combined.push(merged);
+      }
+      currentGroup = [notes[i]];
+    }
+  }
+  
+  // Flush last group
+  if (currentGroup.length === 1) {
+    combined.push(currentGroup[0]);
+  } else {
+    const merged = {
+      ...currentGroup[0],
+      pitches: currentGroup.map(n => ({ note: n.note, velocity: n.velocity })),
+    };
+    combined.push(merged);
+  }
+  
+  return combined;
+}
+
+function splitNotesIntoReferenceAndPlay(notes) {
+  if (notes.length === 0) return { reference: [], play: [], autoPlay: [] };
+
+  // Hard difficulty: player plays full track, no reference or auto notes
+  if (difficulty === 'hard') {
+    const playAll = notes.map(n => ({ ...n, auto: false, sourceRole: 'play', playerMuted: false }));
+    const playCombined = combineSimultaneousNotes(playAll);
+    return { reference: [], play: playCombined, autoPlay: [] };
+  }
+
+  // Split by time segments (every ~5 seconds)
+  const segmentDurationMs = CFG.segmentDurationMs || 5000;
+  const minTime = notes[0].time;
+  const maxTime = Math.max(...notes.map(n => n.endTime || n.time));
+  
+  const segments = [];
+  for (let t = minTime; t <= maxTime; t += segmentDurationMs) {
+    segments.push({ start: t, end: t + segmentDurationMs });
+  }
+
+  // Extend segment boundaries to avoid switching in the middle of tight riff sequences.
+  // If the first note after a boundary is within CFG.mergeMs, extend the previous
+  // segment to include the contiguous chain of close notes.
+  if ((CFG.mergeMs || 0) > 0 && segments.length > 1) {
+    for (let si = 0; si < segments.length - 1; si++) {
+      const boundary = segments[si].end;
+      // find first note at/after boundary
+      const firstIdx = notes.findIndex(n => n.time >= boundary);
+      if (firstIdx === -1) continue;
+      const firstNote = notes[firstIdx];
+      if (firstNote.time - boundary <= (CFG.mergeMs || 0)) {
+        // extend to include contiguous chain of notes where gaps <= mergeMs
+        let j = firstIdx;
+        while (j + 1 < notes.length && (notes[j+1].time - notes[j].time) <= (CFG.mergeMs || 0)) j++;
+        // set new end slightly after the last note in chain
+        segments[si].end = notes[j].time + 1;
+        // ensure next segment starts at new end
+        if (si + 1 < segments.length) segments[si+1].start = segments[si].end;
+      }
+    }
+  }
+
+  let reference = [];
+  let play = [];
+  let autoPlay = []; // Easy mode: quiet notes that auto-play without UI
+
+  // Alternate ownership of segments
+  notes.forEach(note => {
+    let segmentIndex = 0;
+    for (let i = 0; i < segments.length; i++) {
+      if (note.time >= segments[i].start && note.time < segments[i].end) {
+        segmentIndex = i;
+        break;
+      }
+      if (note.time < segments[i].start) break;
+    }
+
+    const avgVelocity = note.velocity; // Use note's own velocity
+    const loud = avgVelocity >= 105;
+    const isReferenceTurn = segmentIndex % 2 === 0;
+    const isQuietNote = avgVelocity < CFG.easyModeVelocityThreshold;
+
+    // Easy mode: quiet notes auto-play without appearing on track
+    if (difficulty === 'easy' && isQuietNote) {
+      autoPlay.push({ ...note, auto: true, sourceRole: 'autoplay', playerMuted: false });
+      return; // Don't add to reference or play tracks
+    }
+
+    if (loud) {
+      // Loud sections: both play together
+      reference.push({ ...note, auto: true, sourceRole: 'reference', playerMuted: false });
+      play.push({ ...note, auto: false, sourceRole: 'play', playerMuted: true });
+    } else if (isReferenceTurn) {
+      // Reference segment
+      reference.push({ ...note, auto: true, sourceRole: 'reference', playerMuted: false });
+    } else {
+      // Play segment
+      play.push({ ...note, auto: false, sourceRole: 'play', playerMuted: true });
+    }
+  });
+
+  reference.sort((a, b) => a.time - b.time);
+  play.sort((a, b) => a.time - b.time);
+
+  // Limit autoPlay to at most 30% of visible notes (reference + play)
+  autoPlay.sort((a, b) => a.time - b.time);
+  const visibleCount = reference.length + play.length;
+  const maxAuto = Math.max(0, Math.floor(visibleCount * 0.3));
+  if (autoPlay.length > maxAuto && maxAuto > 0) {
+    const sampled = [];
+    for (let i = 0; i < maxAuto; i++) {
+      const idx = Math.floor(i * autoPlay.length / maxAuto);
+      sampled.push(autoPlay[idx]);
+    }
+    autoPlay = sampled;
+  }
+
+  // Shift autoplay notes to sit between nearby visible notes in same lane
+  const visible = reference.concat(play).sort((a, b) => a.time - b.time);
+  for (const n of autoPlay) {
+    const laneVisible = visible.filter(v => v.lane === n.lane);
+    const next = laneVisible.find(v => v.time > n.time);
+    if (next) {
+      n.time = Math.round((n.time + next.time) / 2);
+      if (n.endTime) n.endTime = n.time + Math.max(50, (n.endTime - n.time));
+    }
+  }
+
+  const refCombined = combineSimultaneousNotes(reference);
+  const playCombined = combineSimultaneousNotes(play);
+
+  return { reference: refCombined, play: playCombined, autoPlay };
+}
+
+function assignLanes(notes, gameTrackIdx, pitchRangePercent) {
+  if (!notes.length) return [];
+  const pitches = notes.map(note => note.note).sort((a, b) => a - b);
+  const cut = (1 - pitchRangePercent / 100) / 2;
+  const lo = pitches[Math.floor(pitches.length * cut)] ?? pitches[0];
+  const hi = pitches[Math.floor(pitches.length * (1 - cut)) - 1] ?? pitches[pitches.length - 1];
+  const span = hi - lo || 1;
+  const quarter = span / 4;
+  const lanes = ['up', 'left', 'down', 'right'];
+
+  return notes.map(note => {
+    const relative = Math.max(0, Math.min(span, note.note - lo));
+    const bucket = Math.min(3, Math.floor((span - relative) / quarter));
+    return {
+      time: note.time,
+      endTime: note.endTime,
+      lane: lanes[bucket],
+      note: note.note,
+      velocity: note.velocity,
+      trackIdx: gameTrackIdx,
+      auto: !!note.auto,
+      sourceRole: note.sourceRole,
+      playerMuted: !!note.playerMuted,
+      started: false,
+      completed: false,
+      missed: false,
+      hit: false,
+    };
+  });
+}
+
+function markLongNotes(notes, holdThresholdMs) {
+  const threshold = Math.max(0, holdThresholdMs || 0);
+  return notes
+    .map(note => {
+      const actualDuration = Math.max(0, (note.endTime ?? note.time) - note.time);
+      return {
+        ...note,
+        endTime: note.endTime ?? note.time,
+        hold: actualDuration >= threshold,
+      };
+    })
+    .sort((a, b) => a.time - b.time);
+}
+</script>
+
+<!-- ════════════════════════ AUDIO ENGINE ════════════════════════ -->
+<script>
+// Web Audio API — synthesise notes on demand
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+// Edit this list to control which clip names are available in the track selector.
+// SoundFonts are modeled as folders containing unique clip entries.
+const BASE_SOUND_CLIP_GROUPS = [
+  {
+    label: 'Synth',
+    clips: [
+      { id: 'glass', label: 'Glass Lead', type: 'synth', waveform: 'sine', attack: 0.006, decay: 0.05, sustain: 0.55, release: 0.1 },
+      { id: 'pulse', label: 'Pulse Square', type: 'synth', waveform: 'square', attack: 0.003, decay: 0.06, sustain: 0.28, release: 0.08 },
+      { id: 'saw', label: 'Saw Stack', type: 'synth', waveform: 'sawtooth', attack: 0.004, decay: 0.08, sustain: 0.38, release: 0.12 },
+      { id: 'soft', label: 'Soft Triangle', type: 'synth', waveform: 'triangle', attack: 0.01, decay: 0.07, sustain: 0.5, release: 0.14 },
+    ],
+  },
+  {
+    label: 'MP3 Samples',
+    clips: [
+      {
+        id: 'guitar',
+        label: 'Guitar',
+        type: 'mp3',
+        url: 'SoundClip/GuitarF.mp3',
+        url_left: 'SoundClip/GuitarF.mp3',
+        url_up: 'SoundClip/PianoG.mp3',
+        url_down: 'SoundClip/Flute.mp3',
+        url_right: 'SoundClip/MusicBox.mp3',
+      },
+      { id: 'piano', label: 'Piano', type: 'mp3', url: 'SoundClip/PianoG.mp3' },
+      { id: 'flute', label: 'Flute', type: 'mp3', url: 'SoundClip/Flute.mp3' },
+      { id: 'musicBox', label: 'Music Box', type: 'mp3', url: 'SoundClip/MusicBox.mp3' },
+    ],
+  },
+];
+
+// Each SoundFont file acts like a folder in the selector with tabs for navigation.
+// Keep clip labels unique and simple (no theme suffixes like '/ Grand').
+const SOUND_FONT_FOLDERS = [
+  {
+    id: 'sf-soft-piano-1',
+    label: 'Soft Piano 1.sf2',
+    sf2File: 'SoundClip/Soft Piano 1.sf2',
+    clips: [
+      { id: 'sf-soft-piano-1-main', label: 'Soft Piano 1', preset: 0, fallbackWaveform: 'triangle', attack: 0.008, decay: 0.07, sustain: 0.62, release: 0.16 },
+      { id: 'sf-soft-piano-1-alt-a', label: 'Soft Keys A', preset: 1, fallbackWaveform: 'sine', attack: 0.012, decay: 0.09, sustain: 0.66, release: 0.2 },
+      { id: 'sf-soft-piano-1-alt-b', label: 'Soft Keys B', preset: 2, fallbackWaveform: 'sawtooth', attack: 0.005, decay: 0.06, sustain: 0.42, release: 0.12 },
+    ],
+  },
+  {
+    id: 'sf-sonic-mania',
+    label: 'Sonic Mania Soundfont.sf2',
+    sf2File: 'SoundClip/Sonic Mania Soundfont.sf2',
+    clips: [
+      { id: 'sf-sonic-mania-0', label: 'Acoustic Bass', preset: 0, fallbackWaveform: 'sine', attack: 0.01, decay: 0.1, sustain: 0.5, release: 0.2 },
+      { id: 'sf-sonic-mania-1', label: 'Bandoneon', preset: 1, fallbackWaveform: 'square', attack: 0.02, decay: 0.08, sustain: 0.4, release: 0.15 },
+      { id: 'sf-sonic-mania-2', label: 'Banjo', preset: 2, fallbackWaveform: 'sawtooth', attack: 0.015, decay: 0.12, sustain: 0.3, release: 0.18 },
+      { id: 'sf-sonic-mania-3', label: 'Bass 1', preset: 3, fallbackWaveform: 'sine', attack: 0.008, decay: 0.15, sustain: 0.6, release: 0.25 },
+      { id: 'sf-sonic-mania-4', label: 'Bass 2', preset: 4, fallbackWaveform: 'sine', attack: 0.008, decay: 0.12, sustain: 0.55, release: 0.22 },
+      { id: 'sf-sonic-mania-5', label: 'Bass Fingered', preset: 5, fallbackWaveform: 'square', attack: 0.01, decay: 0.1, sustain: 0.45, release: 0.2 },
+      { id: 'sf-sonic-mania-6', label: 'Bass Fretless+', preset: 6, fallbackWaveform: 'sine', attack: 0.012, decay: 0.11, sustain: 0.5, release: 0.21 },
+      { id: 'sf-sonic-mania-7', label: 'Bassoon', preset: 7, fallbackWaveform: 'sine', attack: 0.03, decay: 0.12, sustain: 0.55, release: 0.18 },
+      { id: 'sf-sonic-mania-8', label: 'Bassoon+Strings', preset: 8, fallbackWaveform: 'sine', attack: 0.035, decay: 0.13, sustain: 0.6, release: 0.2 },
+      { id: 'sf-sonic-mania-9', label: 'Bass Slap+', preset: 9, fallbackWaveform: 'square', attack: 0.005, decay: 0.15, sustain: 0.35, release: 0.22 },
+      { id: 'sf-sonic-mania-10', label: 'Bass Slap 2', preset: 10, fallbackWaveform: 'square', attack: 0.006, decay: 0.14, sustain: 0.38, release: 0.2 },
+      { id: 'sf-sonic-mania-11', label: 'Bass Slap 3', preset: 11, fallbackWaveform: 'square', attack: 0.007, decay: 0.13, sustain: 0.4, release: 0.19 },
+      { id: 'sf-sonic-mania-12', label: 'Bass Slap 4', preset: 12, fallbackWaveform: 'square', attack: 0.008, decay: 0.12, sustain: 0.42, release: 0.18 },
+      { id: 'sf-sonic-mania-13', label: 'Bell Tower', preset: 13, fallbackWaveform: 'triangle', attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.5 },
+      { id: 'sf-sonic-mania-14', label: 'Bone Marimba', preset: 14, fallbackWaveform: 'triangle', attack: 0.005, decay: 0.08, sustain: 0.15, release: 0.12 },
+      { id: 'sf-sonic-mania-15', label: 'Bongo Flute', preset: 15, fallbackWaveform: 'sine', attack: 0.02, decay: 0.1, sustain: 0.3, release: 0.15 },
+      { id: 'sf-sonic-mania-16', label: 'Brass+', preset: 16, fallbackWaveform: 'square', attack: 0.025, decay: 0.1, sustain: 0.5, release: 0.15 },
+      { id: 'sf-sonic-mania-17', label: 'Buzzy', preset: 17, fallbackWaveform: 'sawtooth', attack: 0.01, decay: 0.07, sustain: 0.45, release: 0.12 },
+      { id: 'sf-sonic-mania-18', label: 'Celesta', preset: 18, fallbackWaveform: 'triangle', attack: 0.01, decay: 0.15, sustain: 0.1, release: 0.1 },
+      { id: 'sf-sonic-mania-19', label: 'Cello', preset: 19, fallbackWaveform: 'sine', attack: 0.04, decay: 0.12, sustain: 0.58, release: 0.2 },
+      { id: 'sf-sonic-mania-20', label: 'Chimes', preset: 20, fallbackWaveform: 'triangle', attack: 0.01, decay: 0.25, sustain: 0.15, release: 0.3 },
+      { id: 'sf-sonic-mania-21', label: 'Chime Tone 1', preset: 21, fallbackWaveform: 'triangle', attack: 0.012, decay: 0.2, sustain: 0.12, release: 0.25 },
+      { id: 'sf-sonic-mania-22', label: 'Chime Tone 2', preset: 22, fallbackWaveform: 'triangle', attack: 0.013, decay: 0.22, sustain: 0.1, release: 0.27 },
+      { id: 'sf-sonic-mania-23', label: 'Chime Tone 3', preset: 23, fallbackWaveform: 'triangle', attack: 0.014, decay: 0.24, sustain: 0.08, release: 0.29 },
+      { id: 'sf-sonic-mania-24', label: 'Choir 1', preset: 24, fallbackWaveform: 'sine', attack: 0.05, decay: 0.08, sustain: 0.65, release: 0.15 },
+      { id: 'sf-sonic-mania-25', label: 'Choir 2', preset: 25, fallbackWaveform: 'sine', attack: 0.055, decay: 0.09, sustain: 0.67, release: 0.16 },
+      { id: 'sf-sonic-mania-127', label: 'Zither', preset: 127, fallbackWaveform: 'triangle', attack: 0.012, decay: 0.18, sustain: 0.22, release: 0.22 },
+    ],
+  },
+];
+
+const soundFontFolderExpanded = Object.fromEntries(SOUND_FONT_FOLDERS.map(folder => [folder.id, false]));
+
+function buildSoundClipGroups() {
+  const soundFontClips = SOUND_FONT_FOLDERS.flatMap(folder =>
+    folder.clips.map(clip => ({
+      ...clip,
+      type: 'soundfont',
+      sf2File: folder.sf2File,
+      folderId: folder.id,
+    }))
+  );
+  return [
+    ...BASE_SOUND_CLIP_GROUPS,
+    { label: 'SoundFonts', clips: soundFontClips },
+  ];
+}
+
+let SOUND_CLIP_GROUPS = buildSoundClipGroups();
+let SOUND_CLIPS = SOUND_CLIP_GROUPS.flatMap(group =>
+  group.clips.map(clip => ({ ...clip, groupLabel: group.label }))
+);
+
+function getClipUrlForLane(clipId, lane) {
+  const clip = getClipById(clipId);
+  if (!clip || clip.type !== 'mp3' || !lane) return null;
+
+  const fullLaneSet = ['left', 'up', 'down', 'right'].every(dir => clip[`url_${dir}`]);
+  if (fullLaneSet) {
+    return clip[`url_${lane}`] || clip.url;
+  }
+
+  return clip.url;
+}
+
+// Convert MIDI note number to frequency
+function midiToFreq(note) { return 440 * Math.pow(2, (note - 69) / 12); }
+
+function getClipById(clipId) {
+  return SOUND_CLIPS.find(clip => clip.id === clipId) || SOUND_CLIPS[0];
+}
+
+function resolveClipLabel(trackIdx, clipId) {
+  if (clipId === '__original__') {
+    const id = (window.trackOriginalClipIds && window.trackOriginalClipIds[trackIdx]) || SOUND_CLIPS[0].id;
+    const clip = SOUND_CLIPS.find(c => c.id === id) || SOUND_CLIPS[0];
+    return clip.label;
+  }
+  const clip = SOUND_CLIPS.find(c => c.id === clipId) || SOUND_CLIPS[0];
+  return clip.label;
+}
+
+function getTrackConfig(trackIdx) {
+  return {
+    volume: trackVolumes[trackIdx] ?? 0.8,
+    clipId: (trackClipIds[trackIdx] === '__original__') ? (window.trackOriginalClipIds && window.trackOriginalClipIds[trackIdx]) || SOUND_CLIPS[0].id : (trackClipIds[trackIdx] ?? SOUND_CLIPS[0].id),
+  };
+}
+
+function populateTrackClipSelect(pickerEl, trackIdx) {
+  const selectedClipId = trackClipIds[trackIdx];
+  pickerEl.innerHTML = '';
+  pickerEl.className = 'clip-picker';
+
+  const tabsContainer = document.createElement('div');
+  tabsContainer.className = 'clip-picker-tabs';
+  pickerEl.appendChild(tabsContainer);
+
+  // Original option at the top
+  const origBar = document.createElement('div');
+  origBar.style.padding = '6px 8px';
+  origBar.style.borderBottom = '1px solid rgba(255,255,255,0.03)';
+  const origBtn = document.createElement('button');
+  origBtn.className = 'clip-picker-item';
+  const origResolved = resolveClipLabel(trackIdx, '__original__');
+  origBtn.textContent = `Original — ${origResolved}`;
+  if (selectedClipId === '__original__') origBtn.classList.add('selected');
+  origBtn.onclick = (e) => { e.stopPropagation(); trackClipIds[trackIdx] = '__original__'; populateTrackClipSelect(pickerEl, trackIdx); if (window.updateTrackClipLabel) window.updateTrackClipLabel(trackIdx); };
+  pickerEl.appendChild(origBar);
+  origBar.appendChild(origBtn);
+
+  const contentContainer = document.createElement('div');
+  contentContainer.className = 'clip-picker-content';
+  pickerEl.appendChild(contentContainer);
+
+  const tabs = [{ id: '__main__', label: 'Clips' }];
+  const panes = {};
+
+  // Main pane with Synth and MP3 groups
+  const mainPane = document.createElement('div');
+  mainPane.className = 'clip-picker-pane active';
+  mainPane.setAttribute('data-tab', '__main__');
+
+  for (const group of BASE_SOUND_CLIP_GROUPS) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'clip-picker-group';
+    const labelEl = document.createElement('div');
+    labelEl.className = 'clip-picker-group-label';
+    labelEl.textContent = group.label;
+    groupEl.appendChild(labelEl);
+
+    for (const clip of group.clips) {
+      const itemEl = document.createElement('button');
+      itemEl.className = 'clip-picker-item';
+      const isSelected = (clip.id === selectedClipId) || (selectedClipId === '__original__' && window.trackOriginalClipIds && window.trackOriginalClipIds[trackIdx] === clip.id);
+      if (isSelected) itemEl.classList.add('selected');
+      itemEl.textContent = clip.label;
+      itemEl.onclick = (e) => { e.stopPropagation(); trackClipIds[trackIdx] = clip.id; populateTrackClipSelect(pickerEl, trackIdx); if (window.updateTrackClipLabel) window.updateTrackClipLabel(trackIdx); };
+      groupEl.appendChild(itemEl);
+    }
+    mainPane.appendChild(groupEl);
+  }
+
+  // SoundFonts folder group
+  const sfGroup = document.createElement('div');
+  sfGroup.className = 'clip-picker-group';
+  const sfLabel = document.createElement('div');
+  sfLabel.className = 'clip-picker-group-label';
+  sfLabel.textContent = 'SoundFonts';
+  sfGroup.appendChild(sfLabel);
+
+  for (const folder of SOUND_FONT_FOLDERS) {
+    const folderBtn = document.createElement('button');
+    folderBtn.className = 'clip-picker-folder';
+    folderBtn.textContent = `📁 ${folder.label}`;
+    folderBtn.onclick = (e) => {
+      e.stopPropagation();
+      soundFontFolderExpanded[folder.id] = !soundFontFolderExpanded[folder.id];
+      populateTrackClipSelect(pickerEl, trackIdx);
+    };
+    sfGroup.appendChild(folderBtn);
+  }
+  mainPane.appendChild(sfGroup);
+  contentContainer.appendChild(mainPane);
+  panes['__main__'] = mainPane;
+
+  // Create tabs for expanded SoundFonts
+  for (const folder of SOUND_FONT_FOLDERS) {
+    if (soundFontFolderExpanded[folder.id]) {
+      tabs.push({ id: folder.id, label: folder.label });
+      const pane = document.createElement('div');
+      pane.className = 'clip-picker-pane';
+      pane.setAttribute('data-tab', folder.id);
+      for (const clip of folder.clips) {
+        const itemEl = document.createElement('button');
+        itemEl.className = 'clip-picker-item';
+        const isSelected = (clip.id === selectedClipId) || (selectedClipId === '__original__' && window.trackOriginalClipIds && window.trackOriginalClipIds[trackIdx] === clip.id);
+        if (isSelected) itemEl.classList.add('selected');
+        itemEl.textContent = clip.label;
+        itemEl.onclick = (e) => { e.stopPropagation(); trackClipIds[trackIdx] = clip.id; populateTrackClipSelect(pickerEl, trackIdx); if (window.updateTrackClipLabel) window.updateTrackClipLabel(trackIdx); };
+        pane.appendChild(itemEl);
+      }
+      contentContainer.appendChild(pane);
+      panes[folder.id] = pane;
+    }
+  }
+
+  // Render tabs
+  function renderTabs() {
+    tabsContainer.innerHTML = '';
+    for (let i = 0; i < tabs.length; i++) {
+      const tab = tabs[i];
+      const btn = document.createElement('button');
+      btn.className = 'clip-picker-tab' + (i === 0 ? ' active' : '');
+      btn.textContent = tab.label;
+      const tabIndex = i;
+      btn.onclick = () => {
+        tabsContainer.querySelectorAll('.clip-picker-tab').forEach((t, idx) => t.classList.toggle('active', idx === tabIndex));
+        contentContainer.querySelectorAll('.clip-picker-pane').forEach(p => p.classList.remove('active'));
+        contentContainer.querySelector(`[data-tab="${tab.id}"]`).classList.add('active');
+      };
+      tabsContainer.appendChild(btn);
+    }
+  }
+
+  renderTabs();
+}
+
+// Apply DEFAULTS to UI inputs on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    document.getElementById('var-speed').value = DEFAULTS.noteSpeed;
+    document.getElementById('var-perfect').value = DEFAULTS.perfectMs;
+    document.getElementById('var-good').value = DEFAULTS.goodMs;
+    document.getElementById('var-bad').value = DEFAULTS.badMs;
+    document.getElementById('var-pitch-range').value = DEFAULTS.pitchRange;
+    document.getElementById('var-min-vel').value = DEFAULTS.minVelocity;
+    document.getElementById('var-merge-ms').value = DEFAULTS.mergeMs;
+    document.getElementById('var-long-note-threshold').value = DEFAULTS.longNoteThresholdMs;
+    document.getElementById('var-difficulty').value = DEFAULTS.difficulty;
+  } catch (e) {}
+});
+
+function createClipVoice({ clipId, note, velocity, volume, startTime, duration = null, lane = null, exactDuration = false }) {
+  const ctx = getAudioCtx();
+  const clip = getClipById(clipId);
+  const peak = (velocity / 127) * volume;
+
+  // Handle MP3 clips
+  if (clip.type === 'mp3' && clip.url) {
+    return createMp3Voice({ clip, clipId, volume: peak, startTime, duration, note, lane, exactDuration });
+  }
+
+  // Handle SoundFont clips (currently synth fallback unless sample_url is provided)
+  if (clip.type === 'soundfont') {
+    return createSoundfontVoice({ clip, clipId, note, velocity, volume, startTime, duration, lane, exactDuration });
+  }
+
+  // Handle synthesis clips
+  const freq = midiToFreq(note);
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.type = clip.waveform;
+  osc.frequency.setValueAtTime(freq, startTime);
+  gain.gain.setValueAtTime(0.001, startTime);
+  gain.gain.linearRampToValueAtTime(peak, startTime + clip.attack);
+  gain.gain.linearRampToValueAtTime(Math.max(peak * clip.sustain, 0.001), startTime + clip.attack + clip.decay);
+
+  let stopped = false;
+  function stop(stopTime = ctx.currentTime) {
+    if (stopped) return;
+    stopped = true;
+    try {
+      gain.gain.cancelScheduledValues(stopTime);
+      gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.001), stopTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, stopTime + clip.release);
+      osc.stop(stopTime + clip.release + 0.03);
+    } catch (_) {}
+  }
+
+  osc.start(startTime);
+
+  // Auto-stop after duration, with minimum length enforced
+  const minDurationMs = exactDuration ? 0 : (CFG.minNoteLengthMs || 100);
+  let stopDurationMs = duration && duration > 0 ? duration : 800; // Default to 800ms if no duration
+  stopDurationMs = Math.max(stopDurationMs, minDurationMs); // Enforce minimum unless exact duration is requested
+  
+  const stopTime = startTime + (stopDurationMs / 1000);
+  const autoStop = () => stop(stopTime);
+  const delayMs = Math.max(0, (stopTime - ctx.currentTime) * 1000);
+  setTimeout(autoStop, delayMs);
+
+  return { osc, gain, stop };
+}
+
+function createSoundfontVoice({ clip, clipId, note, velocity, volume, startTime, duration = null, lane = null, exactDuration = false }) {
+  // If a sample URL is provided for this preset, reuse the MP3 voice path.
+  if (clip.sample_url) {
+    const mp3LikeClip = {
+      ...clip,
+      type: 'mp3',
+      url: clip.sample_url,
+    };
+    return createMp3Voice({ clip: mp3LikeClip, clipId, volume: (velocity / 127) * volume, startTime, duration, note, lane, exactDuration });
+  }
+
+  // Fallback: synth profile per preset so SoundFont entries are immediately usable.
+  const synthLikeClip = {
+    type: 'synth',
+    waveform: clip.fallbackWaveform || 'triangle',
+    attack: clip.attack ?? 0.01,
+    decay: clip.decay ?? 0.08,
+    sustain: clip.sustain ?? 0.6,
+    release: clip.release ?? 0.16,
+  };
+
+  return createSynthLikeVoice({ clip: synthLikeClip, note, velocity, volume, startTime, duration, exactDuration });
+}
+
+function createSynthLikeVoice({ clip, note, velocity, volume, startTime, duration = null, exactDuration = false }) {
+  const ctx = getAudioCtx();
+  const peak = (velocity / 127) * volume;
+  const freq = midiToFreq(note);
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.type = clip.waveform;
+  osc.frequency.setValueAtTime(freq, startTime);
+  gain.gain.setValueAtTime(0.001, startTime);
+  gain.gain.linearRampToValueAtTime(peak, startTime + clip.attack);
+  gain.gain.linearRampToValueAtTime(Math.max(peak * clip.sustain, 0.001), startTime + clip.attack + clip.decay);
+
+  let stopped = false;
+  function stop(stopTime = ctx.currentTime) {
+    if (stopped) return;
+    stopped = true;
+    try {
+      gain.gain.cancelScheduledValues(stopTime);
+      gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.001), stopTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, stopTime + clip.release);
+      osc.stop(stopTime + clip.release + 0.03);
+    } catch (_) {}
+  }
+
+  osc.start(startTime);
+
+  const minDurationMs = exactDuration ? 0 : (CFG.minNoteLengthMs || 100);
+  let stopDurationMs = duration && duration > 0 ? duration : 800;
+  stopDurationMs = Math.max(stopDurationMs, minDurationMs);
+  const stopTime = startTime + (stopDurationMs / 1000);
+  const delayMs = Math.max(0, (stopTime - ctx.currentTime) * 1000);
+  setTimeout(() => stop(stopTime), delayMs);
+
+  return { osc, gain, stop };
+}
+
+function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note = 60, lane = null, exactDuration = false }) {
+  const ctx = getAudioCtx();
+  const fullLaneSet = ['left', 'up', 'down', 'right'].every(dir => clip[`url_${dir}`]);
+  const url = fullLaneSet && lane ? getClipUrlForLane(clipId, lane) : clip.url;
+  const audio = new Audio(url);
+  audio.preload = 'auto';
+  audio.volume = Math.max(0, Math.min(1, volume));
+
+  // If we have a full 4-sample set, use those samples directly.
+  // Otherwise, fall back to the current pitch-shifted single-sample behavior.
+  if (!fullLaneSet && lane) {
+    // Use clip rootNote when available, otherwise assume C4 (60).
+    // Limit pitch-shift to +/- 12 semitones to avoid extreme low-end dropouts.
+    const baselineNote = (clip && clip.rootNote) ? clip.rootNote : 60;
+    let semitoneDiff = note - baselineNote;
+    semitoneDiff = Math.max(-12, Math.min(12, semitoneDiff));
+    const playbackRate = Math.pow(2, semitoneDiff / 12);
+    audio.playbackRate = Math.max(0.5, Math.min(2, playbackRate)); // Clamp to a tighter, safer range
+  } else {
+    audio.playbackRate = 1.0;
+  }
+
+  let started = false;
+  let stopped = false;
+  let startTimer = null;
+
+  function start() {
+    if (started || stopped) return;
+    started = true;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+    audio.onended = () => stop();
+  }
+
+  const waitMs = Math.max(0, (startTime - ctx.currentTime) * 1000);
+  startTimer = setTimeout(start, waitMs);
+
+  if (exactDuration && duration && duration > 0) {
+    const stopTime = startTime + (duration / 1000);
+    const delayMs = Math.max(0, (stopTime - ctx.currentTime) * 1000);
+    setTimeout(() => stop(), delayMs);
+  }
+
+  function stop() {
+    if (stopped) return;
+    stopped = true;
+    if (startTimer) clearTimeout(startTimer);
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.onended = null;
+    } catch (_) {}
+  }
+
+  return { audio, stop };
+}
+
+// Play multiple pitches at once (for combined simultaneous notes)
+function playPitches(clipId, pitches, velocity, volume, startTime, duration = null, lane = null, exactDuration = false) {
+  const voices = [];
+  for (const p of pitches) {
+    const v = createClipVoice({ clipId, note: p.note, velocity: p.velocity || velocity, volume, startTime, duration, lane, exactDuration });
+    voices.push(v);
+  }
+  return {
+    voices,
+    stop: (t) => {
+      for (const v of voices) {
+        try { if (v && v.stop) v.stop(t); } catch(_) {}
+      }
+    }
+  };
+}
+
+function playTrackNote(clipId, note, velocity, volume, duration = null, lane = null, exactDuration = false) {
+  const ctx = getAudioCtx();
+  const voice = createClipVoice({ clipId, note, velocity, volume, startTime: ctx.currentTime, duration, lane, exactDuration });
+  return voice;
+}
+
+function getNotePlayDuration(note, fallbackMs = 300, exactDuration = false) {
+  const actualDuration = Math.max(0, (note.endTime ?? note.time) - note.time);
+  if (exactDuration) return actualDuration;
+  return note.hold ? actualDuration : fallbackMs;
+}
+
+// Backing track: play all notes of a MIDI track via Web Audio scheduling
+function getBpmFromMidi(midi) {
+  // Extract BPM from MIDI tempo events
+  let bpm = 120; // default
+  for (const track of midi.tracks) {
+    for (const ev of track.events) {
+      if (ev.type === 'tempo') {
+        // BPM = 60,000,000 / microseconds per beat
+        bpm = Math.round(60000000 / ev.us);
+        return bpm;
+      }
+    }
+  }
+  return bpm;
+}
+
+function generateBackingBeat(midi, startTime) {
+  // Generate a consistent low-pitched backing beat at the song's BPM
+  const ctx = getAudioCtx();
+  const bpm = getBpmFromMidi(midi);
+  const beatDurationMs = (60 / bpm) * 1000; // ms per beat
+  const resolve = ticksToMs(midi);
+  
+  // Calculate total song duration
+  let maxTick = 0;
+  for (const track of midi.tracks) {
+    for (const ev of track.events) {
+      maxTick = Math.max(maxTick, ev.tick);
+    }
+  }
+  const songDurationMs = resolve(maxTick);
+  const nodes = [];
+  
+  // Generate beats throughout the song
+  const beatNote = 36; // Low C (kick drum pitch)
+  const beatVelocity = 80;
+  const beatVolume = 0.15; // Quiet backing beat
+  
+  for (let timeMs = 0; timeMs <= songDurationMs; timeMs += beatDurationMs) {
+    const tSec = startTime + timeMs / 1000;
+    const beatDurationForOsc = beatDurationMs / 2; // Beat is half as long as the interval
+    
+    const voice = createClipVoice({
+      clipId: 'pulse', // Use pulse synth for consistent backing
+      note: beatNote,
+      velocity: beatVelocity,
+      volume: beatVolume,
+      startTime: tSec,
+      duration: beatDurationForOsc,
+    });
+    nodes.push(voice);
+  }
+  
+  return nodes;
+}
+
+function scheduleBackingTrack(midi, trackIdx, startTime) {
+  const ctx     = getAudioCtx();
+  const resolve = ticksToMs(midi);
+  const track   = midi.tracks[trackIdx];
+  const active  = new Map();
+  const { volume, clipId } = getTrackConfig(trackIdx);
+  const clip = getClipById(clipId);
+  const useExactDuration = trackClipIds[trackIdx] === '__original__';
+  const nodes = [];
+
+  for (const ev of track.events) {
+    const tSec = startTime + resolve(ev.tick) / 1000;
+    const key = `${ev.note}_${ev.channel || 0}`;
+    
+    if (ev.type === 'noteOn' && ev.velocity > 0) {
+      const voice = createClipVoice({
+        clipId,
+        note: ev.note,
+        velocity: ev.velocity,
+        volume: volume * 0.35,
+        startTime: tSec,
+        exactDuration: useExactDuration,
+      });
+      if (clip.type !== 'mp3' || useExactDuration) active.set(key, voice);
+      nodes.push(voice);
+    } else if ((clip.type !== 'mp3' || useExactDuration) && (ev.type === 'noteOff' || (ev.type === 'noteOn' && ev.velocity === 0)) && active.has(key)) {
+      const voice = active.get(key);
+      voice.stop(tSec);
+      active.delete(key);
+    }
+  }
+  
+  return nodes;
+}
+</script>
+
+<!-- ════════════════════════ UI LOGIC ════════════════════════ -->
+<script>
+// ─── State ──────────────────────────────────────────────────────────────────
+let midiData      = null;
+let trackRoles    = [];   // 'game' | 'backing' | 'off'
+let trackVolumes  = [];
+let trackClipIds  = [];
+let trackCollapsed = [];
+
+// ---------- Defaults (consolidated) ----------
+const DEFAULTS = {
+  noteSpeed: 5,
+  perfectMs: 50,
+  goodMs: 120,
+  badMs: 220,
+  pitchRange: 100,
+  minVelocity: 30,
+  mergeMs: 340,
+  longNoteThresholdMs: 180,
+  minNoteLengthMs: 100,
+  segmentDurationMs: 5000,
+  easyModeVelocityThreshold: 70,
+  difficulty: 'normal'
+};
+let beatmap       = [];
+let referenceBeatmap = [];
+let referenceNotes   = [];
+let backingNodes  = [];
+let difficulty    = 'normal'; // 'easy' | 'normal'
+
+// ─── Config variables (can be tuned) ────────────────────────────────────────
+let CFG = {
+  ...DEFAULTS
+};
+
+// ─── Game state ──────────────────────────────────────────────────────────────
+let gameRunning   = false;
+let gameStartTime = 0;   // performance.now() when game started
+let noteElements  = {};  // laneKey → array of {el, note}
+let activeNotes   = [];  // all pending beatmap notes
+let referenceActiveNotes = [];
+let heldNotes     = {};  // laneKey → active hold note
+let pressedLanes  = new Set();
+let score         = 0;
+let combo         = 0;
+let maxCombo      = 0;
+let stats         = { perfect: 0, good: 0, bad: 0, miss: 0 };
+let totalNotes    = 0;
+let laneEls       = {};  // lane key → DOM element
+let autoTimers    = [];  // timeouts for auto mode
+
+const LANE_KEYS = {
+  up:    ['ArrowUp',   'w', 'W'],
+  left:  ['ArrowLeft', 'a', 'A'],
+  right: ['ArrowRight','d', 'D'],
+  down:  ['ArrowDown', 's', 'S'],
+};
+
+const LANE_META = {
+  up:    { color: 'var(--up)',    label: '↑ / W', cls: 'lane-up' },
+  left:  { color: 'var(--left)', label: '← / A', cls: 'lane-left' },
+  right: { color: 'var(--right)',label: '→ / D', cls: 'lane-right' },
+  down:  { color: 'var(--down)', label: '↓ / S', cls: 'lane-down' },
+};
+
+const LANE_ORDER = ['left', 'up', 'down', 'right'];
+
+// ─── Drop zone / file input ──────────────────────────────────────────────────
+const dropZone  = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  loadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => loadFile(fileInput.files[0]));
+
+function loadFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      midiData = parseMidi(e.target.result);
+      dropZone.textContent = `✓ ${file.name}  (${midiData.tracks.length} track${midiData.tracks.length !== 1 ? 's' : ''})`;
+      dropZone.classList.add('loaded');
+      buildTrackSelector();
+      checkReady();
+    } catch (err) {
+      dropZone.textContent = '✗ Failed to parse MIDI: ' + err.message;
+      dropZone.classList.remove('loaded');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function buildTrackSelector() {
+  const trackList = document.getElementById('track-list');
+  const selector  = document.getElementById('track-selector');
+  trackList.innerHTML = '';
+  trackRoles = new Array(midiData.tracks.length).fill('off');
+  trackVolumes = new Array(midiData.tracks.length).fill(0.8);
+  // default new midi files to Original
+  trackClipIds = new Array(midiData.tracks.length).fill('__original__');
+  // start collapsed
+  trackCollapsed = new Array(midiData.tracks.length).fill(true);
+  // compute original clip mapping per track (may take a moment)
+  document.getElementById('loading-overlay').style.display = 'flex';
+  window.trackOriginalClipIds = new Array(midiData.tracks.length).fill(null);
+  for (let i = 0; i < midiData.tracks.length; i++) {
+    const track = midiData.tracks[i];
+    // look for programChange events (latest one in track)
+    const progEv = [...track.events].reverse().find(e => e.type === 'programChange');
+    const instrEv = [...track.events].reverse().find(e => e.type === 'instrumentName' || e.type === 'trackName');
+    let resolved = null;
+    if (progEv && typeof progEv.program === 'number') {
+      const found = SOUND_CLIPS.find(c => c.preset === progEv.program);
+      if (found) resolved = found.id;
+    }
+    if (!resolved && instrEv && instrEv.name) {
+      const name = instrEv.name.toLowerCase();
+      const found = SOUND_CLIPS.find(c => (c.label && c.label.toLowerCase().includes(name)) || (c.groupLabel && c.groupLabel.toLowerCase().includes(name)));
+      if (found) resolved = found.id;
+    }
+    if (!resolved) resolved = SOUND_CLIPS[0].id;
+    window.trackOriginalClipIds[i] = resolved;
+  }
+  document.getElementById('loading-overlay').style.display = 'none';
+
+  // Auto-assign: first track with noteOns → game, rest → backing
+  let gameAssigned = false;
+  midiData.tracks.forEach((track, i) => {
+    const hasNotes = track.events.some(e => e.type === 'noteOn');
+    if (!gameAssigned && hasNotes) { trackRoles[i] = 'game'; gameAssigned = true; }
+    else if (hasNotes) trackRoles[i] = 'backing';
+  });
+
+  midiData.tracks.forEach((track, i) => {
+    const noteCount = track.events.filter(e => e.type === 'noteOn').length;
+    const name = track.trackName || `Track ${i + 1}`;
+
+    const row = document.createElement('div');
+    row.className = 'track-item';
+    row.dataset.trackIdx = i;
+
+    const info = document.createElement('div');
+    info.className = 'track-info';
+
+    const badge = document.createElement('button');
+    badge.className = 'track-badge ' + badgeClass(trackRoles[i]);
+    badge.textContent = trackRoles[i].toUpperCase();
+    badge.addEventListener('click', () => {
+      const cycle = { game: 'backing', backing: 'off', off: 'game' };
+      trackRoles[i] = cycle[trackRoles[i]];
+      badge.className = 'track-badge ' + badgeClass(trackRoles[i]);
+      badge.textContent = trackRoles[i].toUpperCase();
+      checkReady();
+    });
+
+    const label = document.createElement('span');
+    label.textContent = `${name}  (${noteCount} notes)`;
+    label.style.minWidth = '0';
+    label.style.overflow = 'hidden';
+    label.style.textOverflow = 'ellipsis';
+    label.style.whiteSpace = 'nowrap';
+
+    // Collapse button and clip summary
+    const collapseBtn = document.createElement('button');
+    collapseBtn.className = 'track-collapse-btn';
+    collapseBtn.textContent = '−';
+    collapseBtn.title = 'Collapse/Expand track controls';
+    collapseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      trackCollapsed[i] = !trackCollapsed[i];
+      row.classList.toggle('collapsed', trackCollapsed[i]);
+      collapseBtn.textContent = trackCollapsed[i] ? '+' : '−';
+    });
+
+    const clipSummary = document.createElement('span');
+    clipSummary.className = 'track-summary-label';
+    clipSummary.textContent = resolveClipLabel(i, trackClipIds[i]) || '';
+
+    info.appendChild(badge);
+    info.appendChild(label);
+    info.appendChild(collapseBtn);
+    info.appendChild(clipSummary);
+
+    const controls = document.createElement('div');
+    controls.className = 'track-controls';
+
+    const volume = document.createElement('input');
+    volume.type = 'range';
+    volume.min = '0';
+    volume.max = '100';
+    volume.value = '80';
+    volume.className = 'track-volume';
+    volume.title = 'Track volume';
+    volume.addEventListener('input', () => {
+      trackVolumes[i] = parseFloat(volume.value) / 100;
+    });
+
+    const clipPicker = document.createElement('div');
+    clipPicker.className = 'track-clip';
+    clipPicker.title = 'Track sound clip';
+    populateTrackClipSelect(clipPicker, i);
+
+    // keep a small hook to update summary when clip changes
+    clipPicker.dataset.trackIdx = i;
+    function updateClipSummary() {
+      clipSummary.textContent = resolveClipLabel(i, trackClipIds[i]) || '';
+    }
+    updateClipSummary();
+
+    // expose updater so populateTrackClipSelect can call it
+    window.updateTrackClipLabel = window.updateTrackClipLabel || function(idx){
+      const el = document.querySelector('.track-item[data-track-idx="'+idx+'"] .track-summary-label');
+      if (el) el.textContent = resolveClipLabel(idx, trackClipIds[idx]) || '';
+    };
+
+    // collapsed inline small controls (visible when collapsed)
+    const collapsedCtr = document.createElement('div');
+    collapsedCtr.className = 'collapsed-controls';
+    const smallVol = document.createElement('input');
+    smallVol.type = 'range'; smallVol.min='0'; smallVol.max='100'; smallVol.value = Math.round(trackVolumes[i]*100);
+    smallVol.style.width = '120px';
+    smallVol.addEventListener('input', () => { trackVolumes[i] = parseFloat(smallVol.value)/100; });
+    const changeBtn = document.createElement('button');
+    changeBtn.className = 'btn-primary';
+    changeBtn.style.padding = '6px 8px';
+    changeBtn.textContent = 'Change';
+    changeBtn.addEventListener('click', (e)=>{ e.stopPropagation(); trackCollapsed[i] = false; row.classList.remove('collapsed'); collapseBtn.textContent = '−'; });
+    collapsedCtr.appendChild(smallVol);
+    collapsedCtr.appendChild(changeBtn);
+    info.appendChild(collapsedCtr);
+
+    controls.appendChild(volume);
+    controls.appendChild(clipPicker);
+
+    row.appendChild(info);
+    row.appendChild(controls);
+    trackList.appendChild(row);
+    // restore collapsed visual if previously set
+    if (trackCollapsed[i]) row.classList.add('collapsed');
+  });
+
+  selector.classList.add('visible');
+
+  // Fullscreen toggle handler
+  const fsBtn = document.getElementById('btn-clip-fullscreen');
+  fsBtn.onclick = () => {
+    const sel = document.getElementById('track-selector');
+    const isFs = sel.classList.toggle('fullscreen');
+    fsBtn.textContent = isFs ? 'Shrink Clips' : 'Fullscreen Clips';
+    if (isFs) document.addEventListener('keydown', escCloseFs);
+    else document.removeEventListener('keydown', escCloseFs);
+  };
+  function escCloseFs(e) { if (e.key === 'Escape') { document.getElementById('track-selector').classList.remove('fullscreen'); fsBtn.textContent = 'Fullscreen Clips'; document.removeEventListener('keydown', escCloseFs); } }
+}
+
+function badgeClass(role) {
+  return role === 'game' ? 'badge-game' : role === 'backing' ? 'badge-backing' : 'badge-off';
+}
+
+function checkReady() {
+  const hasGame = trackRoles.includes('game');
+  document.getElementById('btn-start').disabled = !hasGame;
+}
+
+// ─── Parameter reading ───────────────────────────────────────────────────────
+function readConfig() {
+  CFG.noteSpeed    = parseFloat(document.getElementById('var-speed').value)    || 5;
+  CFG.perfectMs    = parseFloat(document.getElementById('var-perfect').value)  || 50;
+  CFG.goodMs       = parseFloat(document.getElementById('var-good').value)     || 120;
+  CFG.badMs        = parseFloat(document.getElementById('var-bad').value)      || 220;
+  CFG.pitchRange   = parseFloat(document.getElementById('var-pitch-range').value) || 100;
+  CFG.minVelocity  = parseFloat(document.getElementById('var-min-vel').value)  || 30;
+  CFG.mergeMs      = parseFloat(document.getElementById('var-merge-ms').value) || 0;
+  CFG.longNoteThresholdMs = parseFloat(document.getElementById('var-long-note-threshold').value) || DEFAULTS.longNoteThresholdMs;
+  difficulty       = document.getElementById('var-difficulty').value || 'normal';
+}
+
+// ─── BUILD GAME ──────────────────────────────────────────────────────────────
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-retry').addEventListener('click', startGame);
+document.getElementById('btn-menu').addEventListener('click', goMenu);
+document.getElementById('btn-back').addEventListener('click', goMenu);
+document.getElementById('btn-demo').addEventListener('click', startDemoGame);
+
+function startDemoGame() {
+  // Create a simple demo beatmap without needing a MIDI file
+  beatmap = [
+    { time: 500, lane: 'up', note: 60, velocity: 100, trackIdx: 0, endTime: 500, hold: false, playerMuted: true, auto: false, sourceRole: 'play' },
+    { time: 1000, lane: 'left', note: 62, velocity: 100, trackIdx: 0, endTime: 1000, hold: false, playerMuted: true, auto: false, sourceRole: 'play' },
+    { time: 1500, lane: 'right', note: 64, velocity: 100, trackIdx: 0, endTime: 1700, hold: true, playerMuted: true, auto: false, sourceRole: 'play' },
+    { time: 2000, lane: 'down', note: 65, velocity: 100, trackIdx: 0, endTime: 2000, hold: false, playerMuted: true, auto: false, sourceRole: 'play' },
+    { time: 2500, lane: 'up', note: 67, velocity: 100, trackIdx: 0, endTime: 2500, hold: false, playerMuted: false, auto: false, sourceRole: 'play' },
+    { time: 3000, lane: 'left', note: 69, velocity: 100, trackIdx: 0, endTime: 3280, hold: true, playerMuted: false, auto: false, sourceRole: 'play' },
+    { time: 3500, lane: 'right', note: 71, velocity: 100, trackIdx: 0, endTime: 3500, hold: false, playerMuted: false, auto: false, sourceRole: 'play' },
+    { time: 4000, lane: 'down', note: 72, velocity: 100, trackIdx: 0, endTime: 4300, hold: true, playerMuted: false, auto: false, sourceRole: 'play' },
+    { time: 4500, lane: 'up', note: 74, velocity: 100, trackIdx: 0, endTime: 4500, hold: false, playerMuted: false, auto: false, sourceRole: 'play' },
+    { time: 5000, lane: 'left', note: 76, velocity: 100, trackIdx: 0, endTime: 5000, hold: false, playerMuted: false, auto: false, sourceRole: 'play' },
+  ];
+  referenceBeatmap = [
+    { time: 600, lane: 'down', note: 55, velocity: 100, trackIdx: 0, endTime: 600, hold: false, auto: true, sourceRole: 'reference' },
+    { time: 1100, lane: 'up', note: 57, velocity: 100, trackIdx: 0, endTime: 1100, hold: false, auto: true, sourceRole: 'reference' },
+    { time: 1600, lane: 'left', note: 59, velocity: 100, trackIdx: 0, endTime: 1700, hold: false, auto: true, sourceRole: 'reference' },
+    { time: 2100, lane: 'right', note: 60, velocity: 100, trackIdx: 0, endTime: 2100, hold: false, auto: true, sourceRole: 'reference' },
+    { time: 2600, lane: 'down', note: 62, velocity: 100, trackIdx: 0, endTime: 2700, hold: false, auto: true, sourceRole: 'reference' },
+    { time: 3100, lane: 'left', note: 64, velocity: 100, trackIdx: 0, endTime: 3200, hold: true, auto: true, sourceRole: 'reference' },
+    { time: 3600, lane: 'up', note: 65, velocity: 100, trackIdx: 0, endTime: 3600, hold: false, auto: true, sourceRole: 'reference' },
+    { time: 4100, lane: 'right', note: 67, velocity: 100, trackIdx: 0, endTime: 4200, hold: true, auto: true, sourceRole: 'reference' },
+  ];
+  
+  readConfig();
+  document.getElementById('results-screen').classList.remove('visible');
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+
+  buildPlayFields();
+
+  totalNotes = beatmap.length;
+
+  // Reset state
+  score = combo = maxCombo = 0;
+  stats = { perfect: 0, good: 0, bad: 0, miss: 0 };
+  activeNotes = beatmap.map((n, i) => ({ ...n, id: i, hit: false, missed: false, el: null }));
+  referenceActiveNotes = referenceBeatmap.map((n, i) => ({ ...n, id: i, hit: false, missed: false, el: null }));
+  noteElements = { up: [], left: [], right: [], down: [] };
+  heldNotes = {};
+  pressedLanes = new Set();
+
+  updateHUD();
+
+  // Stop previous backing nodes
+  backingNodes.forEach(node => { 
+    try { 
+      if (node.stop) node.stop(); 
+      if (node.osc) node.osc.stop();
+      if (node.source) node.source.stop();
+    } catch(_){} 
+  });
+  backingNodes = [];
+
+  // Resume audio ctx
+  getAudioCtx().resume();
+
+  gameRunning   = true;
+  gameStartTime = performance.now();
+
+  requestAnimationFrame(gameLoop);
+}
+
+function goMenu() {
+  stopGame();
+  document.getElementById('results-screen').classList.remove('visible');
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+}
+
+function startGame() {
+  // Safety check: ensure MIDI data is loaded
+  if (!midiData || !trackRoles.includes('game')) {
+    alert('Please load a MIDI file and assign a game track first.');
+    return;
+  }
+  
+  readConfig();
+  document.getElementById('results-screen').classList.remove('visible');
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+
+  buildPlayFields();
+
+  // Gather beatmap
+  const gameTrackIdx = trackRoles.indexOf('game');
+  const splitBeatmaps = buildBeatmaps(midiData, gameTrackIdx, CFG.pitchRange, CFG.minVelocity);
+  referenceBeatmap = splitBeatmaps.referenceBeatmap;
+  beatmap = splitBeatmaps.playBeatmap;
+  const autoPlayBeatmap = splitBeatmaps.autoPlayBeatmap || [];
+  
+  totalNotes = beatmap.length;
+
+  // Reset state
+  score = combo = maxCombo = 0;
+  stats = { perfect: 0, good: 0, bad: 0, miss: 0 };
+  activeNotes = beatmap.map((n, i) => ({ ...n, id: i, hit: false, missed: false, el: null }));
+  referenceActiveNotes = referenceBeatmap.map((n, i) => ({ ...n, id: i, hit: false, missed: false, el: null }));
+  const autoPlayActiveNotes = autoPlayBeatmap.map((n, i) => ({ ...n, id: i, hit: false, missed: false, el: null }));
+  noteElements = { up: [], left: [], right: [], down: [] };
+  heldNotes = {};
+  pressedLanes = new Set();
+
+  // clear any scheduled auto timers from previous run
+  try { for (const t of autoTimers) clearTimeout(t); } catch(_) {}
+  autoTimers = [];
+
+  updateHUD();
+
+  // Stop previous backing nodes
+  backingNodes.forEach(node => { 
+    try { 
+      if (node.stop) node.stop(); 
+      if (node.osc) node.osc.stop();
+      if (node.source) node.source.stop();
+    } catch(_){} 
+  });
+  backingNodes = [];
+
+  // mark game start time (used to schedule auto hits) and resume audio ctx
+  gameStartTime = performance.now();
+  const ctx = getAudioCtx();
+  ctx.resume().then(() => {
+    const startSec = ctx.currentTime + 0.1; // 100ms delay to ensure context is ready
+    trackRoles.forEach((role, idx) => {
+      if (role === 'backing') {
+        const nodes = scheduleBackingTrack(midiData, idx, startSec);
+        backingNodes.push(...nodes);
+      }
+    });
+    // Auto-play quiet notes (Easy mode) in the background
+    autoPlayActiveNotes.forEach(note => {
+      const tSec = startSec + note.time / 1000;
+      const trackConfig = getTrackConfig(gameTrackIdx);
+      const useExactDuration = trackClipIds[gameTrackIdx] === '__original__';
+      const voice = createClipVoice({
+        clipId: trackConfig.clipId,
+        note: note.note,
+        velocity: note.velocity,
+        volume: trackConfig.volume * 0.5, // Quieter
+        startTime: tSec,
+        duration: getNotePlayDuration(note, 300, useExactDuration),
+        lane: note.lane,
+        exactDuration: useExactDuration,
+      });
+      backingNodes.push(voice);
+    });
+
+    // Full Auto mode: schedule auto-hits for the play beatmap
+    if (difficulty === 'auto') {
+      // schedule auto hits relative to gameStartTime
+      for (const n of activeNotes) {
+        const delay = Math.max(0, Math.round(n.time - (performance.now() - gameStartTime)));
+        const id = setTimeout(() => {
+          try { if (!n.hit && !n.missed) autoCompleteTapNote(n, n.lane); } catch(_) {}
+        }, delay);
+        autoTimers.push(id);
+      }
+    }
+  }).catch(e => console.warn('Audio context resume failed:', e));
+
+  gameRunning   = true;
+  gameStartTime = performance.now();
+
+  requestAnimationFrame(gameLoop);
+}
+
+function stopGame() {
+  gameRunning = false;
+  backingNodes.forEach(node => { 
+    try { 
+      if (node.stop) node.stop(); 
+      if (node.osc) node.osc.stop();
+      if (node.source) node.source.stop();
+    } catch(_){} 
+  });
+  backingNodes = [];
+
+  for (const note of activeNotes) {
+    try { if (note.voice && note.voice.stop) note.voice.stop(); } catch(_) {}
+  }
+  for (const note of referenceActiveNotes) {
+    try { if (note.voice && note.voice.stop) note.voice.stop(); } catch(_) {}
+  }
+  for (const note of Object.values(heldNotes)) {
+    try { if (note.voice && note.voice.stop) note.voice.stop(); } catch(_) {}
+  }
+  // clear auto-play timers
+  try { for (const t of autoTimers) clearTimeout(t); } catch(_) {}
+  autoTimers = [];
+}
+
+// ─── PLAY FIELD SETUP ───────────────────────────────────────────────────────
+let referenceLaneEls = {};
+
+function buildPlayFields() {
+  const referenceField = document.getElementById('reference-field');
+  const playField = document.getElementById('play-field');
+  referenceField.innerHTML = '';
+  playField.innerHTML = '';
+  laneEls = {};
+  referenceLaneEls = {};
+
+  buildLaneSet(referenceField, referenceLaneEls, true);
+  buildLaneSet(playField, laneEls, false);
+}
+
+function buildLaneSet(field, store, isReference) {
+  LANE_ORDER.forEach(key => {
+    const meta = LANE_META[key];
+    const lane = document.createElement('div');
+    lane.className = `lane ${meta.cls}${isReference ? ' reference-lane' : ''}`;
+    lane.id = `${isReference ? 'ref' : 'play'}-lane-${key}`;
+
+    const bg = document.createElement('div');
+    bg.className = 'lane-bg';
+    bg.style.background = `linear-gradient(to bottom, transparent 0%, ${meta.color}11 100%)`;
+    lane.appendChild(bg);
+
+    const flash = document.createElement('div');
+    flash.className = 'lane-flash';
+    flash.id = `${isReference ? 'ref' : 'play'}-flash-${key}`;
+    lane.appendChild(flash);
+
+    const target = document.createElement('div');
+    target.className = 'target-zone';
+    target.id = `${isReference ? 'ref' : 'play'}-target-${key}`;
+    target.innerHTML = arrowSVG(key, meta.color);
+    lane.appendChild(target);
+
+    const label = document.createElement('div');
+    label.className = 'lane-label';
+    label.style.color = meta.color;
+    label.textContent = isReference ? `REF ${meta.label}` : meta.label;
+    lane.appendChild(label);
+
+    field.appendChild(lane);
+    store[key] = lane;
+  });
+}
+
+function arrowSVG(dir, color) {
+  const paths = {
+    up:    'M12 19V5m0 0l-7 7m7-7l7 7',
+    down:  'M12 5v14m0 0l-7-7m7 7l7-7',
+    left:  'M19 12H5m0 0l7-7m-7 7l7 7',
+    right: 'M5 12h14m0 0l-7-7m7 7l-7 7',
+  };
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="${paths[dir]}"/></svg>`;
+}
+
+// ─── GAME LOOP ───────────────────────────────────────────────────────────────
+const TARGET_Y = 60; // pixels from top of play-field to centre of target
+
+function laneHeight() {
+  return document.getElementById('play-field').clientHeight;
+}
+
+function gameLoop(now) {
+  if (!gameRunning) return;
+
+  const elapsed = now - gameStartTime; // ms since game started
+  const fieldH  = laneHeight();
+
+  // Spawn notes whose time has come
+  // A note should reach target at note.time ms.
+  // Travel distance = fieldH - TARGET_Y pixels at CFG.noteSpeed px/frame (60fps assumed)
+  // Time to travel = (fieldH - TARGET_Y) / CFG.noteSpeed / 60 * 1000 ms
+  const travelMs = (fieldH - TARGET_Y) / CFG.noteSpeed / 60 * 1000;
+  const spawnTime = elapsed + travelMs;
+
+  advanceBeatmap(referenceActiveNotes, referenceLaneEls, fieldH, elapsed, spawnTime, true);
+  advanceBeatmap(activeNotes, laneEls, fieldH, elapsed, spawnTime, false);
+
+  // Progress bar
+  const lastNote = beatmap[beatmap.length - 1];
+  const progressTarget = lastNote ? (lastNote.endTime ?? lastNote.time) : 0;
+  const progress = progressTarget ? Math.min(100, elapsed / progressTarget * 100) : 0;
+  document.getElementById('progress-bar').style.width = progress + '%';
+
+  // Check done
+  if (activeNotes.every(n => n.hit || n.missed) && activeNotes.length > 0) {
+    gameRunning = false;
+    setTimeout(showResults, 600);
+    return;
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference) {
+  for (const note of notes) {
+    if (note.hit || note.missed || note.el) continue;
+    if (note.time <= spawnTime) {
+      spawnNote(note, fieldH, laneMap, isReference);
+    }
+  }
+
+  for (const note of notes) {
+    if (note.hit || note.missed || !note.el) continue;
+    const remainMs = note.time - elapsed;
+    const y = TARGET_Y + remainMs * CFG.noteSpeed * 60 / 1000;
+    note.el.style.top = y + 'px';
+
+    if (isReference) {
+      // Reference track auto-plays at target time
+      if (!note.started && elapsed >= note.time) {
+        autoPlayReferenceNote(note);
+      }
+      if (note.hold && note.started && !note.completed && elapsed >= note.endTime) {
+        finalizeReferenceHold(note);
+      } else if (!note.hold && note.started && elapsed >= note.time + 180) {
+        completeReferenceTap(note);
+      }
+      if (!note.hold && y < -60 && !note.completed) {
+        note.missed = true;
+        if (note.el) { note.el.remove(); note.el = null; }
+      }
+      continue;
+    }
+
+    // Game track: only Auto difficulty can auto-complete at perfect timing.
+    const distToTarget = Math.abs(remainMs);
+    const isPerfectWindow = distToTarget <= CFG.perfectMs;
+
+    if (difficulty === 'auto' && !note.started && isPerfectWindow && elapsed >= note.time) {
+      // Auto mode: hit on perfect timing.
+      note.started = true;
+      autoCompleteTapNote(note, note.lane);
+      continue;
+    }
+
+    // Miss detection: if note passes target and wasn't hit
+    if (note.hold && !note.started && elapsed > note.time + CFG.badMs) {
+      note.el.remove();
+      note.el = null;
+      note.missed = true;
+      registerMiss();
+      continue;
+    }
+
+    if (note.hold && note.started && !note.completed) {
+      if (elapsed >= note.endTime) {
+        finalizeHoldNote(note);
+      }
+      continue;
+    }
+
+    // Tap note missed if it passes off screen without being hit
+    if (!note.hold && y < -60 && !note.started) {
+      note.el.remove();
+      note.el = null;
+      note.missed = true;
+      registerMiss();
+    }
+  }
+}
+
+function spawnNote(note, fieldH, laneMap, isReference = false) {
+  const lane = laneMap[note.lane];
+  if (!lane) return;
+  const el = document.createElement('div');
+  el.className = 'note' + (note.hold ? ' hold' : '') + (isReference ? ' reference-note' : '');
+  el.style.top = fieldH + 'px';
+  if (note.hold) {
+    const holdPixels = Math.max(0, (note.endTime - note.time) * CFG.noteSpeed * 60 / 1000);
+    el.style.height = (50 + holdPixels) + 'px';
+    el.textContent = 'HOLD';
+  }
+  lane.appendChild(el);
+  note.el = el;
+}
+
+function autoPlayReferenceNote(note) {
+  note.started = true;
+  const trackConfig = getTrackConfig(note.trackIdx);
+  const useExactDuration = trackClipIds[note.trackIdx] === '__original__';
+  
+  // Play the note normally (no muting, full volume)
+  if (note.pitches && Array.isArray(note.pitches)) {
+    note.voice = playPitches(trackConfig.clipId, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, getNotePlayDuration(note, 300, useExactDuration), note.lane, useExactDuration);
+  } else {
+    note.voice = createClipVoice({
+      clipId: trackConfig.clipId,
+      note: note.note,
+      velocity: note.velocity,
+      volume: trackConfig.volume,
+      startTime: getAudioCtx().currentTime,
+      duration: getNotePlayDuration(note, 300, useExactDuration),
+      lane: note.lane,
+      exactDuration: useExactDuration,
+    });
+  }
+
+  if (!note.hold) {
+    note.completed = true;
+    note.hit = true;
+    if (note.el) { note.el.remove(); note.el = null; }
+  }
+}
+
+function completeReferenceTap(note) {
+  if (note.completed) return;
+  note.completed = true;
+  note.hit = true;
+  if (note.el) { note.el.remove(); note.el = null; }
+}
+
+function finalizeReferenceHold(note) {
+  if (note.completed) return;
+  note.completed = true;
+  note.hit = true;
+  if (note.el) { note.el.remove(); note.el = null; }
+}
+
+// ─── INPUT HANDLING ──────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (!gameRunning) return;
+  const lane = keyToLane(e.key);
+  if (!lane) return;
+  e.preventDefault();
+  if (e.repeat || pressedLanes.has(lane)) return;
+  pressedLanes.add(lane);
+  handleInput(lane);
+});
+
+document.addEventListener('keyup', e => {
+  if (!gameRunning) return;
+  const lane = keyToLane(e.key);
+  if (!lane) return;
+  pressedLanes.delete(lane);
+  releaseHoldNote(lane);
+});
+
+function keyToLane(key) {
+  for (const [lane, keys] of Object.entries(LANE_KEYS)) {
+    if (keys.includes(key)) return lane;
+  }
+  return null;
+}
+
+function handleInput(lane) {
+  const elapsed = performance.now() - gameStartTime;
+
+  // Find the nearest unhit note in this lane within bad window
+  let best = null;
+  let bestDist = Infinity;
+
+  for (const note of activeNotes) {
+    if (note.hit || note.missed || note.lane !== lane) continue;
+    const dist = Math.abs(note.time - elapsed);
+    if (dist <= CFG.badMs && dist < bestDist) {
+      best = note;
+      bestDist = dist;
+    }
+  }
+
+  flashLane(lane);
+
+  if (!best) return; // too early or no note
+
+  if (best.hold) {
+    best.started = true;
+    best.startDist = bestDist;
+    best.judgment = bestDist <= CFG.perfectMs ? 'perfect' : bestDist <= CFG.goodMs ? 'good' : 'bad';
+    const useExactDuration = trackClipIds[best.trackIdx] === '__original__';
+    const trackConfig = getTrackConfig(best.trackIdx);
+    const noteDuration = getNotePlayDuration(best, 300, useExactDuration);
+    if (best.pitches && Array.isArray(best.pitches)) {
+      best.voice = playPitches(trackConfig.clipId, best.pitches, best.velocity, trackConfig.volume, getAudioCtx().currentTime, noteDuration, lane, useExactDuration);
+    } else {
+      best.voice = createClipVoice({
+        clipId: trackConfig.clipId,
+        note: best.note,
+        velocity: best.velocity,
+        volume: trackConfig.volume,
+        startTime: getAudioCtx().currentTime,
+        duration: noteDuration,
+        lane: lane,
+        exactDuration: useExactDuration,
+      });
+    }
+    if (best.el) best.el.classList.add('active-hold');
+    heldNotes[lane] = best;
+    flashLane(lane);
+    flashTarget(lane);
+    return;
+  }
+
+  completeTapNote(best, lane, bestDist);
+}
+
+function registerMiss() {
+  stats.miss++;
+  combo = 0;
+  updateHUD();
+}
+
+function completeTapNote(note, lane, dist) {
+  note.hit = true;
+  if (note.el) { note.el.remove(); note.el = null; }
+
+  let judgment;
+  if (dist <= CFG.perfectMs) judgment = 'perfect';
+  else if (dist <= CFG.goodMs) judgment = 'good';
+  else judgment = 'bad';
+
+  const pts = { perfect: 300, good: 200, bad: 50 };
+  combo++;
+  maxCombo = Math.max(maxCombo, combo);
+  score += pts[judgment] * combo;
+  stats[judgment]++;
+
+  showJudgment(lane, judgment);
+  flashTarget(lane);
+  if (judgment === 'perfect') glowTarget(lane);
+  updateHUD();
+
+  // Play the note on input (perfect, good, or bad timing)
+  const trackConfig = getTrackConfig(note.trackIdx);
+  const useExactDuration = trackClipIds[note.trackIdx] === '__original__';
+  const noteDuration = getNotePlayDuration(note, 300, useExactDuration);
+
+  // Decide which clip to play: for perfect/good, play the ORIGINAL mapping (if known) to mirror MIDI; bad plays assigned clip
+  const originalClipId = (window.trackOriginalClipIds && window.trackOriginalClipIds[note.trackIdx]) || trackConfig.clipId;
+  const clipToPlay = (judgment === 'perfect' || judgment === 'good') ? originalClipId : trackConfig.clipId;
+
+  if (note.pitches && Array.isArray(note.pitches)) {
+    const wrapper = playPitches(clipToPlay, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, noteDuration, lane, useExactDuration);
+    note.voice = wrapper;
+  } else {
+    playTrackNote(clipToPlay, note.note, note.velocity, trackConfig.volume, noteDuration, lane, useExactDuration);
+  }
+}
+
+function autoCompleteTapNote(note, lane) {
+  // Perfect timing auto-complete (no player input needed)
+  note.hit = true;
+  if (note.el) { note.el.remove(); note.el = null; }
+
+  const judgment = 'perfect';
+  const pts = { perfect: 300, good: 200, bad: 50 };
+  combo++;
+  maxCombo = Math.max(maxCombo, combo);
+  score += pts[judgment] * combo;
+  stats[judgment]++;
+
+  showJudgment(lane, judgment);
+  flashTarget(lane);
+  updateHUD();
+
+  // Play the note automatically (no input needed, just like reference)
+  const trackConfig = getTrackConfig(note.trackIdx);
+  const useExactDuration = trackClipIds[note.trackIdx] === '__original__';
+  if (note.pitches && Array.isArray(note.pitches)) {
+    note.voice = playPitches(trackConfig.clipId, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, getNotePlayDuration(note, 300, useExactDuration), note.lane, useExactDuration);
+  } else {
+    note.voice = createClipVoice({
+      clipId: trackConfig.clipId,
+      note: note.note,
+      velocity: note.velocity,
+      volume: trackConfig.volume,
+      startTime: getAudioCtx().currentTime,
+      duration: getNotePlayDuration(note, 300, useExactDuration),
+      lane: note.lane,
+      exactDuration: useExactDuration,
+    });
+  }
+}
+
+function finalizeHoldNote(note) {
+  if (note.completed || note.missed) return;
+  note.completed = true;
+  note.hit = true;
+  if (note.el) { note.el.remove(); note.el = null; }
+
+  const lane = note.lane;
+  const judgment = note.judgment || 'good';
+  const pts = { perfect: 300, good: 200, bad: 50 };
+  combo++;
+  maxCombo = Math.max(maxCombo, combo);
+  score += pts[judgment] * combo;
+  stats[judgment]++;
+
+  showJudgment(lane, judgment);
+  flashTarget(lane);
+  updateHUD();
+  delete heldNotes[lane];
+}
+
+function releaseHoldNote(lane) {
+  const note = heldNotes[lane];
+  if (!note || note.completed || note.missed) return;
+  const elapsed = performance.now() - gameStartTime;
+  if (elapsed >= note.endTime) return;
+
+  note.missed = true;
+  if (note.el) { note.el.remove(); note.el = null; }
+  delete heldNotes[lane];
+  registerMiss();
+}
+
+// ─── HUD ─────────────────────────────────────────────────────────────────────
+function updateHUD() {
+  document.getElementById('score-display').textContent = String(score).padStart(6, '0');
+  document.getElementById('combo-display').textContent = `COMBO ×${combo}`;
+
+  const judged = stats.perfect + stats.good + stats.bad + stats.miss;
+  if (judged > 0) {
+    const acc = ((stats.perfect * 1 + stats.good * 0.67 + stats.bad * 0.33) / judged * 100).toFixed(1);
+    document.getElementById('accuracy-display').textContent = `ACC ${acc}%`;
+  }
+}
+
+// ─── VISUAL FEEDBACK ─────────────────────────────────────────────────────────
+function showJudgment(lane, type) {
+  const laneEl = laneEls[lane];
+  const el = document.createElement('div');
+  el.className = `judgment ${type}`;
+  el.textContent = type.toUpperCase();
+  laneEl.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+function flashTarget(lane) {
+  const t = document.getElementById(`play-target-${lane}`);
+  t.classList.add('hit');
+  setTimeout(() => t.classList.remove('hit'), 80);
+}
+
+function glowTarget(lane) {
+  const t = document.getElementById(`play-target-${lane}`);
+  if (!t) return;
+  t.classList.add('glow');
+  setTimeout(() => t.classList.remove('glow'), 220);
+}
+
+function flashLane(lane) {
+  const f = document.getElementById(`play-flash-${lane}`);
+  f.classList.add('active');
+  setTimeout(() => f.classList.remove('active'), 80);
+}
+
+// ─── RESULTS ─────────────────────────────────────────────────────────────────
+function showResults() {
+  document.getElementById('res-score').textContent   = String(score).padStart(6, '0');
+  document.getElementById('res-perfect').textContent = stats.perfect;
+  document.getElementById('res-good').textContent    = stats.good;
+  document.getElementById('res-bad').textContent     = stats.bad;
+  document.getElementById('res-miss').textContent    = stats.miss;
+
+  const judged = totalNotes;
+  const acc = judged > 0
+    ? ((stats.perfect * 1 + stats.good * 0.67 + stats.bad * 0.33) / judged * 100).toFixed(1)
+    : '0.0';
+  document.getElementById('res-acc').textContent = `Accuracy: ${acc}%  |  Max Combo: ${maxCombo}`;
+
+  document.getElementById('results-screen').classList.add('visible');
+}
+</script>
+</body>
+</html>
