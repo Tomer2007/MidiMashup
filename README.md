@@ -24,3 +24,9 @@ UI design: Make more clean UI with the main UI just showing any Song Project fil
 On this menu there will be options to Import or Add which allows user's to import others projects and make their own which opens the settings menu for a new song, with an option to upload a midi and an optional MP3 file for the song if they want a more accurate backing track. These two tracks will have previews to show the heights of the songs so they can adjust the files to play at the same time, this will also try and automatically adjust them to match these volume maps. From that there are the different tracks with the option to set it from auto tracking to manual tracking and the way to choose to use original sound clips, character sound clips, or custom ones for things like guitars and pianos.
 There will also be an option to expand to small adjustment settings where you can find the merge notes and ranges for bad, good, and perfect and all the other settings.
 
+
+
+
+Shit thats not working:
+ - Manual tracking being used in songs
+ - Adding mp3

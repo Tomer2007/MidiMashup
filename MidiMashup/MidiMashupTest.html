@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Inline favicon to avoid missing /favicon.ico requests -->
+<link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=">
 <title>MIDI Beat Engine</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
@@ -33,7 +35,7 @@
     color: var(--text);
     font-family: 'Share Tech Mono', monospace;
     height: 100vh;
-    overflow: hidden;
+    overflow: auto;
     display: flex;
     flex-direction: column;
   }
@@ -43,12 +45,12 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    height: 100vh;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 40px 0;
     gap: 24px;
     background: radial-gradient(ellipse at 50% 60%, #0d0d2a 0%, #050510 70%);
     position: relative;
-    overflow: hidden;
   }
 
   #setup-screen::before {
@@ -211,6 +213,7 @@
   }
   .badge-game { background: var(--up); color: #000; }
   .badge-backing { background: #2a2a4a; color: #aaa; }
+  .badge-manual { background: #2f5a4b; color: #d7fff0; }
   .badge-off { background: #111; color: #555; border: 1px solid #333; }
   .track-volume {
     width: 100px;
@@ -245,15 +248,21 @@
   #game-screen {
     display: none;
     flex-direction: column;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
     height: 100vh;
     background: var(--bg);
     overflow: hidden;
+    z-index: 20;
   }
 
   #game-main {
     flex: 1;
     min-height: 0;
     display: flex;
+    position: relative;
+    z-index: 1;
   }
 
   #hud {
@@ -264,6 +273,8 @@
     background: rgba(10,10,20,0.95);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
+    position: relative;
+    z-index: 2;
   }
 
   #score-display {
@@ -421,6 +432,35 @@
   .lane-right .note { background: radial-gradient(circle, rgba(170,255,0,0.9), rgba(100,150,0,0.5)); box-shadow: 0 0 12px rgba(170,255,0,0.7); }
   .lane-down  .note { background: radial-gradient(circle, rgba(255,102,0,0.9), rgba(150,50,0,0.5));  box-shadow: 0 0 12px rgba(255,102,0,0.7);  }
 
+  #reference-field .lane-up    .note { background: radial-gradient(circle, rgba(55,255,242,0.78), rgba(10,85,170,0.42)); box-shadow: 0 0 10px rgba(55,255,242,0.45); }
+  #reference-field .lane-left  .note { background: radial-gradient(circle, rgba(205,110,255,0.78), rgba(100,40,180,0.42)); box-shadow: 0 0 10px rgba(205,110,255,0.45); }
+  #reference-field .lane-right .note { background: radial-gradient(circle, rgba(170,255,120,0.78), rgba(70,120,25,0.42)); box-shadow: 0 0 10px rgba(170,255,120,0.45); }
+  #reference-field .lane-down  .note { background: radial-gradient(circle, rgba(255,175,70,0.78), rgba(150,80,20,0.42)); box-shadow: 0 0 10px rgba(255,175,70,0.45); }
+  #reference-field .note { opacity: 0.8; }
+  #reference-field .target-zone { opacity: 0.78; filter: saturate(0.9) brightness(1.08); }
+
+  #countdown-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    z-index: 250;
+    pointer-events: none;
+  }
+  #countdown-overlay.visible { display: flex; }
+  #countdown-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(72px, 16vw, 180px);
+    font-weight: 900;
+    letter-spacing: 0.2em;
+    color: #fff;
+    text-shadow: 0 0 28px rgba(0,245,255,0.7), 0 0 60px rgba(255,255,255,0.35);
+    transform: translateY(-2vh);
+  }
+  #countdown-value.go { color: var(--up); }
+
   /* Judgment text */
   .judgment {
     position: absolute;
@@ -525,6 +565,7 @@
     height: 3px;
     position: relative;
     flex-shrink: 0;
+    z-index: 2;
   }
   #progress-bar {
     height: 100%;
@@ -651,6 +692,27 @@
   .track-item.collapsed .collapsed-controls { display: inline-flex; }
   .track-item .track-collapse-btn { margin-left:8px; padding:4px 8px; font-size:12px; }
   .track-summary-label { color: #bcd; margin-left:8px; font-size:13px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle }
+  /* MP3 waveform UI */
+  .waveform-card { display:flex; gap:12px; align-items:center; }
+  .waveform-canvas { background: #060616; border: 1px solid #22223a; border-radius:4px; width: 46%; height: 84px; }
+  .waveform-controls { display:flex; flex-direction:column; gap:8px; width: 8%; min-width:160px; }
+  .hidden { display: none !important; }
+  .project-toolbar { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .project-toolbar-meta { display:flex; flex-direction:column; gap:4px; min-width:220px; }
+  .project-selected-title { font-family:'Orbitron', sans-serif; letter-spacing:0.12em; font-size:14px; color:#fff; }
+  .project-selected-score { color:#7777aa; font-size:12px; }
+  .project-toolbar-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+  .project-list { display:flex; flex-direction:column; gap:10px; }
+  .project-card { text-align:left; background:#08081a; border:1px solid #24244a; border-radius:4px; color:var(--text); padding:16px 18px; cursor:pointer; transition:all .15s; }
+  .project-card:hover { border-color: var(--up); transform: translateY(-1px); }
+  .project-card.selected { border-color: var(--up); box-shadow: 0 0 0 1px rgba(0,245,255,0.2) inset; }
+  .project-card-title { font-family:'Orbitron', sans-serif; font-size:15px; letter-spacing:0.08em; color:#fff; }
+  .project-card-meta { margin-top:4px; font-size:12px; color:#aaffff; }
+  .project-card-submeta { margin-top:4px; font-size:11px; color:#7777aa; }
+  .project-empty { padding:14px 16px; color:#7777aa; border:1px dashed #2a2a4a; border-radius:4px; }
+  .project-editor-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .project-editor-actions { display:flex; gap:10px; flex-wrap:wrap; }
+  .setup-card-inner { display:flex; flex-direction:column; gap:10px; }
 </style>
 </head>
 <body>
@@ -663,24 +725,82 @@
 <!-- ═══════════════ SETUP SCREEN ═══════════════ -->
 <div id="setup-screen">
   <div class="logo">MIDI Beat Engine</div>
-  <div class="subtitle">Load · Map · Play</div>
+  <div class="subtitle">Projects · Play · Edit</div>
 
   <div class="setup-card">
+    <h2>Song Projects</h2>
+    <div class="project-toolbar">
+      <div class="project-toolbar-meta">
+        <div id="selected-project-title" class="project-selected-title">No project selected</div>
+        <div id="selected-project-score" class="project-selected-score">Saved score: 0</div>
+      </div>
+      <div class="project-toolbar-actions">
+        <button class="btn-primary" id="btn-add-song-project" style="padding:10px 14px; width:auto;">Add Song Project</button>
+        <button class="btn-primary" id="btn-start" disabled style="padding:10px 14px; width:auto;">PLAY PROJECT</button>
+        <button class="btn-primary" id="btn-demo" style="padding:10px 14px; width:auto; background: #4444aa;">DEMO MODE</button>
+      </div>
+    </div>
+    <div id="project-list" class="project-list"></div>
+  </div>
+
+  <div id="project-editor" class="setup-card project-editor hidden">
+    <div class="project-editor-head">
+      <h2 id="project-editor-title">Edit Song Project</h2>
+      <div class="project-editor-actions">
+        <button id="btn-cancel-project" class="btn-primary" style="padding:8px 12px; width:auto; background:#2f2f55; color:#fff;">Cancel</button>
+        <button id="btn-save-project" class="btn-primary" style="padding:8px 12px; width:auto;">Save Project</button>
+        <button id="btn-export-project" class="btn-primary" style="padding:8px 12px; width:auto;">Export</button>
+        <button id="btn-import-project" class="btn-primary" style="padding:8px 12px; width:auto;">Import</button>
+        <input id="project-import-input" type="file" accept="application/json,.mmp,.mmp.json" style="display:none">
+      </div>
+    </div>
+    <div class="field-row">
+      <label>Song Title</label>
+      <input type="text" id="project-title-input" placeholder="New Song Project" style="background:#080818;border:1px solid #2a2a4a;color:var(--text);padding:10px 12px;font-family:'Share Tech Mono', monospace;font-size:14px;border-radius:2px;">
+    </div>
+
     <h2>01 — MIDI File</h2>
     <div class="drop-zone" id="drop-zone">
       Drop a .mid / .midi file here, or click to browse
       <input type="file" id="file-input" accept=".mid,.midi" style="display:none">
     </div>
+    <button id="btn-clear-midi" class="btn-primary" style="padding:6px 10px; margin-top:8px; width:auto; background:#8b4444; display:none;">Clear MIDI File</button>
+
+    <div class="setup-card-inner">
+      <div class="waveform-card" style="margin-top:10px;">
+        <canvas id="midi-waveform" class="waveform-canvas"></canvas>
+        <canvas id="mp3-waveform" class="waveform-canvas"></canvas>
+        <div class="waveform-controls">
+          <input type="range" id="mp3-offset-slider" min="-5000" max="5000" step="10" value="0">
+          <button id="mp3-align-zero" class="btn-primary" style="padding:6px 8px;">Zero</button>
+        </div>
+      </div>
+      <div class="drop-zone" id="mp4-drop-zone" style="margin-top:8px;">
+        Drop an .mp4 / .mp3 file here, or click to browse
+        <input type="file" id="mp3-file-input" accept="audio/mpeg,audio/mp3,audio/mp4,video/mp4" style="display:none">
+      </div>
+      <button id="btn-clear-mp4" class="btn-primary" style="padding:6px 10px; margin-top:8px; width:auto; background:#8b4444; display:none;">Clear MP4 File</button>
+      <div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+        <button id="mp3-preview" class="btn-primary" style="padding:6px 10px;width:auto;">Preview</button>
+        <div style="flex:1"></div>
+        <div style="font-size:11px;color:#7777aa">Offset (ms): <span id="mp3-offset-label">0</span></div>
+      </div>
+    </div>
 
     <div id="track-selector">
-        <h2 style="display:inline-block">02 — Track Assignment</h2>
-        <button id="btn-clip-fullscreen" class="btn-primary" style="padding:6px 10px; font-size:13px; margin-left:10px;">Fullscreen Clips</button>
-      <div style="font-size:11px;color:#555588;">Click each track's badge to cycle: GAME → BACKING → OFF. Adjust volume and clip per track.</div>
+      <h2 style="display:inline-block">02 — Track Assignment</h2>
+      <button id="btn-clip-fullscreen" class="btn-primary" style="padding:6px 10px; font-size:13px; margin-left:10px; width:auto;">Fullscreen Clips</button>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px;margin-bottom:8px;">
+        <button id="btn-manual-map" class="btn-primary" style="padding:6px 10px; font-size:13px; width:auto; background:#2f5a4b;">Record Manual Tracking</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#99ddcc;">
+          <input type="checkbox" id="manual-map-enable-song">
+          Active for this song
+        </label>
+      </div>
+      <div style="font-size:11px;color:#555588;">Click each track's badge to cycle: GAME → BACKING → OFF. Manual mapping opens a record-and-confirm mode; press R to restart the attempt.</div>
       <div id="track-list"></div>
     </div>
-  </div>
 
-  <div class="setup-card">
     <h2>03 — Parameters</h2>
     <div class="var-row">
       <div class="var-item">
@@ -727,11 +847,8 @@
     </div>
   </div>
 
-  <div style="display: flex; gap: 12px; width: min(560px, 92vw);">
-    <button class="btn-primary" id="btn-start" disabled style="flex: 1;">START GAME</button>
-    <button class="btn-primary" id="btn-demo" style="flex: 1; background: #4444aa;">DEMO MODE</button>
-  </div>
-</div>
+</div> <!-- /project-editor -->
+</div> <!-- /setup-screen -->
 
 <!-- ═══════════════ GAME SCREEN ═══════════════ -->
 <div id="game-screen">
@@ -749,6 +866,7 @@
     <div id="play-field"></div>
   </div>
 </div>
+<div id="countdown-overlay"><div id="countdown-value"></div></div>
 
 <!-- ═══════════════ RESULTS ═══════════════ -->
 <div id="results-screen">
@@ -762,6 +880,7 @@
       <div class="stat"><div class="stat-label">MISS</div><div class="stat-val miss" id="res-miss">0</div></div>
     </div>
     <div style="font-size:12px;color:#555588;" id="res-acc"></div>
+    <button class="btn-primary" id="btn-confirm-manual" style="margin-top:8px; display:none; background:#2f5a4b;">CONFIRM MANUAL MAP</button>
     <button class="btn-primary" id="btn-retry" style="margin-top:8px">RETRY</button>
     <button class="btn-primary" id="btn-menu" style="background:#1a1a3a;color:var(--text);margin-top:0px">MENU</button>
   </div>
@@ -900,10 +1019,16 @@ function buildBeatmaps(midi, gameTrackIdx, pitchRangePercent, minVelocity) {
   const referenceBeatmap = assignLanes(split.reference, gameTrackIdx, pitchRangePercent);
   const playBeatmap = assignLanes(split.play, gameTrackIdx, pitchRangePercent);
   const autoPlayBeatmap = assignLanes(split.autoPlay, gameTrackIdx, pitchRangePercent);
+  const preRollMs = 1000;
+  const addPreRoll = (notes, ms) => notes.map(n => ({
+    ...n,
+    time: (n.time ?? 0) + ms,
+    endTime: (n.endTime ?? n.time ?? 0) + ms,
+  }));
   return {
-    referenceBeatmap: markLongNotes(referenceBeatmap, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs),
-    playBeatmap: markLongNotes(playBeatmap, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs),
-    autoPlayBeatmap: markLongNotes(autoPlayBeatmap, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs),
+    referenceBeatmap: addPreRoll(markLongNotes(referenceBeatmap, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs), preRollMs),
+    playBeatmap: addPreRoll(markLongNotes(playBeatmap, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs), preRollMs),
+    autoPlayBeatmap: addPreRoll(markLongNotes(autoPlayBeatmap, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs), preRollMs),
   };
 }
 
@@ -985,115 +1110,184 @@ function combineSimultaneousNotes(notes, timeWindowMs = 10) {
 function splitNotesIntoReferenceAndPlay(notes) {
   if (notes.length === 0) return { reference: [], play: [], autoPlay: [] };
 
-  // Hard difficulty: player plays full track, no reference or auto notes
+  // Hard difficulty: player plays full track
   if (difficulty === 'hard') {
     const playAll = notes.map(n => ({ ...n, auto: false, sourceRole: 'play', playerMuted: false }));
-    const playCombined = combineSimultaneousNotes(playAll);
-    return { reference: [], play: playCombined, autoPlay: [] };
+    return { reference: [], play: combineSimultaneousNotes(playAll), autoPlay: [] };
   }
 
-  // Split by time segments (every ~5 seconds)
-  const segmentDurationMs = CFG.segmentDurationMs || 5000;
-  const minTime = notes[0].time;
-  const maxTime = Math.max(...notes.map(n => n.endTime || n.time));
-  
-  const segments = [];
-  for (let t = minTime; t <= maxTime; t += segmentDurationMs) {
-    segments.push({ start: t, end: t + segmentDurationMs });
-  }
+  // ── Step 1: Slice into riffs at natural silence gaps ──────────────────────
+  // A riff is a run of notes with no gap longer than RIFF_GAP_MS between them.
+  // Gaps wider than that are real breathing points where a swap is comfortable.
+  const RIFF_GAP_MS  = Math.max(CFG.mergeMs || 340, 280);
+  const MIN_RIFF_MS  = 600; // riffs shorter than this merge forward into the next
 
-  // Extend segment boundaries to avoid switching in the middle of tight riff sequences.
-  // If the first note after a boundary is within CFG.mergeMs, extend the previous
-  // segment to include the contiguous chain of close notes.
-  if ((CFG.mergeMs || 0) > 0 && segments.length > 1) {
-    for (let si = 0; si < segments.length - 1; si++) {
-      const boundary = segments[si].end;
-      // find first note at/after boundary
-      const firstIdx = notes.findIndex(n => n.time >= boundary);
-      if (firstIdx === -1) continue;
-      const firstNote = notes[firstIdx];
-      if (firstNote.time - boundary <= (CFG.mergeMs || 0)) {
-        // extend to include contiguous chain of notes where gaps <= mergeMs
-        let j = firstIdx;
-        while (j + 1 < notes.length && (notes[j+1].time - notes[j].time) <= (CFG.mergeMs || 0)) j++;
-        // set new end slightly after the last note in chain
-        segments[si].end = notes[j].time + 1;
-        // ensure next segment starts at new end
-        if (si + 1 < segments.length) segments[si+1].start = segments[si].end;
-      }
-    }
-  }
-
-  let reference = [];
-  let play = [];
-  let autoPlay = []; // Easy mode: quiet notes that auto-play without UI
-
-  // Alternate ownership of segments
-  notes.forEach(note => {
-    let segmentIndex = 0;
-    for (let i = 0; i < segments.length; i++) {
-      if (note.time >= segments[i].start && note.time < segments[i].end) {
-        segmentIndex = i;
-        break;
-      }
-      if (note.time < segments[i].start) break;
-    }
-
-    const avgVelocity = note.velocity; // Use note's own velocity
-    const loud = avgVelocity >= 105;
-    const isReferenceTurn = segmentIndex % 2 === 0;
-    const isQuietNote = avgVelocity < CFG.easyModeVelocityThreshold;
-
-    // Easy mode: quiet notes auto-play without appearing on track
-    if (difficulty === 'easy' && isQuietNote) {
-      autoPlay.push({ ...note, auto: true, sourceRole: 'autoplay', playerMuted: false });
-      return; // Don't add to reference or play tracks
-    }
-
-    if (loud) {
-      // Loud sections: both play together
-      reference.push({ ...note, auto: true, sourceRole: 'reference', playerMuted: false });
-      play.push({ ...note, auto: false, sourceRole: 'play', playerMuted: true });
-    } else if (isReferenceTurn) {
-      // Reference segment
-      reference.push({ ...note, auto: true, sourceRole: 'reference', playerMuted: false });
+  const rawRiffs = [];
+  let cur = { notes: [notes[0]] };
+  for (let i = 1; i < notes.length; i++) {
+    if (notes[i].time - notes[i - 1].time > RIFF_GAP_MS) {
+      rawRiffs.push(cur);
+      cur = { notes: [notes[i]] };
     } else {
-      // Play segment
-      play.push({ ...note, auto: false, sourceRole: 'play', playerMuted: true });
+      cur.notes.push(notes[i]);
     }
-  });
+  }
+  rawRiffs.push(cur);
+
+  // Merge tiny riffs forward so we never swap inside a micro-pause
+  const riffs = [];
+  for (let i = 0; i < rawRiffs.length; i++) {
+    const r = rawRiffs[i];
+    const dur = (r.notes[r.notes.length - 1].endTime || r.notes[r.notes.length - 1].time)
+              - r.notes[0].time;
+    if (dur < MIN_RIFF_MS && riffs.length > 0) {
+      riffs[riffs.length - 1].notes.push(...r.notes);
+    } else {
+      riffs.push({ notes: [...r.notes] });
+    }
+  }
+
+  // ── Step 2: Compute per-riff metadata ────────────────────────────────────
+  for (const r of riffs) {
+    r.notes.sort((a, b) => a.time - b.time);
+    r.start       = r.notes[0].time;
+    r.end         = Math.max(...r.notes.map(n => n.endTime || n.time));
+    r.durationMs  = Math.max(1, r.end - r.start);
+    r.noteCount   = r.notes.length;
+    r.avgVelocity = r.notes.reduce((s, n) => s + n.velocity, 0) / r.noteCount;
+    r.density     = r.noteCount / (r.durationMs / 1000); // notes per second
+    // Pitch fingerprint: rounded contour for repeat detection
+    r.fingerprint = r.notes.map(n => Math.round(n.note / 2) * 2).join(',');
+  }
+
+  // ── Step 3: Mark the last riff so ending notes go to the player ──────────
+  // "Ending section" = the final riff, plus any riff in the last 15 % of the
+  // song that immediately follows without a long gap (so a short outro coda is
+  // also captured even if it is technically a separate riff).
+  const songEnd    = riffs[riffs.length - 1].end;
+  const songStart  = riffs[0].start;
+  const songDur    = Math.max(1, songEnd - songStart);
+  const endingCutoff = songEnd - songDur * 0.15;
+  for (const r of riffs) {
+    r.isEnding = r.start >= endingCutoff;
+  }
+
+  // ── Step 4: Detect repeated riffs (FNF/PaRappa preview mechanic) ─────────
+  const firstSeen = new Map(); // fingerprint → index of first occurrence
+  for (let i = 0; i < riffs.length; i++) {
+    const fp = riffs[i].fingerprint;
+    if (!firstSeen.has(fp)) firstSeen.set(fp, i);
+    riffs[i].isRepeat    = firstSeen.get(fp) !== i;
+    riffs[i].originalIdx = firstSeen.get(fp);
+  }
+
+  // ── Step 5: Decide whether a riff has a "good swap opportunity" ───────────
+  // A riff is "swappable" (i.e. safe to give entirely to one side) when it is
+  // neither extremely dense nor extremely long with no internal gaps.  Dense /
+  // continuous riffs feel wrong to hand off because the player ends up idle or
+  // the rival ends up idle for a long stretch with no natural break.
+  const DENSE_THRESH   = 7;  // notes/sec → above this, both play together
+  const LOUD_VEL       = 100; // avg velocity → above this, both play together
+  for (const r of riffs) {
+    r.isDense = r.density >= DENSE_THRESH || r.avgVelocity >= LOUD_VEL;
+    // A riff has a good swap point if it is not dense AND it is short enough
+    // that the idle side won't be bored (under ~8 seconds solo)
+    r.goodSwapPoint = !r.isDense && r.durationMs <= 8000;
+  }
+
+  // ── Step 6: Classify each riff ────────────────────────────────────────────
+  // Priority rules (applied in order):
+  //   E  — ending section  → always PLAY
+  //   D  — dense/loud      → BOTH (climax; don't leave player idle)
+  //   R  — repeat          → PLAY  (player heard the reference first)
+  //   G  — good swap point → alternate REF / PLAY (time-balanced)
+  //   X  — no good swap    → BOTH if ref has been idle too long, else PLAY
+  //
+  // The "player plays the majority" guarantee comes from:
+  //   • repeats always go to PLAY
+  //   • ending always goes to PLAY
+  //   • no-swap-point riffs go to BOTH (player still plays) or PLAY
+  //   • only clean swappable non-repeated riffs can go to REF
+  //   • the time-balance tracker is asymmetric: REF is only chosen when it is
+  //     behind by more than a threshold, so PLAY accumulates more overall time.
+
+  const PLAYER_BIAS_MS = 3000; // ref must be this far behind before we give it a turn
+
+  let refTimeMs  = 0;
+  let playTimeMs = 0;
+
+  for (const r of riffs) {
+    if (r.isEnding) {
+      r.role = 'play';
+    } else if (r.isDense) {
+      r.role = 'both';
+    } else if (r.isRepeat) {
+      r.role = 'play';
+      playTimeMs += r.durationMs;
+    } else if (r.goodSwapPoint) {
+      // Give the reference a turn only when it has fallen meaningfully behind,
+      // keeping the player as the default recipient.
+      if (refTimeMs + PLAYER_BIAS_MS < playTimeMs) {
+        r.role = 'reference';
+        refTimeMs += r.durationMs;
+      } else {
+        r.role = 'play';
+        playTimeMs += r.durationMs;
+      }
+    } else {
+      // No good swap: play together so the player is never idle for long
+      r.role = 'both';
+    }
+  }
+
+  // ── Step 7: Build output note arrays ─────────────────────────────────────
+  let reference = [];
+  let play      = [];
+  let autoPlay  = [];
+  const easyThresh = CFG.easyModeVelocityThreshold || DEFAULTS.easyModeVelocityThreshold;
+
+  for (const r of riffs) {
+    for (const note of r.notes) {
+      // In Easy mode we do NOT autoplay quiet notes; instead windows are expanded via readConfig().
+      if (r.role === 'both') {
+        reference.push({ ...note, auto: true,  sourceRole: 'reference', playerMuted: false });
+        play.push(     { ...note, auto: false, sourceRole: 'play',      playerMuted: true  });
+      } else if (r.role === 'reference') {
+        reference.push({ ...note, auto: true,  sourceRole: 'reference', playerMuted: false });
+      } else { // 'play'
+        play.push(     { ...note, auto: false, sourceRole: 'play',      playerMuted: true  });
+      }
+    }
+  }
 
   reference.sort((a, b) => a.time - b.time);
   play.sort((a, b) => a.time - b.time);
 
-  // Limit autoPlay to at most 30% of visible notes (reference + play)
+  // ── Step 8: Easy-mode autoplay housekeeping ───────────────────────────────
   autoPlay.sort((a, b) => a.time - b.time);
   const visibleCount = reference.length + play.length;
   const maxAuto = Math.max(0, Math.floor(visibleCount * 0.3));
   if (autoPlay.length > maxAuto && maxAuto > 0) {
     const sampled = [];
-    for (let i = 0; i < maxAuto; i++) {
-      const idx = Math.floor(i * autoPlay.length / maxAuto);
-      sampled.push(autoPlay[idx]);
-    }
+    for (let i = 0; i < maxAuto; i++)
+      sampled.push(autoPlay[Math.floor(i * autoPlay.length / maxAuto)]);
     autoPlay = sampled;
   }
 
-  // Shift autoplay notes to sit between nearby visible notes in same lane
   const visible = reference.concat(play).sort((a, b) => a.time - b.time);
   for (const n of autoPlay) {
-    const laneVisible = visible.filter(v => v.lane === n.lane);
-    const next = laneVisible.find(v => v.time > n.time);
+    const next = visible.filter(v => v.lane === n.lane).find(v => v.time > n.time);
     if (next) {
       n.time = Math.round((n.time + next.time) / 2);
       if (n.endTime) n.endTime = n.time + Math.max(50, (n.endTime - n.time));
     }
   }
 
-  const refCombined = combineSimultaneousNotes(reference);
-  const playCombined = combineSimultaneousNotes(play);
-
-  return { reference: refCombined, play: playCombined, autoPlay };
+  return {
+    reference: combineSimultaneousNotes(reference),
+    play:      combineSimultaneousNotes(play),
+    autoPlay,
+  };
 }
 
 function assignLanes(notes, gameTrackIdx, pitchRangePercent) {
@@ -1106,25 +1300,116 @@ function assignLanes(notes, gameTrackIdx, pitchRangePercent) {
   const quarter = span / 4;
   const lanes = ['up', 'left', 'down', 'right'];
 
-  return notes.map(note => {
+  const holdThreshold = Math.max(0, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs);
+  const recentWindowMs = 1300;
+  const assigned = [];
+  const recentByLane = lanes.map(() => []);
+
+  function clampLane(idx) {
+    return Math.max(0, Math.min(lanes.length - 1, idx));
+  }
+
+  function recentCount(idx, now) {
+    const bucket = recentByLane[idx];
+    while (bucket.length && (now - bucket[0].time) > recentWindowMs) bucket.shift();
+    return bucket.length;
+  }
+
+  function recentAvgPitch(idx, now) {
+    const bucket = recentByLane[idx];
+    while (bucket.length && (now - bucket[0].time) > recentWindowMs) bucket.shift();
+    if (!bucket.length) return null;
+    let sum = 0;
+    for (const item of bucket) sum += item.note;
+    return sum / bucket.length;
+  }
+
+  // Track the chain of consecutive hold notes so we can rotate them across lanes.
+  // Each entry records the lane index used and when that hold ended.
+  // A new hold is "consecutive" if it starts before the previous hold's endTime
+  // plus a small grace window — meaning the player's finger barely released.
+  const HOLD_CONSECUTIVE_GRACE_MS = Math.max(320, holdThreshold);
+  let lastHoldLaneIdx  = -1; // lane used by the most recent hold
+  let lastHoldEndTime  = -Infinity; // endTime of the most recent hold
+  let holdRotationStep = 0; // +1 or -1, flips each consecutive hold so they zigzag
+
+  for (const note of notes) {
     const relative = Math.max(0, Math.min(span, note.note - lo));
-    const bucket = Math.min(3, Math.floor((span - relative) / quarter));
-    return {
+    const baseLane = Math.min(3, Math.floor((span - relative) / quarter));
+    let laneIdx = baseLane;
+    const duration = Math.max(0, (note.endTime ?? note.time) - note.time);
+    const isLong = duration >= holdThreshold;
+
+    if (isLong) {
+      // Determine whether this hold is "consecutive" with the previous one.
+      const isConsecutive = lastHoldEndTime > -Infinity &&
+        (note.time - lastHoldEndTime) <= HOLD_CONSECUTIVE_GRACE_MS;
+
+      if (isConsecutive) {
+        // Always move to a DIFFERENT lane from the last hold.
+        // We zigzag direction each time so a chain of holds spreads across
+        // multiple lanes rather than bouncing between just two.
+        holdRotationStep = -holdRotationStep || 1; // flip; start with +1
+
+        // Try rotating in the current direction first, then the other, then
+        // further steps — whichever first lands on a lane ≠ lastHoldLaneIdx.
+        let found = false;
+        for (let distance = 1; distance < lanes.length; distance++) {
+          const candidate = clampLane(lastHoldLaneIdx + holdRotationStep * distance);
+          if (candidate !== lastHoldLaneIdx) {
+            laneIdx = candidate;
+            found = true;
+            break;
+          }
+        }
+        // Fallback: if clamping made every candidate equal, try the other direction.
+        if (!found) {
+          for (let distance = 1; distance < lanes.length; distance++) {
+            const candidate = clampLane(lastHoldLaneIdx - holdRotationStep * distance);
+            if (candidate !== lastHoldLaneIdx) {
+              laneIdx = candidate;
+              break;
+            }
+          }
+        }
+      }
+
+      // Record this hold so the next hold can compare against it.
+      lastHoldLaneIdx = laneIdx;
+      lastHoldEndTime = note.endTime ?? (note.time + duration);
+    } else {
+      // Non-hold note: apply the existing pitch-density nudge only.
+      const baseCount = recentCount(laneIdx, note.time);
+      const avgPitch  = recentAvgPitch(laneIdx, note.time);
+      if (avgPitch !== null && baseCount >= 4 && note.note < (avgPitch - 1.5)) {
+        const lowerLane = clampLane(laneIdx + 1);
+        if (lowerLane !== laneIdx) laneIdx = lowerLane;
+      }
+    }
+
+    const mapped = {
       time: note.time,
       endTime: note.endTime,
-      lane: lanes[bucket],
+      lane: lanes[laneIdx],
+      laneIdx,
       note: note.note,
       velocity: note.velocity,
       trackIdx: gameTrackIdx,
       auto: !!note.auto,
       sourceRole: note.sourceRole,
       playerMuted: !!note.playerMuted,
+      hold: isLong,
       started: false,
       completed: false,
       missed: false,
       hit: false,
     };
-  });
+
+    assigned.push(mapped);
+    recentByLane[laneIdx].push({ time: mapped.time, note: mapped.note });
+  }
+
+  return assigned.map(({ laneIdx, hold, ...rest }) => rest);
 }
 
 function markLongNotes(notes, holdThresholdMs) {
@@ -1149,6 +1434,923 @@ let audioCtx = null;
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
+}
+
+const PROJECT_INDEX_KEY = 'mbe.songProjects.index';
+const PROJECT_SELECTED_KEY = 'mbe.songProjects.selected';
+const PROJECT_DB_NAME = 'mbe.songProjects.db';
+const PROJECT_DB_VERSION = 1;
+const PROJECT_DB_STORE = 'projects';
+
+function makeProjectId() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return `proj_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function openProjectDb() {
+  if (!window.indexedDB) return Promise.reject(new Error('IndexedDB is not available'));
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(PROJECT_DB_NAME, PROJECT_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(PROJECT_DB_STORE)) {
+        db.createObjectStore(PROJECT_DB_STORE, { keyPath: 'id' });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function dbPutProject(project) {
+  const db = await openProjectDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PROJECT_DB_STORE, 'readwrite');
+    tx.objectStore(PROJECT_DB_STORE).put(project);
+    tx.oncomplete = () => resolve(project);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbGetProject(id) {
+  const db = await openProjectDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PROJECT_DB_STORE, 'readonly');
+    const request = tx.objectStore(PROJECT_DB_STORE).get(id);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function dbDeleteProject(id) {
+  const db = await openProjectDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PROJECT_DB_STORE, 'readwrite');
+    tx.objectStore(PROJECT_DB_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+function loadProjectIndex() {
+  try {
+    return JSON.parse(localStorage.getItem(PROJECT_INDEX_KEY) || '[]');
+  } catch (_) {
+    return [];
+  }
+}
+
+function saveProjectIndex(index) {
+  localStorage.setItem(PROJECT_INDEX_KEY, JSON.stringify(index));
+}
+
+function setSelectedProjectId(id) {
+  selectedProjectId = id || null;
+  if (id) localStorage.setItem(PROJECT_SELECTED_KEY, id);
+  else localStorage.removeItem(PROJECT_SELECTED_KEY);
+  const startButton = document.getElementById('btn-start');
+  if (startButton) startButton.disabled = !selectedProjectId;
+  renderProjectList();
+  updateSelectedProjectSummary();
+  if (id) startProjectSelectionPreview(id).catch(err => console.warn('Project preview failed', err));
+  else stopProjectSelectionPreview();
+}
+
+function updateSelectedProjectSummary() {
+  const titleEl = document.getElementById('selected-project-title');
+  const scoreEl = document.getElementById('selected-project-score');
+  const project = songProjects.find(item => item.id === selectedProjectId);
+  if (!project) {
+    if (titleEl) titleEl.textContent = 'No project selected';
+    if (scoreEl) scoreEl.textContent = 'Saved score: 0';
+    return;
+  }
+  if (titleEl) titleEl.textContent = project.title || 'Untitled Project';
+  if (scoreEl) scoreEl.textContent = `Saved score: ${project.savedScore || 0}`;
+}
+
+function createEmptyProject() {
+  return {
+    id: makeProjectId(),
+    title: 'New Song Project',
+    savedScore: 0,
+    midiName: '',
+    mp3Name: '',
+    midiDurationMs: 0,
+    mp3DurationMs: 0,
+    settings: { ...DEFAULTS },
+    trackRoles: [],
+    trackVolumes: [],
+    trackClipIds: [],
+    trackCollapsed: [],
+    mp3OffsetMs: 0,
+    manualMapEnabled: false,
+    manualBeatmap: [],
+    midiBuffer: null,
+    mp3Blob: null,
+    updatedAt: Date.now(),
+  };
+}
+
+function readProjectSettingsFromUI() {
+  return {
+    noteSpeed: parseFloat(document.getElementById('var-speed').value) || DEFAULTS.noteSpeed,
+    perfectMs: parseFloat(document.getElementById('var-perfect').value) || DEFAULTS.perfectMs,
+    goodMs: parseFloat(document.getElementById('var-good').value) || DEFAULTS.goodMs,
+    badMs: parseFloat(document.getElementById('var-bad').value) || DEFAULTS.badMs,
+    pitchRange: parseFloat(document.getElementById('var-pitch-range').value) || DEFAULTS.pitchRange,
+    minVelocity: parseFloat(document.getElementById('var-min-vel').value) || DEFAULTS.minVelocity,
+    mergeMs: parseFloat(document.getElementById('var-merge-ms').value) || DEFAULTS.mergeMs,
+    longNoteThresholdMs: parseFloat(document.getElementById('var-long-note-threshold').value) || DEFAULTS.longNoteThresholdMs,
+    difficulty: document.getElementById('var-difficulty').value || DEFAULTS.difficulty,
+  };
+}
+
+function applyProjectSettingsToUI(settings = {}) {
+  const merged = { ...DEFAULTS, ...settings };
+  document.getElementById('var-speed').value = merged.noteSpeed;
+  document.getElementById('var-perfect').value = merged.perfectMs;
+  document.getElementById('var-good').value = merged.goodMs;
+  document.getElementById('var-bad').value = merged.badMs;
+  document.getElementById('var-pitch-range').value = merged.pitchRange;
+  document.getElementById('var-min-vel').value = merged.minVelocity;
+  document.getElementById('var-merge-ms').value = merged.mergeMs;
+  document.getElementById('var-long-note-threshold').value = merged.longNoteThresholdMs;
+  document.getElementById('var-difficulty').value = merged.difficulty;
+}
+
+function getMidiDurationMs(midi) {
+  const resolve = ticksToMs(midi);
+  let maxMs = 0;
+  for (const track of midi.tracks) {
+    for (const ev of track.events) {
+      maxMs = Math.max(maxMs, resolve(ev.tick));
+    }
+  }
+  return maxMs;
+}
+
+function pickRandomFailedSoundUrl() {
+  if (!FAILED_SOUND_POOL.length) return '';
+  return FAILED_SOUND_POOL[Math.floor(Math.random() * FAILED_SOUND_POOL.length)];
+}
+
+function stopSongPlayback() {
+  if (songStopTimer) {
+    clearTimeout(songStopTimer);
+    songStopTimer = null;
+  }
+  if (songDuckTimer) {
+    clearTimeout(songDuckTimer);
+    songDuckTimer = null;
+  }
+  if (songAudio) {
+    try {
+      songAudio.pause();
+      songAudio.currentTime = 0;
+    } catch (_) {}
+  }
+}
+
+function stopProjectSelectionPreview() {
+  projectPreviewToken++;
+  if (projectPreviewTimer) {
+    clearTimeout(projectPreviewTimer);
+    projectPreviewTimer = null;
+  }
+  for (const node of projectPreviewNodes) {
+    try { if (node && node.stop) node.stop(); } catch (_) {}
+    try { if (node && node.osc) node.osc.stop(); } catch (_) {}
+    try { if (node && node.source) node.source.stop(); } catch (_) {}
+  }
+  projectPreviewNodes = [];
+  if (projectPreviewAudio) {
+    try {
+      projectPreviewAudio.pause();
+      projectPreviewAudio.currentTime = 0;
+      projectPreviewAudio.onended = null;
+    } catch (_) {}
+    projectPreviewAudio = null;
+  }
+  if (projectPreviewObjectUrl) {
+    try { URL.revokeObjectURL(projectPreviewObjectUrl); } catch (_) {}
+    projectPreviewObjectUrl = '';
+  }
+}
+
+function scheduleProjectPreviewTrack(midi, trackIdx, startTime, previewTrackVolumes, previewTrackClipIds) {
+  const resolve = ticksToMs(midi);
+  const track = midi.tracks[trackIdx];
+  const active = new Map();
+  const clipId = previewTrackClipIds[trackIdx] || '__original__';
+  const clip = getClipById(clipId);
+  const volume = (typeof previewTrackVolumes[trackIdx] === 'number' ? previewTrackVolumes[trackIdx] : 0.8);
+  const useExactDuration = clipId === '__original__';
+  const nodes = [];
+
+  for (const ev of track.events) {
+    const tSec = startTime + resolve(ev.tick) / 1000;
+    const key = `${ev.note}_${ev.channel || 0}`;
+    if (ev.type === 'noteOn' && ev.velocity > 0) {
+      const voice = createClipVoice({
+        clipId,
+        note: ev.note,
+        velocity: ev.velocity,
+        volume: volume * 0.25,
+        startTime: tSec,
+        exactDuration: useExactDuration,
+      });
+      if (clip.type !== 'mp3' || useExactDuration) active.set(key, voice);
+      nodes.push(voice);
+    } else if ((clip.type !== 'mp3' || useExactDuration) && (ev.type === 'noteOff' || (ev.type === 'noteOn' && ev.velocity === 0)) && active.has(key)) {
+      const voice = active.get(key);
+      voice.stop(tSec);
+      active.delete(key);
+    }
+  }
+  return nodes;
+}
+
+async function startProjectSelectionPreview(projectId) {
+  stopProjectSelectionPreview();
+  if (!projectId) return;
+  const token = ++projectPreviewToken;
+  const project = await loadProjectFromStorage(projectId);
+  if (token !== projectPreviewToken || !project) return;
+
+  const hasMidi = !!project.midiBuffer;
+  const hasMp3 = !!project.mp3Blob;
+  if (!hasMidi && !hasMp3) return;
+
+  const ctx = getAudioCtx();
+  try { await ctx.resume(); } catch (_) {}
+  const startSec = ctx.currentTime + 0.08;
+
+  let midiDurationMs = project.midiDurationMs || 0;
+  if (hasMidi) {
+    try {
+      const previewMidi = parseMidi(project.midiBuffer.slice(0));
+      midiDurationMs = Math.max(midiDurationMs, getMidiDurationMs(previewMidi));
+      const previewRoles = Array.isArray(project.trackRoles) ? project.trackRoles : [];
+      const previewTrackVolumes = Array.isArray(project.trackVolumes) ? project.trackVolumes : [];
+      const previewTrackClipIds = Array.isArray(project.trackClipIds) ? project.trackClipIds : [];
+      previewRoles.forEach((role, idx) => {
+        if (role !== 'backing') return;
+        const nodes = scheduleProjectPreviewTrack(previewMidi, idx, startSec, previewTrackVolumes, previewTrackClipIds);
+        projectPreviewNodes.push(...nodes);
+      });
+    } catch (err) {
+      console.warn('Preview MIDI parse failed', err);
+    }
+  }
+
+  const mp3DurationMs = project.mp3DurationMs || 0;
+  if (hasMp3) {
+    try {
+      projectPreviewObjectUrl = URL.createObjectURL(project.mp3Blob);
+      projectPreviewAudio = new Audio(projectPreviewObjectUrl);
+      projectPreviewAudio.preload = 'auto';
+      projectPreviewAudio.crossOrigin = 'anonymous';
+      projectPreviewAudio.volume = Math.max(0.05, Math.min(0.35, (songBaseVolume || 1) * 0.28));
+      const offsetMs = project.mp3OffsetMs || 0;
+      const now = ctx.currentTime;
+      const delayMs = Math.max(0, Math.round(((startSec + (offsetMs / 1000)) - now) * 1000));
+      const startAt = Math.max(0, (-offsetMs) / 1000);
+      setTimeout(() => {
+        if (token !== projectPreviewToken || !projectPreviewAudio) return;
+        try {
+          projectPreviewAudio.currentTime = startAt;
+          projectPreviewAudio.play().catch(() => {});
+        } catch (_) {}
+      }, delayMs);
+      projectPreviewAudio.onended = () => {
+        if (!projectPreviewNodes.length) stopProjectSelectionPreview();
+      };
+    } catch (err) {
+      console.warn('Preview MP3 load failed', err);
+    }
+  }
+
+  const previewDurationMs = Math.max(midiDurationMs || 0, mp3DurationMs || 0);
+  if (previewDurationMs > 0) {
+    projectPreviewTimer = setTimeout(() => {
+      if (token === projectPreviewToken) stopProjectSelectionPreview();
+    }, previewDurationMs + 400);
+  }
+}
+
+function duckSongTemporarily() {
+  if (!songAudio) return;
+  if (songDuckTimer) clearTimeout(songDuckTimer);
+  // Temporarily duck to a fraction of the current base volume, but don't overwrite base.
+  const base = (typeof songBaseVolume === 'number' ? songBaseVolume : (songAudio.volume || 1));
+  songAudio.volume = Math.max(0.12, base * 0.25);
+  songDuckTimer = setTimeout(() => {
+    if (songAudio) songAudio.volume = songBaseVolume;
+    songDuckTimer = null;
+  }, 650);
+}
+
+function setSongBaseVolume(v) {
+  songBaseVolume = Math.max(0, Math.min(1, Number(v) || 0));
+  try { if (songAudio) songAudio.volume = songBaseVolume; } catch(_){}
+}
+
+function adjustSongBaseVolume(delta) {
+  setSongBaseVolume((songBaseVolume || 0) + (Number(delta) || 0));
+}
+
+function playFailedSound() {
+  try {
+    duckSongTemporarily();
+    const fail = new Audio(pickRandomFailedSoundUrl());
+    fail.volume = 1.0;
+    fail.play().catch(() => {});
+  } catch (_) {}
+}
+
+function setEditorVisibility(visible) {
+  const editor = document.getElementById('project-editor');
+  if (!editor) return;
+  editor.classList.toggle('hidden', !visible);
+}
+
+function updateProjectEditorTitle(text) {
+  const titleEl = document.getElementById('project-editor-title');
+  if (titleEl) titleEl.textContent = text || 'Edit Song Project';
+}
+
+function setSongProjectFormFromProject(project) {
+  document.getElementById('project-title-input').value = project.title || 'New Song Project';
+  applyProjectSettingsToUI(project.settings || DEFAULTS);
+  mp3OffsetMs = project.mp3OffsetMs || 0;
+  const manualSongCheckbox = document.getElementById('manual-map-enable-song');
+  if (manualSongCheckbox) manualSongCheckbox.checked = !!project.manualMapEnabled;
+  currentManualBeatmap = Array.isArray(project.manualBeatmap) ? cloneManualBeatmap(project.manualBeatmap) : [];
+  manualBeatmapDraft = cloneManualBeatmap(currentManualBeatmap);
+  setManualMapMode(false);
+  const slider = document.getElementById('mp3-offset-slider');
+  const label = document.getElementById('mp3-offset-label');
+  if (slider) slider.value = String(mp3OffsetMs);
+  if (label) label.textContent = String(mp3OffsetMs);
+}
+
+function syncProjectSettingsToDraft() {
+  if (!currentProjectId) return null;
+  const project = songProjects.find(item => item.id === currentProjectId);
+  if (!project) return null;
+  project.title = document.getElementById('project-title-input').value.trim() || 'New Song Project';
+  project.settings = readProjectSettingsFromUI();
+  project.mp3OffsetMs = mp3OffsetMs || 0;
+  project.trackRoles = trackRoles.slice();
+  project.trackVolumes = trackVolumes.slice();
+  project.trackClipIds = trackClipIds.slice();
+  project.trackCollapsed = trackCollapsed.slice();
+  project.midiDurationMs = currentMidiDurationMs || project.midiDurationMs || 0;
+  project.mp3DurationMs = mp3AudioBuffer ? (mp3AudioBuffer.length / mp3AudioBuffer.sampleRate) * 1000 : (project.mp3DurationMs || 0);
+  project.midiName = dropZone?.dataset?.fileName || project.midiName || '';
+  project.mp3Name = document.getElementById('mp3-file-input')?.dataset?.fileName || project.mp3Name || '';
+}
+
+function renderProjectList() {
+  const list = document.getElementById('project-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!songProjects.length) {
+    const empty = document.createElement('div');
+    empty.className = 'project-empty';
+    empty.textContent = 'No song projects yet. Add one to get started.';
+    list.appendChild(empty);
+    updateSelectedProjectSummary();
+    return;
+  }
+
+  for (const project of songProjects) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'project-card' + (project.id === selectedProjectId ? ' selected' : '');
+    card.innerHTML = `
+      <div class="project-card-title">${project.title || 'Untitled Project'}</div>
+      <div class="project-card-meta">Saved score: ${project.savedScore || 0}</div>
+      <div class="project-card-submeta">${project.midiName || 'No MIDI loaded'}${project.mp3Name ? ` · ${project.mp3Name}` : ''}</div>
+    `;
+    card.addEventListener('click', () => setSelectedProjectId(project.id));
+    card.addEventListener('dblclick', () => {
+      stopProjectSelectionPreview();
+      openProjectEditor(project.id);
+    });
+    list.appendChild(card);
+  }
+  updateSelectedProjectSummary();
+}
+
+async function saveProjectIndexAndSelection() {
+  const summaries = songProjects.map(project => ({
+    id: project.id,
+    title: project.title,
+    savedScore: project.savedScore || 0,
+    midiName: project.midiName || '',
+    mp3Name: project.mp3Name || '',
+    updatedAt: project.updatedAt || Date.now(),
+  }));
+  saveProjectIndex(summaries);
+  if (selectedProjectId) localStorage.setItem(PROJECT_SELECTED_KEY, selectedProjectId);
+  else localStorage.removeItem(PROJECT_SELECTED_KEY);
+}
+
+async function persistProjectToStorage(project) {
+  await dbPutProject({
+    ...project,
+    midiBuffer: project.midiBuffer,
+    mp3Blob: project.mp3Blob,
+  });
+  await saveProjectIndexAndSelection();
+}
+
+async function refreshProjectListFromStorage() {
+  const summaries = loadProjectIndex();
+  songProjects = summaries.map(summary => ({
+    id: summary.id,
+    title: summary.title,
+    savedScore: summary.savedScore || 0,
+    midiName: summary.midiName || '',
+    mp3Name: summary.mp3Name || '',
+    updatedAt: summary.updatedAt || Date.now(),
+    settings: { ...DEFAULTS },
+    trackRoles: [],
+    trackVolumes: [],
+    trackClipIds: [],
+    trackCollapsed: [],
+    mp3OffsetMs: 0,
+    midiDurationMs: 0,
+    mp3DurationMs: 0,
+  }));
+  const storedSelected = localStorage.getItem(PROJECT_SELECTED_KEY);
+  selectedProjectId = storedSelected || (songProjects[0] && songProjects[0].id) || null;
+  const startButton = document.getElementById('btn-start');
+  if (startButton) startButton.disabled = !selectedProjectId;
+  renderProjectList();
+}
+
+async function loadProjectFromStorage(projectId) {
+  const stored = await dbGetProject(projectId);
+  if (!stored) return null;
+  return stored;
+}
+
+function cloneManualBeatmap(notes = []) {
+  return notes.map(note => ({
+    time: note.time,
+    endTime: note.endTime,
+    lane: note.lane,
+    laneIdx: note.laneIdx,
+    note: note.note,
+    velocity: note.velocity,
+    trackIdx: note.trackIdx,
+    hold: !!note.hold,
+    auto: !!note.auto,
+    sourceRole: note.sourceRole || 'manual',
+    playerMuted: !!note.playerMuted,
+    started: false,
+    completed: false,
+    missed: false,
+    hit: false,
+  }));
+}
+
+function manualLanePitch(lane) {
+  const pitches = { up: 84, left: 76, right: 67, down: 55 };
+  return pitches[lane] || 60;
+}
+
+function getManualPlaybackBeatmap() {
+  return currentManualBeatmap && currentManualBeatmap.length ? cloneManualBeatmap(currentManualBeatmap) : [];
+}
+
+function setManualMapMode(enabled) {
+  manualMappingMode = !!enabled;
+  const btn = document.getElementById('btn-manual-map');
+  if (btn) {
+    btn.textContent = manualMappingMode ? 'Recording Manual Tracking...' : 'Record Manual Tracking';
+    btn.classList.toggle('active', manualMappingMode);
+  }
+  checkReady();
+}
+
+function startManualMappingSession() {
+  manualMappingActive = true;
+  manualRecordingAwaitingConfirm = false;
+  manualBeatmapDraft = [];
+  manualMappingHeld = {};
+  currentManualBeatmap = [];
+}
+
+function finishManualMappingSession() {
+  manualMappingActive = false;
+  manualMappingHeld = {};
+  manualRecordingAwaitingConfirm = true;
+}
+
+function confirmManualMappingSession() {
+  currentManualBeatmap = cloneManualBeatmap(manualBeatmapDraft);
+  manualRecordingAwaitingConfirm = false;
+  const manualSongCheckbox = document.getElementById('manual-map-enable-song');
+  if (manualSongCheckbox && manualSongCheckbox.checked && currentProjectId) {
+    const project = songProjects.find(item => item.id === currentProjectId);
+    if (project) {
+      project.manualMapEnabled = true;
+      project.manualBeatmap = cloneManualBeatmap(currentManualBeatmap);
+    }
+  }
+  return currentManualBeatmap;
+}
+
+function recordManualNoteStart(lane) {
+  const elapsed = performance.now() - gameStartTime;
+  const note = {
+    time: elapsed,
+    endTime: elapsed,
+    lane,
+    laneIdx: LANE_ORDER.indexOf(lane),
+    note: manualLanePitch(lane),
+    velocity: 100,
+    trackIdx: 0,
+    hold: false,
+    auto: false,
+    sourceRole: 'manual',
+    playerMuted: false,
+    started: true,
+    completed: false,
+    missed: false,
+    hit: false,
+  };
+  manualMappingHeld[lane] = note;
+  manualBeatmapDraft.push(note);
+}
+
+function recordManualNoteEnd(lane) {
+  const elapsed = performance.now() - gameStartTime;
+  const note = manualMappingHeld[lane];
+  if (!note) return;
+  note.endTime = Math.max(note.time, elapsed);
+  note.hold = (note.endTime - note.time) >= Math.max(0, CFG.longNoteThresholdMs || DEFAULTS.longNoteThresholdMs);
+  manualMappingHeld[lane] = null;
+}
+
+// --------- Export / Import helpers (save projects to disk, verify checksums) ----------
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+async function blobToBase64(blob) {
+  const ab = await blob.arrayBuffer();
+  return arrayBufferToBase64(ab);
+}
+
+async function computeHashHex(arrayBuffer) {
+  try {
+    const hash = await crypto.subtle.digest('SHA-256', arrayBuffer);
+    const bytes = new Uint8Array(hash);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) {
+    return null;
+  }
+}
+
+async function exportProjectToFile(projectId) {
+  const proj = await loadProjectFromStorage(projectId);
+  if (!proj) return alert('Project not found');
+  const midiAB = proj.midiBuffer ? (proj.midiBuffer instanceof ArrayBuffer ? proj.midiBuffer : proj.midiBuffer.buffer) : null;
+  const mp3AB = proj.mp3Blob ? await proj.mp3Blob.arrayBuffer() : null;
+  const midiHash = midiAB ? await computeHashHex(midiAB) : null;
+  const mp3Hash = mp3AB ? await computeHashHex(mp3AB) : null;
+  const payload = {
+    meta: {
+      id: proj.id,
+      title: proj.title,
+      settings: proj.settings,
+      trackRoles: proj.trackRoles,
+      trackVolumes: proj.trackVolumes,
+      trackClipIds: proj.trackClipIds,
+      trackCollapsed: proj.trackCollapsed,
+      mp3OffsetMs: proj.mp3OffsetMs,
+      manualMapEnabled: proj.manualMapEnabled || false,
+      manualBeatmap: proj.manualBeatmap || [],
+      midiName: proj.midiName,
+      mp3Name: proj.mp3Name,
+      midiDurationMs: proj.midiDurationMs,
+      mp3DurationMs: proj.mp3DurationMs,
+      updatedAt: proj.updatedAt || Date.now()
+    },
+    midiBase64: midiAB ? arrayBufferToBase64(midiAB) : null,
+    mp3Base64: mp3AB ? arrayBufferToBase64(mp3AB) : null,
+    midiHash, mp3Hash,
+  };
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${(proj.title||'project').replace(/[^a-z0-9\-]/gi,'_')}-${proj.id}.mmp.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function importProjectFromJSON(jsonText) {
+  let data;
+  try { data = JSON.parse(jsonText); } catch (e) { throw new Error('Invalid JSON'); }
+  if (!data || !data.meta) throw new Error('Invalid project file');
+  const meta = data.meta;
+  const proj = createEmptyProject();
+  proj.id = meta.id || makeProjectId();
+  proj.title = meta.title || proj.title;
+  proj.settings = meta.settings || { ...DEFAULTS };
+  proj.trackRoles = meta.trackRoles || [];
+  proj.trackVolumes = meta.trackVolumes || [];
+  proj.trackClipIds = meta.trackClipIds || [];
+  proj.trackCollapsed = meta.trackCollapsed || [];
+  proj.mp3OffsetMs = meta.mp3OffsetMs || 0;
+  proj.manualMapEnabled = !!meta.manualMapEnabled;
+  proj.manualBeatmap = Array.isArray(meta.manualBeatmap) ? cloneManualBeatmap(meta.manualBeatmap) : [];
+  proj.midiName = meta.midiName || '';
+  proj.mp3Name = meta.mp3Name || '';
+  proj.midiDurationMs = meta.midiDurationMs || 0;
+  proj.mp3DurationMs = meta.mp3DurationMs || 0;
+  proj.updatedAt = meta.updatedAt || Date.now();
+
+  if (data.midiBase64) {
+    proj.midiBuffer = base64ToArrayBuffer(data.midiBase64);
+  } else proj.midiBuffer = null;
+
+  if (data.mp3Base64) {
+    const ab = base64ToArrayBuffer(data.mp3Base64);
+    proj.mp3Blob = new Blob([ab], { type: 'audio/mpeg' });
+  } else proj.mp3Blob = null;
+
+  // verify checksums if provided
+  if (data.midiHash && proj.midiBuffer) {
+    const ok = (await computeHashHex(proj.midiBuffer)) === data.midiHash;
+    if (!ok) console.warn('Imported MIDI checksum mismatch');
+  }
+  if (data.mp3Hash && proj.mp3Blob) {
+    const ab = await proj.mp3Blob.arrayBuffer();
+    const ok = (await computeHashHex(ab)) === data.mp3Hash;
+    if (!ok) console.warn('Imported MP3 checksum mismatch');
+  }
+
+  // persist and refresh UI
+  await persistProjectToStorage(proj);
+  // insert/refresh index list
+  await refreshProjectListFromStorage();
+  renderProjectList();
+  alert('Project imported');
+  return proj;
+}
+
+async function openProjectEditor(projectId = null) {
+  stopProjectSelectionPreview();
+  const project = projectId
+    ? (await loadProjectFromStorage(projectId))
+    : createEmptyProject();
+  if (!project) return;
+  currentProjectHasMp3 = !!project.mp3Blob;
+  editingProjectId = project.id;
+  currentProjectId = project.id;
+  currentMidiArrayBuffer = project.midiBuffer || null;
+  currentMp3Blob = project.mp3Blob || null;
+  currentMidiDurationMs = project.midiDurationMs || 0;
+  setEditorVisibility(true);
+  updateProjectEditorTitle(projectId ? 'Edit Song Project' : 'Add Song Project');
+  setSongProjectFormFromProject(project);
+  if (project.midiBuffer) {
+    await loadMidiProjectBuffer(project.midiBuffer, project.midiName || 'project.mid', false);
+  } else {
+    currentMidiArrayBuffer = null;
+    midiData = null;
+    currentMidiDurationMs = 0;
+    dropZone.textContent = 'Drop a .mid / .midi file here, or click to browse';
+    dropZone.classList.remove('loaded');
+    dropZone.dataset.fileName = '';
+    const btnClearMidi = document.getElementById('btn-clear-midi');
+    if (btnClearMidi) btnClearMidi.style.display = 'none';
+  }
+  if (project.mp3Blob) {
+    await loadMp3ProjectBlob(project.mp3Blob, project.mp3Name || 'project.mp3', false);
+  } else {
+    clearMp3ProjectBlob(false);
+  }
+
+  // If we are returning from a manual recording session the in-memory
+  // currentManualBeatmap already holds the freshly confirmed recording.
+  // Prefer that over what is stored (which may be stale or empty for a new project).
+  const freshRecording = Array.isArray(currentManualBeatmap) && currentManualBeatmap.length > 0;
+  const storedRecording = Array.isArray(project.manualBeatmap) && project.manualBeatmap.length > 0;
+  if (!freshRecording) {
+    currentManualBeatmap = storedRecording ? cloneManualBeatmap(project.manualBeatmap) : [];
+  }
+  manualBeatmapDraft = cloneManualBeatmap(currentManualBeatmap);
+
+  setManualMapMode(false);
+  const manualSongCheckbox = document.getElementById('manual-map-enable-song');
+  if (manualSongCheckbox) {
+    // Auto-check "use manual tracking" if we just confirmed a fresh recording
+    manualSongCheckbox.checked = freshRecording ? true : !!project.manualMapEnabled;
+  }
+  if (project.trackRoles && project.trackRoles.length && midiData) {
+    trackRoles = project.trackRoles.slice();
+    trackVolumes = project.trackVolumes && project.trackVolumes.length ? project.trackVolumes.slice() : trackVolumes;
+    trackClipIds = project.trackClipIds && project.trackClipIds.length ? project.trackClipIds.slice() : trackClipIds;
+    trackCollapsed = project.trackCollapsed && project.trackCollapsed.length ? project.trackCollapsed.slice() : trackCollapsed;
+    buildTrackSelector({ preserveCurrent: true });
+  }
+  drawWaveforms();
+  checkReady();
+}
+
+async function loadMidiProjectBuffer(arrayBuffer, fileName, markDirty = true) {
+  currentMidiArrayBuffer = arrayBuffer.slice(0);
+  midiData = parseMidi(currentMidiArrayBuffer);
+  currentMidiDurationMs = getMidiDurationMs(midiData);
+  dropZone.textContent = `✓ ${fileName}  (${midiData.tracks.length} track${midiData.tracks.length !== 1 ? 's' : ''})`;
+  dropZone.classList.add('loaded');
+  dropZone.dataset.fileName = fileName;
+  const btnClearMidi = document.getElementById('btn-clear-midi');
+  if (btnClearMidi) btnClearMidi.style.display = 'block';
+  buildTrackSelector();
+  checkReady();
+  drawWaveforms();
+  return midiData;
+}
+
+async function loadMp3ProjectBlob(blob, fileName, markDirty = true) {
+  stopSongPlayback();
+  currentMp3Blob = blob;
+  currentProjectHasMp3 = !!blob;
+  const mp3Input = document.getElementById('mp3-file-input');
+  mp3Input.dataset.fileName = fileName;
+  const mp4DropZone = document.getElementById('mp4-drop-zone');
+  if (mp4DropZone) {
+    mp4DropZone.textContent = `✓ ${fileName}`;
+    mp4DropZone.classList.add('loaded');
+    mp4DropZone.dataset.fileName = fileName;
+  }
+  const btnClearMp4 = document.getElementById('btn-clear-mp4');
+  if (btnClearMp4) btnClearMp4.style.display = 'block';
+  if (currentMp3ObjectUrl) URL.revokeObjectURL(currentMp3ObjectUrl);
+  currentMp3ObjectUrl = URL.createObjectURL(blob);
+  if (songAudio) {
+    try { songAudio.pause(); } catch(_){}
+  }
+  songAudio = new Audio(currentMp3ObjectUrl);
+  songAudio.preload = 'auto';
+  songAudio.crossOrigin = 'anonymous';
+  try {
+    const arrayBuffer = await blob.arrayBuffer();
+    const actx = getAudioCtx();
+    mp3AudioBuffer = await actx.decodeAudioData(arrayBuffer.slice(0));
+  } catch (err) {
+    console.warn('MP3 decode failed', err);
+    mp3AudioBuffer = null;
+  }
+  drawWaveforms();
+  return songAudio;
+}
+
+function clearMp3ProjectBlob(markDirty = true) {
+  stopSongPlayback();
+  currentMp3Blob = null;
+  currentProjectHasMp3 = false;
+  mp3AudioBuffer = null;
+  if (currentMp3ObjectUrl) {
+    URL.revokeObjectURL(currentMp3ObjectUrl);
+    currentMp3ObjectUrl = '';
+  }
+  songAudio = null;
+  const mp3Input = document.getElementById('mp3-file-input');
+  if (mp3Input) {
+    mp3Input.value = '';
+    mp3Input.dataset.fileName = '';
+  }
+  const mp4DropZone = document.getElementById('mp4-drop-zone');
+  if (mp4DropZone) {
+    mp4DropZone.textContent = 'Drop an .mp4 / .mp3 file here, or click to browse';
+    mp4DropZone.classList.remove('loaded', 'drag-over');
+    mp4DropZone.dataset.fileName = '';
+  }
+  const btnClearMp4 = document.getElementById('btn-clear-mp4');
+  if (btnClearMp4) btnClearMp4.style.display = 'none';
+  if (markDirty && currentProjectId) syncProjectSettingsToDraft();
+  checkReady();
+  drawWaveforms();
+}
+
+async function saveCurrentProject() {
+  if (!currentProjectId) currentProjectId = makeProjectId();
+  const project = songProjects.find(item => item.id === currentProjectId) || createEmptyProject();
+  project.id = currentProjectId;
+  project.title = document.getElementById('project-title-input').value.trim() || 'New Song Project';
+  project.settings = readProjectSettingsFromUI();
+  project.mp3OffsetMs = mp3OffsetMs || 0;
+  project.trackRoles = trackRoles.slice();
+  project.trackVolumes = trackVolumes.slice();
+  project.trackClipIds = trackClipIds.slice();
+  project.trackCollapsed = trackCollapsed.slice();
+  project.midiBuffer = currentMidiArrayBuffer ? currentMidiArrayBuffer.slice(0) : null;
+  project.mp3Blob = currentMp3Blob || null;
+  project.manualBeatmap = cloneManualBeatmap(manualBeatmapDraft.length ? manualBeatmapDraft : currentManualBeatmap);
+  project.manualMapEnabled = !!document.getElementById('manual-map-enable-song')?.checked;
+  project.savedScore = project.savedScore || 0;
+  project.midiName = dropZone?.dataset?.fileName || project.midiName || '';
+  project.mp3Name = document.getElementById('mp3-file-input')?.dataset?.fileName || project.mp3Name || '';
+  project.midiDurationMs = currentMidiDurationMs || 0;
+  project.mp3DurationMs = mp3AudioBuffer ? (mp3AudioBuffer.length / mp3AudioBuffer.sampleRate) * 1000 : 0;
+  project.updatedAt = Date.now();
+
+  const hasMidi   = !!project.midiBuffer;
+  const hasMp3    = !!project.mp3Blob;
+  const hasManual = Array.isArray(project.manualBeatmap) && project.manualBeatmap.length > 0;
+
+  // Only block saves that have nothing playable at all:
+  //   • MIDI only                     → fine (cases 1 & 2)
+  //   • MIDI + MP3                    → fine (case 3)
+  //   • MIDI + MP3 + manual           → fine (case 5)
+  //   • MIDI + manual                 → fine (case 2)
+  //   • MP3 only, no manual           → blocked (case 4, tell user what to do)
+  //   • Nothing at all                → blocked
+  if (!hasMidi && !hasMp3 && !hasManual) {
+    throw new Error('A project needs at least a MIDI file or an MP3 file before it can be saved.');
+  }
+  if (!hasMidi && hasMp3 && !hasManual) {
+    throw new Error(
+      'This project has an MP3 but no MIDI and no manual tracking.\n' +
+      'Add a MIDI file, or use "Record Manual Tracking" to tap out the notes, then save.'
+    );
+  }
+  
+  const existingIndex = songProjects.findIndex(item => item.id === project.id);
+  if (existingIndex >= 0) songProjects[existingIndex] = project;
+  else songProjects.unshift(project);
+  await persistProjectToStorage(project);
+  selectedProjectId = project.id;
+  editingProjectId = project.id;
+  renderProjectList();
+  setEditorVisibility(false);
+  return project;
+}
+
+async function useProjectForPlayback(projectId) {
+  const project = await loadProjectFromStorage(projectId);
+  console.debug('useProjectForPlayback — loaded project id=', projectId, 'project?', !!project, 'midiBuffer?', !!(project && project.midiBuffer), 'mp3Blob?', !!(project && project.mp3Blob));
+  if (!project || (!project.midiBuffer && !project.mp3Blob && !(Array.isArray(project.manualBeatmap) && project.manualBeatmap.length))) return false;
+  currentProjectHasMp3 = !!project.mp3Blob;
+  currentProjectId = project.id;
+  songProjects = songProjects.map(item => item.id === project.id ? { ...item, ...project } : item);
+  setSelectedProjectId(project.id);
+  applyProjectSettingsToUI(project.settings || DEFAULTS);
+  mp3OffsetMs = project.mp3OffsetMs || 0;
+  currentManualBeatmap = Array.isArray(project.manualBeatmap) ? cloneManualBeatmap(project.manualBeatmap) : [];
+  manualBeatmapDraft = cloneManualBeatmap(currentManualBeatmap);
+  setManualMapMode(false);
+  const manualSongCheckbox = document.getElementById('manual-map-enable-song');
+  if (manualSongCheckbox) manualSongCheckbox.checked = !!project.manualMapEnabled;
+  document.getElementById('mp3-offset-slider').value = String(mp3OffsetMs);
+  document.getElementById('mp3-offset-label').textContent = String(mp3OffsetMs);
+  if (project.midiBuffer) {
+    await loadMidiProjectBuffer(project.midiBuffer, project.midiName || 'project.mid', false);
+  } else {
+    currentMidiArrayBuffer = null;
+    midiData = null;
+    currentMidiDurationMs = 0;
+    dropZone.textContent = 'Drop a .mid / .midi file here, or click to browse';
+    dropZone.classList.remove('loaded');
+    dropZone.dataset.fileName = '';
+    const btnClearMidi = document.getElementById('btn-clear-midi');
+    if (btnClearMidi) btnClearMidi.style.display = 'none';
+  }
+  if (project.mp3Blob) await loadMp3ProjectBlob(project.mp3Blob, project.mp3Name || 'project.mp3', false);
+  else clearMp3ProjectBlob(false);
+  trackRoles = (project.trackRoles && project.trackRoles.length) ? project.trackRoles.slice() : trackRoles;
+  trackVolumes = (project.trackVolumes && project.trackVolumes.length) ? project.trackVolumes.slice() : trackVolumes;
+  trackClipIds = (project.trackClipIds && project.trackClipIds.length) ? project.trackClipIds.slice() : trackClipIds;
+  trackCollapsed = (project.trackCollapsed && project.trackCollapsed.length) ? project.trackCollapsed.slice() : trackCollapsed;
+  if (midiData) buildTrackSelector({ preserveCurrent: true });
+  readConfig();
+  return true;
 }
 
 // Edit this list to control which clip names are available in the track selector.
@@ -1270,6 +2472,7 @@ function getClipUrlForLane(clipId, lane) {
 function midiToFreq(note) { return 440 * Math.pow(2, (note - 69) / 12); }
 
 function getClipById(clipId) {
+  if (clipId === '__blank__') return { id: '__blank__', label: 'Blank (silent)', type: 'blank' };
   return SOUND_CLIPS.find(clip => clip.id === clipId) || SOUND_CLIPS[0];
 }
 
@@ -1279,6 +2482,7 @@ function resolveClipLabel(trackIdx, clipId) {
     const clip = SOUND_CLIPS.find(c => c.id === id) || SOUND_CLIPS[0];
     return clip.label;
   }
+  if (clipId === '__blank__') return 'Blank (silent)';
   const clip = SOUND_CLIPS.find(c => c.id === clipId) || SOUND_CLIPS[0];
   return clip.label;
 }
@@ -1311,6 +2515,14 @@ function populateTrackClipSelect(pickerEl, trackIdx) {
   origBtn.onclick = (e) => { e.stopPropagation(); trackClipIds[trackIdx] = '__original__'; populateTrackClipSelect(pickerEl, trackIdx); if (window.updateTrackClipLabel) window.updateTrackClipLabel(trackIdx); };
   pickerEl.appendChild(origBar);
   origBar.appendChild(origBtn);
+
+  // Blank (silent) option right below Original
+  const blankBtn = document.createElement('button');
+  blankBtn.className = 'clip-picker-item';
+  blankBtn.textContent = 'Blank — Silent';
+  if (selectedClipId === '__blank__') blankBtn.classList.add('selected');
+  blankBtn.onclick = (e) => { e.stopPropagation(); trackClipIds[trackIdx] = '__blank__'; populateTrackClipSelect(pickerEl, trackIdx); if (window.updateTrackClipLabel) window.updateTrackClipLabel(trackIdx); };
+  origBar.appendChild(blankBtn);
 
   const contentContainer = document.createElement('div');
   contentContainer.className = 'clip-picker-content';
@@ -1409,25 +2621,214 @@ function populateTrackClipSelect(pickerEl, trackIdx) {
   renderTabs();
 }
 
-// Apply DEFAULTS to UI inputs on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-  try {
-    document.getElementById('var-speed').value = DEFAULTS.noteSpeed;
-    document.getElementById('var-perfect').value = DEFAULTS.perfectMs;
-    document.getElementById('var-good').value = DEFAULTS.goodMs;
-    document.getElementById('var-bad').value = DEFAULTS.badMs;
-    document.getElementById('var-pitch-range').value = DEFAULTS.pitchRange;
-    document.getElementById('var-min-vel').value = DEFAULTS.minVelocity;
-    document.getElementById('var-merge-ms').value = DEFAULTS.mergeMs;
-    document.getElementById('var-long-note-threshold').value = DEFAULTS.longNoteThresholdMs;
-    document.getElementById('var-difficulty').value = DEFAULTS.difficulty;
-  } catch (e) {}
+// Apply DEFAULTS to UI inputs on DOM ready and restore project list state.
+document.addEventListener('DOMContentLoaded', async () => {
+  applyProjectSettingsToUI(DEFAULTS);
+
+  document.getElementById('btn-add-song-project').addEventListener('click', () => openProjectEditor());
+  document.getElementById('btn-save-project').addEventListener('click', async () => {
+    try {
+      await saveCurrentProject();
+      alert('Project saved.');
+    } catch (err) {
+      console.warn('Save project failed', err);
+      alert('Cannot save: ' + (err && err.message ? err.message : 'unknown error'));
+    }
+  });
+  document.getElementById('btn-cancel-project').addEventListener('click', () => {
+    setEditorVisibility(false);
+    updateProjectEditorTitle('Edit Song Project');
+  });
+  const manualMapBtn = document.getElementById('btn-manual-map');
+  const manualSongCheckbox = document.getElementById('manual-map-enable-song');
+  if (manualMapBtn) {
+    manualMapBtn.addEventListener('click', () => {
+      setManualMapMode(true);
+      startGame();
+      checkReady();
+    });
+  }
+  if (manualSongCheckbox) {
+    manualSongCheckbox.addEventListener('change', () => {
+      if (currentProjectId) syncProjectSettingsToDraft();
+      checkReady();
+    });
+  }
+
+  const mp3Input = document.getElementById('mp3-file-input');
+  const mp4DropZone = document.getElementById('mp4-drop-zone');
+  const btnClearMp4 = document.getElementById('btn-clear-mp4');
+  const mp3Preview = document.getElementById('mp3-preview');
+  const mp3Slider = document.getElementById('mp3-offset-slider');
+  const mp3Label = document.getElementById('mp3-offset-label');
+  const mp3AlignZero = document.getElementById('mp3-align-zero');
+
+  if (mp4DropZone) {
+    // The hidden <input> sits inside the drop zone div. Without stopPropagation,
+    // clicking the zone fires the zone's click handler (which calls mp3Input.click()),
+    // but that synthetic click also bubbles back up to the zone — browsers see the
+    // double-open and cancel the file dialog immediately.
+    mp3Input.addEventListener('click', e => e.stopPropagation());
+
+    mp4DropZone.addEventListener('click', () => mp3Input.click());
+    mp4DropZone.addEventListener('dragover', e => { e.preventDefault(); mp4DropZone.classList.add('drag-over'); });
+    mp4DropZone.addEventListener('dragleave', () => mp4DropZone.classList.remove('drag-over'));
+    mp4DropZone.addEventListener('drop', async e => {
+      e.preventDefault();
+      mp4DropZone.classList.remove('drag-over');
+      const f = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files[0] : null;
+      if (!f) return;
+      mp3Label.textContent = '0';
+      mp3OffsetMs = 0;
+      await loadMp3ProjectBlob(f, f.name, true);
+      drawWaveforms();
+    });
+  }
+
+  if (btnClearMp4) {
+    btnClearMp4.addEventListener('click', () => {
+      if (!currentMp3Blob) return;
+      if (!confirm('Clear MP4 file? This cannot be undone unless you reload it.')) return;
+      clearMp3ProjectBlob(true);
+    });
+  }
+
+  mp3Input.addEventListener('change', async () => {
+    const f = mp3Input.files && mp3Input.files[0];
+    if (!f) return;
+    mp3Label.textContent = '0';
+    mp3OffsetMs = 0;
+    await loadMp3ProjectBlob(f, f.name, true);
+    drawWaveforms();
+  });
+
+  mp3Preview.addEventListener('click', () => {
+    if (!songAudio) return alert('Load an MP4 or MP3 first');
+    try {
+      songAudio.pause();
+      songAudio.currentTime = Math.max(0, (-mp3OffsetMs) / 1000);
+      songAudio.volume = songBaseVolume || 1;
+      songAudio.play().catch(() => {});
+    } catch (_) {}
+  });
+
+  mp3Slider.addEventListener('input', () => {
+    mp3OffsetMs = parseInt(mp3Slider.value, 10) || 0;
+    mp3Label.textContent = mp3OffsetMs;
+    if (currentProjectId) syncProjectSettingsToDraft();
+    drawWaveforms();
+  });
+
+  // Export / Import buttons
+  const btnExport = document.getElementById('btn-export-project');
+  const btnImport = document.getElementById('btn-import-project');
+  const importInput = document.getElementById('project-import-input');
+  if (btnExport) btnExport.addEventListener('click', () => {
+    const pid = currentProjectId || selectedProjectId;
+    if (!pid) return alert('No project selected to export');
+    exportProjectToFile(pid).catch(err => { console.warn('Export failed', err); alert('Export failed'); });
+  });
+  if (btnImport && importInput) {
+    btnImport.addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', async () => {
+      const f = importInput.files && importInput.files[0];
+      if (!f) return;
+      try {
+        const txt = await f.text();
+        await importProjectFromJSON(txt);
+      } catch (err) {
+        console.warn('Import failed', err);
+        alert('Import failed: ' + (err && err.message ? err.message : 'unknown'));
+      } finally {
+        importInput.value = '';
+      }
+    });
+  }
+
+  mp3AlignZero.addEventListener('click', () => { mp3Slider.value = 0; mp3Slider.dispatchEvent(new Event('input')); });
+
+  // Clear MIDI button handler
+  const btnClearMidi = document.getElementById('btn-clear-midi');
+  if (btnClearMidi) {
+    btnClearMidi.addEventListener('click', () => {
+      if (!confirm('Clear MIDI file? This cannot be undone unless you reload it.')) return;
+      currentMidiArrayBuffer = null;
+      midiData = null;
+      currentMidiDurationMs = 0;
+      dropZone.textContent = 'Drop a .mid / .midi file here, or click to browse';
+      dropZone.classList.remove('loaded');
+      dropZone.dataset.fileName = '';
+      fileInput.value = '';
+      btnClearMidi.style.display = 'none';
+      checkReady();
+    });
+  }
+
+  document.getElementById('btn-start').addEventListener('click', async () => {
+    if (!selectedProjectId) {
+      alert('Select a song project first.');
+      return;
+    }
+    const ok = await useProjectForPlayback(selectedProjectId);
+    if (ok) startGame();
+  });
+  document.getElementById('btn-retry').addEventListener('click', () => startGame());
+  document.getElementById('btn-confirm-manual')?.addEventListener('click', async () => {
+    if (!manualBeatmapDraft.length && !currentManualBeatmap.length) return;
+
+    // Commit the recorded beatmap into the working draft
+    confirmManualMappingSession();
+
+    // Sync settings back into the in-memory draft but do NOT force a full save —
+    // the user may still be editing the project and can save when ready.
+    syncProjectSettingsToDraft();
+
+    // Auto-enable "Use Manual Tracking" now that we have a recording
+    const manualSongCheckbox = document.getElementById('manual-map-enable-song');
+    if (manualSongCheckbox && !manualSongCheckbox.checked) {
+      manualSongCheckbox.checked = true;
+    }
+
+    manualRecordingAwaitingConfirm = false;
+
+    // Return to the project editor in the state it was in before recording started.
+    // Do NOT call setEditorVisibility(false) — just swap screens back.
+    document.getElementById('results-screen').classList.remove('visible');
+    document.getElementById('game-screen').style.display = 'none';
+    document.getElementById('setup-screen').style.display = 'flex';
+
+    // Re-open the editor for the same project (restores all fields without saving)
+    if (currentProjectId || editingProjectId) {
+      await openProjectEditor(currentProjectId || editingProjectId);
+    } else {
+      setEditorVisibility(true);
+    }
+
+    checkReady();
+  });
+  document.getElementById('btn-menu').addEventListener('click', goMenu);
+  document.getElementById('btn-back').addEventListener('click', goMenu);
+  document.getElementById('btn-demo').addEventListener('click', startDemoGame);
+
+  await refreshProjectListFromStorage();
+  if (selectedProjectId) {
+    const selected = await loadProjectFromStorage(selectedProjectId);
+    if (selected) {
+      songProjects = songProjects.map(item => item.id === selected.id ? { ...item, ...selected } : item);
+      renderProjectList();
+      updateSelectedProjectSummary();
+    }
+  }
 });
 
 function createClipVoice({ clipId, note, velocity, volume, startTime, duration = null, lane = null, exactDuration = false }) {
   const ctx = getAudioCtx();
   const clip = getClipById(clipId);
   const peak = (velocity / 127) * volume;
+
+  if (clip.type === 'blank') {
+    return { stop: () => {} };
+  }
 
   // Handle MP3 clips
   if (clip.type === 'mp3' && clip.url) {
@@ -1547,6 +2948,12 @@ function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note
   const ctx = getAudioCtx();
   const fullLaneSet = ['left', 'up', 'down', 'right'].every(dir => clip[`url_${dir}`]);
   const url = fullLaneSet && lane ? getClipUrlForLane(clipId, lane) : clip.url;
+  if (clip.type === 'blank') {
+    // silent stub voice
+    let stopped = false;
+    function stop() { stopped = true; }
+    return { stop };
+  }
   const audio = new Audio(url);
   audio.preload = 'auto';
   audio.volume = Math.max(0, Math.min(1, volume));
@@ -1729,6 +3136,43 @@ let trackRoles    = [];   // 'game' | 'backing' | 'off'
 let trackVolumes  = [];
 let trackClipIds  = [];
 let trackCollapsed = [];
+let currentMidiArrayBuffer = null;
+let currentMp3Blob = null;
+let currentMp3ObjectUrl = '';
+let currentMidiDurationMs = 0;
+let currentProjectId = null;
+let editingProjectId = null;
+let selectedProjectId = null;
+let songProjects = [];
+let currentProjectHasMp3 = false;
+// MP3/song alignment state
+let mp3AudioBuffer = null;
+let songAudio = null; // Audio element for full song
+let mp3OffsetMs = 0; // user-specified offset (ms) to delay mp3 relative to MIDI
+let mp3Waveform = null;
+let midiMarkers = null; // array of times (ms) for MIDI markers
+let songStopTimer = null;
+let songDuckTimer = null;
+let songBaseVolume = 1;
+let projectPreviewAudio = null;
+let projectPreviewObjectUrl = '';
+let projectPreviewTimer = null;
+let projectPreviewNodes = [];
+let projectPreviewToken = 0;
+const SONG_VOL_DOWN_STEP = 0.08;
+const SONG_VOL_UP_STEP = 0.04;
+let manualMappingMode = false;
+let manualMappingActive = false;
+let manualRecordingAwaitingConfirm = false;
+let manualBeatmapDraft = [];
+let manualMappingHeld = {};
+let currentManualBeatmap = [];
+const FAILED_SOUND_POOL = [
+  'SoundClip/Mistake1.mp3',
+  'SoundClip/Mistake2.mp3',
+  'SoundClip/Mistake3.mp3',
+  'SoundClip/Mistake4.mp3',
+];
 
 // ---------- Defaults (consolidated) ----------
 const DEFAULTS = {
@@ -1771,6 +3215,8 @@ let stats         = { perfect: 0, good: 0, bad: 0, miss: 0 };
 let totalNotes    = 0;
 let laneEls       = {};  // lane key → DOM element
 let autoTimers    = [];  // timeouts for auto mode
+let countdownTimers = [];
+let gameStartQueued = false;
 
 const LANE_KEYS = {
   up:    ['ArrowUp',   'w', 'W'],
@@ -1807,11 +3253,8 @@ function loadFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      midiData = parseMidi(e.target.result);
-      dropZone.textContent = `✓ ${file.name}  (${midiData.tracks.length} track${midiData.tracks.length !== 1 ? 's' : ''})`;
-      dropZone.classList.add('loaded');
-      buildTrackSelector();
-      checkReady();
+      currentMidiArrayBuffer = e.target.result;
+      loadMidiProjectBuffer(currentMidiArrayBuffer, file.name, true);
     } catch (err) {
       dropZone.textContent = '✗ Failed to parse MIDI: ' + err.message;
       dropZone.classList.remove('loaded');
@@ -1820,18 +3263,23 @@ function loadFile(file) {
   reader.readAsArrayBuffer(file);
 }
 
-function buildTrackSelector() {
+function setLoadingOverlayVisible(visible) {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.style.display = visible ? 'flex' : 'none';
+}
+
+function buildTrackSelector(options = {}) {
+  const preserveCurrent = !!options.preserveCurrent;
   const trackList = document.getElementById('track-list');
   const selector  = document.getElementById('track-selector');
   trackList.innerHTML = '';
-  trackRoles = new Array(midiData.tracks.length).fill('off');
-  trackVolumes = new Array(midiData.tracks.length).fill(0.8);
-  // default new midi files to Original
-  trackClipIds = new Array(midiData.tracks.length).fill('__original__');
-  // start collapsed
-  trackCollapsed = new Array(midiData.tracks.length).fill(true);
+  if (!preserveCurrent || trackRoles.length !== midiData.tracks.length) trackRoles = new Array(midiData.tracks.length).fill('off');
+  if (!preserveCurrent || trackVolumes.length !== midiData.tracks.length) trackVolumes = new Array(midiData.tracks.length).fill(0.8);
+  if (!preserveCurrent || trackClipIds.length !== midiData.tracks.length) trackClipIds = new Array(midiData.tracks.length).fill('__original__');
+  if (!preserveCurrent || trackCollapsed.length !== midiData.tracks.length) trackCollapsed = new Array(midiData.tracks.length).fill(true);
   // compute original clip mapping per track (may take a moment)
-  document.getElementById('loading-overlay').style.display = 'flex';
+  setLoadingOverlayVisible(true);
+  try {
   window.trackOriginalClipIds = new Array(midiData.tracks.length).fill(null);
   for (let i = 0; i < midiData.tracks.length; i++) {
     const track = midiData.tracks[i];
@@ -1851,14 +3299,18 @@ function buildTrackSelector() {
     if (!resolved) resolved = SOUND_CLIPS[0].id;
     window.trackOriginalClipIds[i] = resolved;
   }
-  document.getElementById('loading-overlay').style.display = 'none';
+  setLoadingOverlayVisible(false);
 
-  // Auto-assign: first track with noteOns → game, rest → backing
+  // Auto-assign: first track with noteOns → game, rest → backing, unless the current project has an MP3
   let gameAssigned = false;
   midiData.tracks.forEach((track, i) => {
     const hasNotes = track.events.some(e => e.type === 'noteOn');
-    if (!gameAssigned && hasNotes) { trackRoles[i] = 'game'; gameAssigned = true; }
-    else if (hasNotes) trackRoles[i] = 'backing';
+    if (!preserveCurrent) {
+      if (!gameAssigned && hasNotes) { trackRoles[i] = 'game'; gameAssigned = true; }
+      else if (hasNotes) trackRoles[i] = currentProjectHasMp3 ? 'off' : 'backing';
+    } else if (trackRoles[i] === 'game') {
+      gameAssigned = true;
+    }
   });
 
   midiData.tracks.forEach((track, i) => {
@@ -1981,15 +3433,48 @@ function buildTrackSelector() {
     else document.removeEventListener('keydown', escCloseFs);
   };
   function escCloseFs(e) { if (e.key === 'Escape') { document.getElementById('track-selector').classList.remove('fullscreen'); fsBtn.textContent = 'Fullscreen Clips'; document.removeEventListener('keydown', escCloseFs); } }
+  } finally {
+    setLoadingOverlayVisible(false);
+  }
 }
 
 function badgeClass(role) {
-  return role === 'game' ? 'badge-game' : role === 'backing' ? 'badge-backing' : 'badge-off';
+  if (role === 'game') return 'badge-game';
+  if (role === 'backing') return 'badge-backing';
+  if (role === 'manual') return 'badge-manual';
+  return 'badge-off';
 }
 
 function checkReady() {
-  const hasGame = trackRoles.includes('game');
-  document.getElementById('btn-start').disabled = !hasGame;
+  // Derive current state
+  const hasMidi        = !!midiData;
+  const hasMp3         = !!currentMp3Blob;
+  const hasGame        = trackRoles.includes('game');
+  const hasManualBeatmap = Array.isArray(currentManualBeatmap) && currentManualBeatmap.length > 0;
+  const manualEnabled  = !!document.getElementById('manual-map-enable-song')?.checked;
+  const useManual      = manualEnabled && hasManualBeatmap;
+
+  // ── Save rules ────────────────────────────────────────────────────────────
+  // Case 1: MIDI only                → saveable (track auto-derived from MIDI)
+  // Case 2: MIDI only + manualTrack  → saveable
+  // Case 3: MP3 + MIDI               → saveable
+  // Case 4: MP3 only                 → NOT saveable until manual tracking added
+  // Case 5: MP3 + MIDI + manualTrack → saveable
+  const canSave = hasMidi || (hasMp3 && hasManualBeatmap);
+
+  // ── Start / Play rules ───────────────────────────────────────────────────
+  // Recording session in progress counts as playable (it IS the game)
+  const isRecording   = manualMappingMode && (hasMidi || hasMp3);
+  // Saved manual beatmap can be played back when checkbox is on
+  const canPlayManual = useManual;
+  // Normal MIDI-driven play requires a game track assigned
+  const canPlayMidi   = hasGame && hasMidi;
+  const canStart      = isRecording || canPlayManual || canPlayMidi;
+
+  const saveButton  = document.getElementById('btn-save-project');
+  const startButton = document.getElementById('btn-start');
+  if (saveButton)  saveButton.disabled  = !canSave;
+  if (startButton) startButton.disabled = !canStart;
 }
 
 // ─── Parameter reading ───────────────────────────────────────────────────────
@@ -2003,16 +3488,22 @@ function readConfig() {
   CFG.mergeMs      = parseFloat(document.getElementById('var-merge-ms').value) || 0;
   CFG.longNoteThresholdMs = parseFloat(document.getElementById('var-long-note-threshold').value) || DEFAULTS.longNoteThresholdMs;
   difficulty       = document.getElementById('var-difficulty').value || 'normal';
+  // Easy mode: widen hit windows instead of autoplaying notes
+  if (difficulty === 'easy') {
+    // Expand windows but keep user-configured minimums
+    CFG.perfectMs = Math.max(CFG.perfectMs, Math.round(CFG.perfectMs * 1.6));
+    CFG.goodMs = Math.max(CFG.goodMs, Math.round(CFG.goodMs * 1.45));
+    CFG.badMs = Math.max(CFG.badMs, Math.round(CFG.badMs * 1.35));
+  }
 }
 
-// ─── BUILD GAME ──────────────────────────────────────────────────────────────
-document.getElementById('btn-start').addEventListener('click', startGame);
-document.getElementById('btn-retry').addEventListener('click', startGame);
-document.getElementById('btn-menu').addEventListener('click', goMenu);
-document.getElementById('btn-back').addEventListener('click', goMenu);
-document.getElementById('btn-demo').addEventListener('click', startDemoGame);
-
 function startDemoGame() {
+  stopSongPlayback();
+  try { for (const t of countdownTimers) clearTimeout(t); } catch(_) {}
+  countdownTimers = [];
+  gameStartQueued = false;
+  const countdownOverlay = document.getElementById('countdown-overlay');
+  if (countdownOverlay) countdownOverlay.classList.remove('visible');
   // Create a simple demo beatmap without needing a MIDI file
   beatmap = [
     { time: 500, lane: 'up', note: 60, velocity: 100, trackIdx: 0, endTime: 500, hold: false, playerMuted: true, auto: false, sourceRole: 'play' },
@@ -2077,33 +3568,88 @@ function startDemoGame() {
 }
 
 function goMenu() {
+  stopProjectSelectionPreview();
   stopGame();
   document.getElementById('results-screen').classList.remove('visible');
   document.getElementById('game-screen').style.display = 'none';
   document.getElementById('setup-screen').style.display = 'flex';
+  setEditorVisibility(false);
 }
 
 function startGame() {
-  // Safety check: ensure MIDI data is loaded
-  if (!midiData || !trackRoles.includes('game')) {
-    alert('Please load a MIDI file and assign a game track first.');
+  stopProjectSelectionPreview();
+  console.debug('startGame called — midiData?', !!midiData, 'mp3?', !!currentMp3Blob, 'trackRoles=', trackRoles);
+
+  const recordingManual = manualMappingMode;
+  const manualEnabled   = !!document.getElementById('manual-map-enable-song')?.checked;
+  const hasManualBeatmap = Array.isArray(currentManualBeatmap) && currentManualBeatmap.length > 0;
+  const useManualTracking = manualEnabled && hasManualBeatmap;
+  const hasMidi  = !!midiData;
+  const hasMp3   = !!currentMp3Blob;
+  const hasGame  = trackRoles.includes('game');
+
+  // ── Guard: nothing at all loaded ─────────────────────────────────────────
+  if (!hasMidi && !hasMp3 && !recordingManual && !useManualTracking) {
+    alert('Please load a MIDI file or MP3 (or both) before starting.');
     return;
   }
-  
+
+  // ── Guard: MP3-only, not recording and no saved manual beatmap ───────────
+  // Case 4 blocked at play-time: user must record manual tracking first.
+  if (!hasMidi && hasMp3 && !recordingManual && !useManualTracking) {
+    alert(
+      'This project has an MP3 but no MIDI and no manual tracking.\n' +
+      'Use "Record Manual Tracking" to tap out the notes while the song plays.'
+    );
+    return;
+  }
+
+  if (gameStartQueued) return;
+  gameStartQueued = true;
+
   readConfig();
+  setLoadingOverlayVisible(false);
   document.getElementById('results-screen').classList.remove('visible');
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('game-screen').style.display = 'flex';
 
   buildPlayFields();
+  console.debug('after buildPlayFields — laneEls:', Object.keys(laneEls || {}), 'referenceLaneEls:', Object.keys(referenceLaneEls || {}));
 
-  // Gather beatmap
+  // ── Build beatmap for the chosen mode ────────────────────────────────────
   const gameTrackIdx = trackRoles.indexOf('game');
-  const splitBeatmaps = buildBeatmaps(midiData, gameTrackIdx, CFG.pitchRange, CFG.minVelocity);
-  referenceBeatmap = splitBeatmaps.referenceBeatmap;
-  beatmap = splitBeatmaps.playBeatmap;
-  const autoPlayBeatmap = splitBeatmaps.autoPlayBeatmap || [];
+  let autoPlayBeatmap = [];
+
+  if (recordingManual) {
+    // Cases 2 & 5: record manual tracking (MIDI and/or MP3 play as music)
+    startManualMappingSession();
+    beatmap = [];
+    referenceBeatmap = [];
+    manualMappingActive = true;
+    currentManualBeatmap = [];
+
+  } else if (useManualTracking) {
+    // Cases 2, 4, 5 (playback): use the saved manual beatmap as the note track
+    beatmap = getManualPlaybackBeatmap();
+    referenceBeatmap = [];
+    manualMappingActive = false;
+
+  } else if (hasMidi) {
+    // Cases 1 & 3: MIDI drives the note track (MP3 may or may not also be present)
+    const splitBeatmaps = buildBeatmaps(midiData, gameTrackIdx, CFG.pitchRange, CFG.minVelocity);
+    referenceBeatmap   = splitBeatmaps.referenceBeatmap;
+    beatmap            = splitBeatmaps.playBeatmap;
+    autoPlayBeatmap    = splitBeatmaps.autoPlayBeatmap || [];
+    manualMappingActive = false;
+
+  } else {
+    // Shouldn't reach here given the guards above, but fail safe
+    beatmap = [];
+    referenceBeatmap = [];
+    manualMappingActive = false;
+  }
   
+  console.debug('beatmap lengths — play:', beatmap.length, 'reference:', referenceBeatmap.length, 'auto:', autoPlayBeatmap.length);
   totalNotes = beatmap.length;
 
   // Reset state
@@ -2119,10 +3665,20 @@ function startGame() {
   // clear any scheduled auto timers from previous run
   try { for (const t of autoTimers) clearTimeout(t); } catch(_) {}
   autoTimers = [];
+  try { for (const t of countdownTimers) clearTimeout(t); } catch(_) {}
+  countdownTimers = [];
+  const countdownOverlay = document.getElementById('countdown-overlay');
+  const countdownValue = document.getElementById('countdown-value');
+  if (countdownOverlay && countdownValue) {
+    countdownOverlay.classList.add('visible');
+    countdownValue.classList.remove('go');
+    countdownValue.textContent = '3';
+  }
 
   updateHUD();
 
   // Stop previous backing nodes
+  stopSongPlayback();
   backingNodes.forEach(node => { 
     try { 
       if (node.stop) node.stop(); 
@@ -2132,56 +3688,116 @@ function startGame() {
   });
   backingNodes = [];
 
-  // mark game start time (used to schedule auto hits) and resume audio ctx
-  gameStartTime = performance.now();
-  const ctx = getAudioCtx();
-  ctx.resume().then(() => {
-    const startSec = ctx.currentTime + 0.1; // 100ms delay to ensure context is ready
-    trackRoles.forEach((role, idx) => {
-      if (role === 'backing') {
-        const nodes = scheduleBackingTrack(midiData, idx, startSec);
-        backingNodes.push(...nodes);
+  const beginGameplay = () => {
+    const preRollSec = 1.0;
+    const ctx = getAudioCtx();
+    gameRunning = true;
+    gameStartTime = performance.now();
+    if (countdownOverlay) countdownOverlay.classList.remove('visible');
+    ctx.resume().then(() => {
+      const startSec = ctx.currentTime + 0.1;
+      if (manualMappingActive && !songAudio && midiData) {
+        midiData.tracks.forEach((track, idx) => {
+          if (!track.events.some(e => e.type === 'noteOn')) return;
+          const nodes = scheduleBackingTrack(midiData, idx, startSec + preRollSec);
+          backingNodes.push(...nodes);
+        });
       }
-    });
-    // Auto-play quiet notes (Easy mode) in the background
-    autoPlayActiveNotes.forEach(note => {
-      const tSec = startSec + note.time / 1000;
-      const trackConfig = getTrackConfig(gameTrackIdx);
-      const useExactDuration = trackClipIds[gameTrackIdx] === '__original__';
-      const voice = createClipVoice({
-        clipId: trackConfig.clipId,
-        note: note.note,
-        velocity: note.velocity,
-        volume: trackConfig.volume * 0.5, // Quieter
-        startTime: tSec,
-        duration: getNotePlayDuration(note, 300, useExactDuration),
-        lane: note.lane,
-        exactDuration: useExactDuration,
+      trackRoles.forEach((role, idx) => {
+        if (role === 'backing') {
+          if (!midiData) return; // Skip backing track if no MIDI
+          const nodes = scheduleBackingTrack(midiData, idx, startSec + preRollSec);
+          backingNodes.push(...nodes);
+        }
       });
-      backingNodes.push(voice);
-    });
+      try {
+        if (songAudio) {
+          try { songAudio.pause(); } catch(_){}
+          const playStart = startSec + preRollSec + (mp3OffsetMs / 1000);
+          const now = ctx.currentTime;
+          const delayMs = Math.max(0, Math.round((playStart - now) * 1000));
+          setTimeout(() => {
+            try { songAudio.currentTime = Math.max(0, (-mp3OffsetMs) / 1000); setSongBaseVolume(songBaseVolume || 1); songAudio.play().catch(() => {}); } catch(_){ }
+          }, delayMs);
+          if (songStopTimer) clearTimeout(songStopTimer);
+          const songDurationMs = (midiData ? currentMidiDurationMs : 0) || (mp3AudioBuffer ? (mp3AudioBuffer.length / mp3AudioBuffer.sampleRate) * 1000 : 0);
+          const stopDelayMs = Math.max(0, Math.round(((startSec + preRollSec + (songDurationMs / 1000)) - now) * 1000));
+          songStopTimer = setTimeout(() => stopSongPlayback(), stopDelayMs);
+        }
+      } catch (e) { console.warn('song schedule failed', e); }
+      autoPlayActiveNotes.forEach(note => {
+        const tSec = startSec + note.time / 1000;
+        const trackConfig = getTrackConfig(gameTrackIdx);
+        const useExactDuration = trackClipIds[gameTrackIdx] === '__original__';
+        const voice = createClipVoice({
+          clipId: trackConfig.clipId,
+          note: note.note,
+          velocity: note.velocity,
+          volume: trackConfig.volume * 0.5,
+          startTime: tSec,
+          duration: getNotePlayDuration(note, 300, useExactDuration),
+          lane: note.lane,
+          exactDuration: useExactDuration,
+        });
+        backingNodes.push(voice);
+      });
 
-    // Full Auto mode: schedule auto-hits for the play beatmap
-    if (difficulty === 'auto') {
-      // schedule auto hits relative to gameStartTime
-      for (const n of activeNotes) {
-        const delay = Math.max(0, Math.round(n.time - (performance.now() - gameStartTime)));
-        const id = setTimeout(() => {
-          try { if (!n.hit && !n.missed) autoCompleteTapNote(n, n.lane); } catch(_) {}
-        }, delay);
-        autoTimers.push(id);
+      if (difficulty === 'auto') {
+        for (const n of activeNotes) {
+          const delay = Math.max(0, Math.round(n.time - (performance.now() - gameStartTime)));
+          const id = setTimeout(() => {
+            try { if (!n.hit && !n.missed) autoCompleteTapNote(n, n.lane); } catch(_) {}
+          }, delay);
+          autoTimers.push(id);
+        }
       }
-    }
-  }).catch(e => console.warn('Audio context resume failed:', e));
 
-  gameRunning   = true;
-  gameStartTime = performance.now();
+      if (countdownOverlay && countdownValue) {
+        countdownValue.textContent = 'GO';
+        countdownValue.classList.add('go');
+        const goClear = setTimeout(() => {
+          countdownOverlay.classList.remove('visible');
+          countdownValue.classList.remove('go');
+        }, 450);
+        countdownTimers.push(goClear);
+      }
 
-  requestAnimationFrame(gameLoop);
+      requestAnimationFrame(gameLoop);
+      gameStartQueued = false;
+    }).catch(e => {
+      gameStartQueued = false;
+      console.warn('Audio context resume failed:', e);
+    });
+  };
+
+  const countdownSteps = [
+    { delay: 0, value: '3' },
+    { delay: 1000, value: '2' },
+    { delay: 2000, value: '1' },
+    { delay: 3000, value: 'GO' },
+  ];
+
+  countdownSteps.forEach(step => {
+    const timer = setTimeout(() => {
+      if (!countdownValue || !countdownOverlay) return;
+      countdownValue.textContent = step.value;
+      countdownValue.classList.toggle('go', step.value === 'GO');
+      if (step.value === 'GO') beginGameplay();
+    }, step.delay);
+    countdownTimers.push(timer);
+  });
 }
 
 function stopGame() {
   gameRunning = false;
+  gameStartQueued = false;
+  manualMappingActive = false;
+  manualMappingHeld = {};
+  try { for (const t of countdownTimers) clearTimeout(t); } catch(_) {}
+  countdownTimers = [];
+  const countdownOverlay = document.getElementById('countdown-overlay');
+  if (countdownOverlay) countdownOverlay.classList.remove('visible');
+  stopSongPlayback();
   backingNodes.forEach(node => { 
     try { 
       if (node.stop) node.stop(); 
@@ -2218,6 +3834,98 @@ function buildPlayFields() {
 
   buildLaneSet(referenceField, referenceLaneEls, true);
   buildLaneSet(playField, laneEls, false);
+  console.debug('buildPlayFields completed — playField children:', playField.children.length, 'referenceField children:', referenceField.children.length);
+}
+
+// Draw simple waveforms for MIDI (render note density) and MP3 (decoded buffer)
+function drawWaveforms() {
+  try {
+    const midiCanvas = document.getElementById('midi-waveform');
+    const mp3Canvas = document.getElementById('mp3-waveform');
+    if (!midiCanvas || !mp3Canvas) return;
+    const scale = window.devicePixelRatio || 1;
+    const w = midiCanvas.width = Math.max(1, Math.floor(midiCanvas.clientWidth * scale));
+    const h = midiCanvas.height = Math.max(1, Math.floor(midiCanvas.clientHeight * scale));
+    const mw = mp3Canvas.width = Math.max(1, Math.floor(mp3Canvas.clientWidth * scale));
+    const mh = mp3Canvas.height = Math.max(1, Math.floor(mp3Canvas.clientHeight * scale));
+    const mctx = midiCanvas.getContext('2d');
+    const actx = mp3Canvas.getContext('2d');
+
+    function paintWaveform(ctx, width, height, samples, accent, labelGlow) {
+      ctx.clearRect(0, 0, width, height);
+      const bg = ctx.createLinearGradient(0, 0, 0, height);
+      bg.addColorStop(0, '#060616');
+      bg.addColorStop(1, '#08081a');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, height / 2);
+      ctx.lineTo(width, height / 2);
+      ctx.stroke();
+
+      const barCount = Math.max(32, Math.floor(width / 5));
+      const barWidth = width / barCount;
+      for (let i = 0; i < barCount; i++) {
+        const sample = samples[Math.min(samples.length - 1, Math.floor(i / barCount * samples.length))] || 0;
+        const amplitude = Math.max(0.04, Math.min(1, sample));
+        const barHeight = Math.max(1, amplitude * height * 0.78);
+        const x = i * barWidth + barWidth * 0.15;
+        const y = (height - barHeight) / 2;
+        const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
+        gradient.addColorStop(0, accent);
+        gradient.addColorStop(1, labelGlow);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(Math.floor(x), Math.floor(y), Math.max(1, Math.floor(barWidth * 0.7)), Math.floor(barHeight));
+      }
+    }
+
+    // MIDI waveform: render note on density across song time
+    const midiSamples = new Array(256).fill(0);
+    if (midiData && midiData.tracks && midiData.tracks.length) {
+      const resolve = ticksToMs(midiData);
+      const songMs = Math.max(1, currentMidiDurationMs || getMidiDurationMs(midiData));
+      const noteTimes = [];
+      for (const tr of midiData.tracks) {
+        for (const ev of tr.events) {
+          if (ev.type === 'noteOn') noteTimes.push({ time: resolve(ev.tick), velocity: ev.velocity || 64 });
+        }
+      }
+      for (const note of noteTimes) {
+        const idx = Math.min(midiSamples.length - 1, Math.floor((note.time / songMs) * midiSamples.length));
+        midiSamples[idx] = Math.min(1, midiSamples[idx] + (note.velocity / 127) * 0.3 + 0.12);
+      }
+    }
+    paintWaveform(mctx, w, h, midiSamples, '#2de2e6', '#93fff9');
+
+    // MP3 waveform: use decoded buffer to draw average amplitude per bucket
+    const mp3Samples = new Array(256).fill(0);
+    if (mp3AudioBuffer) {
+      const data = mp3AudioBuffer.getChannelData(0);
+      const len = data.length;
+      const buckets = 256;
+      const step = Math.max(1, Math.floor(len / buckets));
+      for (let i=0;i<buckets;i++){
+        let sum=0; for (let j=0;j<step;j++){ sum += Math.abs(data[i*step + j]||0); }
+        mp3Samples[i] = Math.min(1, (sum/step) * 2.5);
+      }
+    }
+    paintWaveform(actx, mw, mh, mp3Samples, '#7c8cff', '#d6dbff');
+
+    // Draw a vertical marker showing the offset alignment
+    if (mp3AudioBuffer) {
+      const durationMs = (mp3AudioBuffer.length / mp3AudioBuffer.sampleRate) * 1000;
+      const alignX = Math.floor((Math.max(0, -mp3OffsetMs) / Math.max(1, durationMs)) * mw);
+      actx.strokeStyle = '#ffcc66';
+      actx.lineWidth = Math.max(1, scale);
+      actx.beginPath();
+      actx.moveTo(alignX, 0);
+      actx.lineTo(alignX, mh);
+      actx.stroke();
+    }
+  } catch (e) { console.warn('drawWaveforms failed', e); }
 }
 
 function buildLaneSet(field, store, isReference) {
@@ -2276,6 +3984,35 @@ function gameLoop(now) {
 
   const elapsed = now - gameStartTime; // ms since game started
   const fieldH  = laneHeight();
+  const songDurationMs = (midiData ? currentMidiDurationMs : 0) || (mp3AudioBuffer ? (mp3AudioBuffer.length / mp3AudioBuffer.sampleRate) * 1000 : 0);
+
+  if (manualMappingActive) {
+    const progress = songDurationMs ? Math.min(100, elapsed / songDurationMs * 100) : 0;
+    document.getElementById('progress-bar').style.width = progress + '%';
+    if (songDurationMs && elapsed >= songDurationMs) {
+      finishManualMappingSession();
+      manualMappingMode = false;
+      setManualMapMode(false);
+      gameRunning = false;
+      showResults();
+      const resultsCard = document.querySelector('#results-screen .results-card');
+      if (resultsCard) {
+        let mappingText = document.getElementById('manual-mapping-note');
+        if (!mappingText) {
+          mappingText = document.createElement('div');
+          mappingText.id = 'manual-mapping-note';
+          mappingText.style.fontSize = '12px';
+          mappingText.style.color = '#99ddcc';
+          mappingText.style.marginTop = '8px';
+          resultsCard.insertBefore(mappingText, document.getElementById('btn-confirm-manual') || resultsCard.lastElementChild);
+        }
+        mappingText.textContent = 'Mapping complete. Press Confirm to save the latest attempt, or R to restart the mapping attempt.';
+      }
+      return;
+    }
+    requestAnimationFrame(gameLoop);
+    return;
+  }
 
   // Spawn notes whose time has come
   // A note should reach target at note.time ms.
@@ -2350,7 +4087,7 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
       note.el.remove();
       note.el = null;
       note.missed = true;
-      registerMiss();
+      registerMiss(note);
       continue;
     }
 
@@ -2366,13 +4103,14 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
       note.el.remove();
       note.el = null;
       note.missed = true;
-      registerMiss();
+      registerMiss(note);
     }
   }
 }
 
 function spawnNote(note, fieldH, laneMap, isReference = false) {
   const lane = laneMap[note.lane];
+  console.debug('spawnNote called for note.id=', note && note.id, 'laneKey=', note && note.lane, 'isReference=', isReference, 'laneExists=', !!lane);
   if (!lane) return;
   const el = document.createElement('div');
   el.className = 'note' + (note.hold ? ' hold' : '') + (isReference ? ' reference-note' : '');
@@ -2383,6 +4121,7 @@ function spawnNote(note, fieldH, laneMap, isReference = false) {
     el.textContent = 'HOLD';
   }
   lane.appendChild(el);
+  console.debug('spawnNote appended element — lane children now=', lane.children.length);
   note.el = el;
 }
 
@@ -2432,8 +4171,20 @@ function finalizeReferenceHold(note) {
 document.addEventListener('keydown', e => {
   if (!gameRunning) return;
   const lane = keyToLane(e.key);
+  if (manualMappingActive && (e.key === 'r' || e.key === 'R')) {
+    e.preventDefault();
+    startGame();
+    return;
+  }
   if (!lane) return;
   e.preventDefault();
+  if (manualMappingActive) {
+    if (e.repeat || manualMappingHeld[lane]) return;
+    recordManualNoteStart(lane);
+    flashLane(lane);
+    flashTarget(lane);
+    return;
+  }
   if (e.repeat || pressedLanes.has(lane)) return;
   pressedLanes.add(lane);
   handleInput(lane);
@@ -2443,6 +4194,10 @@ document.addEventListener('keyup', e => {
   if (!gameRunning) return;
   const lane = keyToLane(e.key);
   if (!lane) return;
+  if (manualMappingActive) {
+    recordManualNoteEnd(lane);
+    return;
+  }
   pressedLanes.delete(lane);
   releaseHoldNote(lane);
 });
@@ -2456,6 +4211,9 @@ function keyToLane(key) {
 
 function handleInput(lane) {
   const elapsed = performance.now() - gameStartTime;
+  const holdPerfectMs = Math.max(CFG.perfectMs + 40, Math.round(CFG.perfectMs * 1.6));
+  const holdGoodMs = Math.max(CFG.goodMs + 70, Math.round(CFG.goodMs * 1.45));
+  const holdBadMs = Math.max(CFG.badMs + 110, Math.round(CFG.badMs * 1.4));
 
   // Find the nearest unhit note in this lane within bad window
   let best = null;
@@ -2464,7 +4222,8 @@ function handleInput(lane) {
   for (const note of activeNotes) {
     if (note.hit || note.missed || note.lane !== lane) continue;
     const dist = Math.abs(note.time - elapsed);
-    if (dist <= CFG.badMs && dist < bestDist) {
+    const hitWindow = note.hold ? holdBadMs : CFG.badMs;
+    if (dist <= hitWindow && dist < bestDist) {
       best = note;
       bestDist = dist;
     }
@@ -2472,12 +4231,24 @@ function handleInput(lane) {
 
   flashLane(lane);
 
-  if (!best) return; // too early or no note
+  if (!best) {
+    // Out-of-time press: penalize player, play failed sound and duck song
+    combo = 0;
+    score = Math.max(0, score - 100);
+    stats.miss++;
+    updateHUD();
+    showJudgment(lane, 'miss');
+    flashTarget(lane);
+    try { if (songAudio && !songAudio.paused) playFailedSound(); } catch(_){}
+    return;
+  }
 
   if (best.hold) {
     best.started = true;
+    best.holdStartedAt = elapsed;
+    best.holdReleasedEarly = false;
     best.startDist = bestDist;
-    best.judgment = bestDist <= CFG.perfectMs ? 'perfect' : bestDist <= CFG.goodMs ? 'good' : 'bad';
+    best.judgment = bestDist <= holdPerfectMs ? 'perfect' : bestDist <= holdGoodMs ? 'good' : 'bad';
     const useExactDuration = trackClipIds[best.trackIdx] === '__original__';
     const trackConfig = getTrackConfig(best.trackIdx);
     const noteDuration = getNotePlayDuration(best, 300, useExactDuration);
@@ -2505,10 +4276,22 @@ function handleInput(lane) {
   completeTapNote(best, lane, bestDist);
 }
 
-function registerMiss() {
+function registerMiss(note) {
   stats.miss++;
   combo = 0;
   updateHUD();
+  // Only duck/play failed sound if a song is playing AND the missed note would have produced audible audio
+  try {
+    if (songAudio && !songAudio.paused && note && typeof note.trackIdx !== 'undefined') {
+      const cfg = getTrackConfig(note.trackIdx);
+      const clip = getClipById(cfg.clipId);
+      if (cfg.clipId !== '__blank__' && clip && clip.type !== 'blank') {
+        // lower persistent base volume and play failed sound with a temporary duck
+        try { adjustSongBaseVolume(-SONG_VOL_DOWN_STEP); } catch(_){}
+        playFailedSound();
+      }
+    }
+  } catch(_){}
 }
 
 function completeTapNote(note, lane, dist) {
@@ -2531,6 +4314,9 @@ function completeTapNote(note, lane, dist) {
   if (judgment === 'perfect') glowTarget(lane);
   updateHUD();
 
+  // Increase persistent song volume slightly on correct hits (cap at 1.0)
+  try { adjustSongBaseVolume(SONG_VOL_UP_STEP); } catch(_) {}
+
   // Play the note on input (perfect, good, or bad timing)
   const trackConfig = getTrackConfig(note.trackIdx);
   const useExactDuration = trackClipIds[note.trackIdx] === '__original__';
@@ -2538,7 +4324,10 @@ function completeTapNote(note, lane, dist) {
 
   // Decide which clip to play: for perfect/good, play the ORIGINAL mapping (if known) to mirror MIDI; bad plays assigned clip
   const originalClipId = (window.trackOriginalClipIds && window.trackOriginalClipIds[note.trackIdx]) || trackConfig.clipId;
-  const clipToPlay = (judgment === 'perfect' || judgment === 'good') ? originalClipId : trackConfig.clipId;
+  const assignedIsBlank = trackConfig.clipId === '__blank__' || (getClipById(trackConfig.clipId)?.type === 'blank');
+  const clipToPlay = assignedIsBlank
+    ? trackConfig.clipId
+    : ((judgment === 'perfect' || judgment === 'good') ? originalClipId : trackConfig.clipId);
 
   if (note.pitches && Array.isArray(note.pitches)) {
     const wrapper = playPitches(clipToPlay, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, noteDuration, lane, useExactDuration);
@@ -2585,17 +4374,33 @@ function autoCompleteTapNote(note, lane) {
 
 function finalizeHoldNote(note) {
   if (note.completed || note.missed) return;
+  const elapsed = performance.now() - gameStartTime;
+  const holdStart = Math.max(note.time, note.holdStartedAt ?? note.time);
+  const holdEnd = Math.max(holdStart, note.endTime ?? note.time);
+  const heldUntil = Math.min(holdEnd, elapsed);
+  const heldMs = Math.max(0, heldUntil - holdStart);
+  const totalHoldMs = Math.max(1, holdEnd - note.time);
+  const holdRatio = Math.max(0, Math.min(1, heldMs / totalHoldMs));
+
   note.completed = true;
   note.hit = true;
   if (note.el) { note.el.remove(); note.el = null; }
 
   const lane = note.lane;
-  const judgment = note.judgment || 'good';
-  const pts = { perfect: 300, good: 200, bad: 50 };
-  combo++;
-  maxCombo = Math.max(maxCombo, combo);
-  score += pts[judgment] * combo;
-  stats[judgment]++;
+  let judgment = note.judgment || 'good';
+  if (holdRatio < 0.75 && judgment === 'perfect') judgment = 'good';
+  if (holdRatio < 0.45) judgment = 'bad';
+
+  // Award proportionally to held duration; no miss penalty for releasing early.
+  const fullHoldPts = { perfect: 320, good: 230, bad: 140 };
+  const gainedPts = Math.round((fullHoldPts[judgment] || 140) * holdRatio);
+  if (gainedPts > 0) {
+    combo++;
+    maxCombo = Math.max(maxCombo, combo);
+    score += gainedPts * combo;
+    stats[judgment]++;
+    try { adjustSongBaseVolume(SONG_VOL_UP_STEP); } catch(_) {}
+  }
 
   showJudgment(lane, judgment);
   flashTarget(lane);
@@ -2608,11 +4413,8 @@ function releaseHoldNote(lane) {
   if (!note || note.completed || note.missed) return;
   const elapsed = performance.now() - gameStartTime;
   if (elapsed >= note.endTime) return;
-
-  note.missed = true;
-  if (note.el) { note.el.remove(); note.el = null; }
-  delete heldNotes[lane];
-  registerMiss();
+  note.holdReleasedEarly = true;
+  finalizeHoldNote(note);
 }
 
 // ─── HUD ─────────────────────────────────────────────────────────────────────
@@ -2671,6 +4473,19 @@ function showResults() {
   document.getElementById('res-acc').textContent = `Accuracy: ${acc}%  |  Max Combo: ${maxCombo}`;
 
   document.getElementById('results-screen').classList.add('visible');
+  const confirmBtn = document.getElementById('btn-confirm-manual');
+  const manualNote = document.getElementById('manual-mapping-note');
+  if (confirmBtn) confirmBtn.style.display = manualRecordingAwaitingConfirm ? 'block' : 'none';
+  if (manualNote && !manualRecordingAwaitingConfirm) manualNote.remove();
+  if (currentProjectId) {
+    const project = songProjects.find(item => item.id === currentProjectId);
+    if (project) {
+      project.savedScore = Math.max(project.savedScore || 0, score || 0);
+      project.updatedAt = Date.now();
+      persistProjectToStorage(project).catch(err => console.warn('Failed to save project score', err));
+      updateSelectedProjectSummary();
+    }
+  }
 }
 </script>
 </body>
