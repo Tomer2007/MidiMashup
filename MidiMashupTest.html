@@ -776,8 +776,8 @@
         </div>
       </div>
       <div class="drop-zone" id="mp4-drop-zone" style="margin-top:8px;">
-        Drop an .mp4 / .mp3 file here, or click to browse
-        <input type="file" id="mp3-file-input" accept="audio/mpeg,audio/mp3,audio/mp4,video/mp4" style="display:none">
+        <span id="mp4-drop-label">Drop an .mp4 / .mp3 file here, or click to browse</span>
+        <input type="file" id="mp3-file-input" accept=".mp3,.mp4,audio/*,video/*" style="display:none">
       </div>
       <button id="btn-clear-mp4" class="btn-primary" style="padding:6px 10px; margin-top:8px; width:auto; background:#8b4444; display:none;">Clear MP4 File</button>
       <div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap;">
@@ -1954,8 +1954,10 @@ function finishManualMappingSession() {
 function confirmManualMappingSession() {
   currentManualBeatmap = cloneManualBeatmap(manualBeatmapDraft);
   manualRecordingAwaitingConfirm = false;
-  const manualSongCheckbox = document.getElementById('manual-map-enable-song');
-  if (manualSongCheckbox && manualSongCheckbox.checked && currentProjectId) {
+  // Always persist the beatmap into the in-memory project so it survives a
+  // re-open of the editor. The checkbox state is applied separately when the
+  // editor reloads.
+  if (currentProjectId) {
     const project = songProjects.find(item => item.id === currentProjectId);
     if (project) {
       project.manualMapEnabled = true;
@@ -2136,7 +2138,22 @@ async function openProjectEditor(projectId = null) {
   currentMidiDurationMs = project.midiDurationMs || 0;
   setEditorVisibility(true);
   updateProjectEditorTitle(projectId ? 'Edit Song Project' : 'Add Song Project');
+
+  // Stash any fresh in-memory recording before setSongProjectFormFromProject
+  // overwrites currentManualBeatmap from the (possibly stale) stored project.
+  const freshRecording = Array.isArray(currentManualBeatmap) && currentManualBeatmap.length > 0;
+  const stashedBeatmap = freshRecording ? cloneManualBeatmap(currentManualBeatmap) : null;
+
   setSongProjectFormFromProject(project);
+
+  // Restore the fresh recording if we had one — it takes priority over storage.
+  if (stashedBeatmap) {
+    currentManualBeatmap = stashedBeatmap;
+    manualBeatmapDraft   = cloneManualBeatmap(stashedBeatmap);
+    const manualSongCheckbox = document.getElementById('manual-map-enable-song');
+    if (manualSongCheckbox) manualSongCheckbox.checked = true;
+  }
+
   if (project.midiBuffer) {
     await loadMidiProjectBuffer(project.midiBuffer, project.midiName || 'project.mid', false);
   } else {
@@ -2154,27 +2171,10 @@ async function openProjectEditor(projectId = null) {
   } else {
     clearMp3ProjectBlob(false);
   }
-
-  // If we are returning from a manual recording session the in-memory
-  // currentManualBeatmap already holds the freshly confirmed recording.
-  // Prefer that over what is stored (which may be stale or empty for a new project).
-  const freshRecording = Array.isArray(currentManualBeatmap) && currentManualBeatmap.length > 0;
-  const storedRecording = Array.isArray(project.manualBeatmap) && project.manualBeatmap.length > 0;
-  if (!freshRecording) {
-    currentManualBeatmap = storedRecording ? cloneManualBeatmap(project.manualBeatmap) : [];
-  }
-  manualBeatmapDraft = cloneManualBeatmap(currentManualBeatmap);
-
-  setManualMapMode(false);
-  const manualSongCheckbox = document.getElementById('manual-map-enable-song');
-  if (manualSongCheckbox) {
-    // Auto-check "use manual tracking" if we just confirmed a fresh recording
-    manualSongCheckbox.checked = freshRecording ? true : !!project.manualMapEnabled;
-  }
   if (project.trackRoles && project.trackRoles.length && midiData) {
-    trackRoles = project.trackRoles.slice();
-    trackVolumes = project.trackVolumes && project.trackVolumes.length ? project.trackVolumes.slice() : trackVolumes;
-    trackClipIds = project.trackClipIds && project.trackClipIds.length ? project.trackClipIds.slice() : trackClipIds;
+    trackRoles     = project.trackRoles.slice();
+    trackVolumes   = project.trackVolumes   && project.trackVolumes.length   ? project.trackVolumes.slice()   : trackVolumes;
+    trackClipIds   = project.trackClipIds   && project.trackClipIds.length   ? project.trackClipIds.slice()   : trackClipIds;
     trackCollapsed = project.trackCollapsed && project.trackCollapsed.length ? project.trackCollapsed.slice() : trackCollapsed;
     buildTrackSelector({ preserveCurrent: true });
   }
@@ -2205,7 +2205,8 @@ async function loadMp3ProjectBlob(blob, fileName, markDirty = true) {
   mp3Input.dataset.fileName = fileName;
   const mp4DropZone = document.getElementById('mp4-drop-zone');
   if (mp4DropZone) {
-    mp4DropZone.textContent = `✓ ${fileName}`;
+    const label = document.getElementById('mp4-drop-label');
+    if (label) label.textContent = `✓ ${fileName}`;
     mp4DropZone.classList.add('loaded');
     mp4DropZone.dataset.fileName = fileName;
   }
@@ -2248,7 +2249,8 @@ function clearMp3ProjectBlob(markDirty = true) {
   }
   const mp4DropZone = document.getElementById('mp4-drop-zone');
   if (mp4DropZone) {
-    mp4DropZone.textContent = 'Drop an .mp4 / .mp3 file here, or click to browse';
+    const label = document.getElementById('mp4-drop-label');
+    if (label) label.textContent = 'Drop an .mp4 / .mp3 file here, or click to browse';
     mp4DropZone.classList.remove('loaded', 'drag-over');
     mp4DropZone.dataset.fileName = '';
   }
@@ -2309,7 +2311,8 @@ async function saveCurrentProject() {
   selectedProjectId = project.id;
   editingProjectId = project.id;
   renderProjectList();
-  setEditorVisibility(false);
+  // NOTE: intentionally does NOT call setEditorVisibility(false).
+  // Callers that want to close the editor after saving must do so themselves.
   return project;
 }
 
@@ -2629,6 +2632,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-save-project').addEventListener('click', async () => {
     try {
       await saveCurrentProject();
+      setEditorVisibility(false); // Only close when the user explicitly pressed Save
       alert('Project saved.');
     } catch (err) {
       console.warn('Save project failed', err);
@@ -2664,13 +2668,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const mp3AlignZero = document.getElementById('mp3-align-zero');
 
   if (mp4DropZone) {
-    // The hidden <input> sits inside the drop zone div. Without stopPropagation,
-    // clicking the zone fires the zone's click handler (which calls mp3Input.click()),
-    // but that synthetic click also bubbles back up to the zone — browsers see the
-    // double-open and cancel the file dialog immediately.
-    mp3Input.addEventListener('click', e => e.stopPropagation());
-
-    mp4DropZone.addEventListener('click', () => mp3Input.click());
+    // Guard: only open the file dialog when the user clicked the zone itself or its
+    // label — not when the click originated from the hidden <input> element, which
+    // would cause a double-open that browsers silently cancel.
+    mp4DropZone.addEventListener('click', (e) => {
+      if (e.target === mp3Input) return;
+      mp3Input.click();
+    });
     mp4DropZone.addEventListener('dragover', e => { e.preventDefault(); mp4DropZone.classList.add('drag-over'); });
     mp4DropZone.addEventListener('dragleave', () => mp4DropZone.classList.remove('drag-over'));
     mp4DropZone.addEventListener('drop', async e => {
@@ -2776,34 +2780,55 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-confirm-manual')?.addEventListener('click', async () => {
     if (!manualBeatmapDraft.length && !currentManualBeatmap.length) return;
 
-    // Commit the recorded beatmap into the working draft
+    // 1. Commit the draft into currentManualBeatmap and the in-memory project object
     confirmManualMappingSession();
 
-    // Sync settings back into the in-memory draft but do NOT force a full save —
-    // the user may still be editing the project and can save when ready.
-    syncProjectSettingsToDraft();
-
-    // Auto-enable "Use Manual Tracking" now that we have a recording
-    const manualSongCheckbox = document.getElementById('manual-map-enable-song');
-    if (manualSongCheckbox && !manualSongCheckbox.checked) {
-      manualSongCheckbox.checked = true;
+    // 2. Persist to storage immediately so the recording is never lost,
+    //    even if the user closes the tab before pressing Save in the editor.
+    //    We build a minimal project record using whatever is in memory right now
+    //    without reading the UI (the editor is hidden behind the game screen).
+    if (!currentProjectId) currentProjectId = makeProjectId();
+    let project = songProjects.find(item => item.id === currentProjectId);
+    if (!project) {
+      project = createEmptyProject();
+      project.id = currentProjectId;
+      songProjects.unshift(project);
     }
+    project.manualBeatmap    = cloneManualBeatmap(currentManualBeatmap);
+    project.manualMapEnabled = true;
+    project.midiBuffer       = currentMidiArrayBuffer ? currentMidiArrayBuffer.slice(0) : project.midiBuffer || null;
+    project.mp3Blob          = currentMp3Blob || project.mp3Blob || null;
+    project.updatedAt        = Date.now();
+    await persistProjectToStorage(project);
 
     manualRecordingAwaitingConfirm = false;
+    setManualMapMode(false);
 
-    // Return to the project editor in the state it was in before recording started.
-    // Do NOT call setEditorVisibility(false) — just swap screens back.
+    // 3. Swap back to the setup screen
     document.getElementById('results-screen').classList.remove('visible');
     document.getElementById('game-screen').style.display = 'none';
     document.getElementById('setup-screen').style.display = 'flex';
 
-    // Re-open the editor for the same project (restores all fields without saving)
-    if (currentProjectId || editingProjectId) {
-      await openProjectEditor(currentProjectId || editingProjectId);
-    } else {
-      setEditorVisibility(true);
-    }
+    // 4. Restore the editor from in-memory state — do NOT call openProjectEditor()
+    //    because that reloads from storage and may not yet see the freshly saved
+    //    recording on some storage implementations. We already have everything we
+    //    need in memory.
+    setEditorVisibility(true);
+    updateProjectEditorTitle('Edit Song Project');
 
+    // Re-apply form fields that were set before recording started
+    const titleInput = document.getElementById('project-title-input');
+    if (titleInput && !titleInput.value.trim()) titleInput.value = project.title || 'New Song Project';
+
+    // Tick the "Use Manual Tracking" checkbox — recording is now active
+    const manualSongCheckbox = document.getElementById('manual-map-enable-song');
+    if (manualSongCheckbox) manualSongCheckbox.checked = true;
+
+    // Sync checkbox state and beatmap back into the draft
+    manualBeatmapDraft = cloneManualBeatmap(currentManualBeatmap);
+    syncProjectSettingsToDraft();
+
+    renderProjectList();
     checkReady();
   });
   document.getElementById('btn-menu').addEventListener('click', goMenu);
@@ -3629,8 +3654,10 @@ function startGame() {
     currentManualBeatmap = [];
 
   } else if (useManualTracking) {
-    // Cases 2, 4, 5 (playback): use the saved manual beatmap as the note track
-    beatmap = getManualPlaybackBeatmap();
+    // Cases 2, 4, 5 (playback): use the saved manual beatmap as the note track.
+    // Notes must NOT be auto — the whole point is that the player hits them.
+    const manualNotes = getManualPlaybackBeatmap();
+    beatmap = manualNotes.map(n => ({ ...n, auto: false, playerMuted: false }));
     referenceBeatmap = [];
     manualMappingActive = false;
 
@@ -4066,6 +4093,35 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
       }
       if (!note.hold && y < -60 && !note.completed) {
         note.missed = true;
+        if (note.el) { note.el.remove(); note.el = null; }
+      }
+      continue;
+    }
+
+    // Game track: auto-complete notes marked as auto-play (used for manual tracking playback)
+    if (note.auto && !note.started && elapsed >= note.time) {
+      note.started = true;
+      // Automatically complete the note without player input
+      const trackConfig = getTrackConfig(note.trackIdx);
+      const useExactDuration = trackClipIds[note.trackIdx] === '__original__';
+      const noteDuration = getNotePlayDuration(note, 300, useExactDuration);
+      if (note.pitches && Array.isArray(note.pitches)) {
+        note.voice = playPitches(trackConfig.clipId, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, noteDuration, note.lane, useExactDuration);
+      } else {
+        note.voice = createClipVoice({
+          clipId: trackConfig.clipId,
+          note: note.note,
+          velocity: note.velocity,
+          volume: trackConfig.volume,
+          startTime: getAudioCtx().currentTime,
+          duration: noteDuration,
+          lane: note.lane,
+          exactDuration: useExactDuration,
+        });
+      }
+      if (!note.hold) {
+        note.completed = true;
+        note.hit = true;
         if (note.el) { note.el.remove(); note.el = null; }
       }
       continue;
