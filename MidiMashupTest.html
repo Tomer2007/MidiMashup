@@ -23,7 +23,16 @@
     --miss: #ff0033;
     --text: #c0c0e0;
     --note-speed: 6; /* pixels per frame - overridden by JS variable */
-    --track-width: 45%; /* width of the play field (tracks/lanes area) */
+    --play-track-width: clamp(480px, 37vw, 520px);
+    --reference-track-width: clamp(480px, 37vw, 520px);
+    --play-track-x: 45px;
+    --reference-track-x: 45px;
+    --note-size: 606px;
+    --hold-note-width: 404px;
+    --track-width: clamp(420px, 45vw, 640px); /* legacy fallback for older layout math */
+    --lane-gap: 24px;
+    --target-size: 64px;
+    --hold-seg-alpha: 0.18;
     --setup-card-width: min(1080px, 96vw);
     --setup-track-list-max-height: 220px;
   }
@@ -216,8 +225,28 @@
   .badge-manual { background: #2f5a4b; color: #d7fff0; }
   .badge-off { background: #111; color: #555; border: 1px solid #333; }
   .track-volume {
-    width: 100px;
+    width: 120px;
     accent-color: var(--up);
+  }
+  .track-volume-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 120px;
+    align-items: stretch;
+  }
+  .track-volume-scale {
+    display: flex;
+    justify-content: space-between;
+    width: 120px;
+    font-size: 10px;
+    line-height: 1;
+    color: #8888aa;
+    user-select: none;
+  }
+  .track-volume-scale .track-volume-mid {
+    color: #b7dfff;
+    font-weight: 700;
   }
   .track-clip {
     /* Container for clip-picker */
@@ -263,6 +292,40 @@
     display: flex;
     position: relative;
     z-index: 1;
+  }
+
+  #scene-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    background: var(--bg);
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    image-rendering: pixelated;
+    transition: opacity 0.18s linear, background-image 0.18s linear, background-color 0.18s linear;
+  }
+
+  #reference-field,
+  #play-field {
+    z-index: 1;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.10)), rgba(5,5,16,0.58);
+    backdrop-filter: blur(1px);
+    border-color: rgba(26,26,58,0.95);
+  }
+
+  #particle-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1150;
+    overflow: visible;
   }
 
   #hud {
@@ -311,25 +374,55 @@
   #btn-back:hover { border-color: var(--miss); color: var(--miss); }
 
   #play-field {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
+    right: var(--play-track-x);
+    width: var(--play-track-width);
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr;
-    width: var(--track-width);
-    margin-left: auto;
-    margin-right: 0;
+    gap: var(--lane-gap);
+  }
+
+  #particle-layer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1150;
+    overflow: visible;
+  }
+
+  .spark-particle {
+    position: absolute;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    will-change: transform, opacity, left, top;
+  }
+
+  .spark-particle .spark-outer {
+    position: absolute;
+    inset: 0;
+    background: currentColor;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    box-shadow: 0 0 10px currentColor;
+  }
+
+  .spark-particle .spark-inner {
+    position: absolute;
+    inset: 28%;
+    background: rgba(255,255,255,0.95);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    opacity: 0.9;
   }
 
   #reference-field {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
+    left: var(--reference-track-x);
+    width: var(--reference-track-width);
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr;
-    width: calc(100% - var(--track-width));
-    border-right: 1px solid var(--border);
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.05));
+    gap: var(--lane-gap);
+    background-color: rgba(5,5,16,0.58);
+    background-image: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.10));
   }
 
   #reference-field .lane {
@@ -339,7 +432,6 @@
     opacity: 0.16;
   }
   #reference-field .target-zone {
-    transform: translateX(-50%) scale(0.82);
     opacity: 0.7;
   }
   #reference-field .note {
@@ -382,33 +474,64 @@
     top: 60px;
     left: 50%;
     transform: translateX(-50%);
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    border: 2px solid;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.05s;
+    width: var(--target-size);
+    height: var(--target-size);
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    image-rendering: auto;
+    transition: transform 0.05s, filter 0.05s, background-image 0.05s;
   }
-  .target-zone svg { width: 28px; height: 28px; }
   .target-zone.hit { transform: translateX(-50%) scale(0.9); filter: brightness(2); }
 
-  /* Strong glow for perfect hits */
+  .target-zone.pressed { transform: translateX(-50%) scale(1.02); filter: brightness(1.15); }
+
+  /* Strong glow for perfect hits - applies to sprite content area */
   .target-zone.glow { transform: translateX(-50%) scale(1.06); filter: brightness(2.2); box-shadow: 0 0 30px currentColor, 0 0 60px currentColor; transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease; }
 
-  .lane-up .target-zone    { border-color: var(--up);    box-shadow: 0 0 20px rgba(0,245,255,0.3);  }
-  .lane-left .target-zone  { border-color: var(--left);  box-shadow: 0 0 20px rgba(255,0,170,0.3);  }
-  .lane-right .target-zone { border-color: var(--right); box-shadow: 0 0 20px rgba(170,255,0,0.3);  }
-  .lane-down .target-zone  { border-color: var(--down);  box-shadow: 0 0 20px rgba(255,102,0,0.3);  }
+  .lane-up .target-zone {
+    --target-off-sprite: url('Art/Mushy/MM-Directions/MM-UpOff.png');
+    --target-on-sprite: url('Art/Mushy/MM-Directions/MM-UpOn.png');
+    color: var(--up);
+    box-shadow: 0 0 20px rgba(0,245,255,0.3);
+    background-image: var(--target-off-sprite);
+  }
+  .lane-left .target-zone {
+    --target-off-sprite: url('Art/Mushy/MM-Directions/MM-LeftOff.png');
+    --target-on-sprite: url('Art/Mushy/MM-Directions/MM-LeftOn.png');
+    color: var(--left);
+    box-shadow: 0 0 20px rgba(255,0,170,0.3);
+    background-image: var(--target-off-sprite);
+  }
+  .lane-right .target-zone {
+    --target-off-sprite: url('Art/Mushy/MM-Directions/MM-RightOff.png');
+    --target-on-sprite: url('Art/Mushy/MM-Directions/MM-RightOn.png');
+    color: var(--right);
+    box-shadow: 0 0 20px rgba(170,255,0,0.3);
+    background-image: var(--target-off-sprite);
+  }
+  .lane-down .target-zone {
+    --target-off-sprite: url('Art/Mushy/MM-Directions/MM-DownOff.png');
+    --target-on-sprite: url('Art/Mushy/MM-Directions/MM-DownOn.png');
+    color: var(--down);
+    box-shadow: 0 0 20px rgba(255,102,0,0.3);
+    background-image: var(--target-off-sprite);
+  }
+
+  .lane-up .target-zone.pressed,
+  .lane-left .target-zone.pressed,
+  .lane-right .target-zone.pressed,
+  .lane-down .target-zone.pressed {
+    background-image: var(--target-on-sprite);
+  }
 
   /* Notes */
   .note {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    width: 50px;
-    height: 50px;
+    width: var(--note-size);
+    height: var(--note-size);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -416,15 +539,47 @@
     font-size: 10px;
   }
   .note.hold {
-    width: 38px;
+    width: var(--hold-note-width);
     border-radius: 18px;
-    align-items: flex-start;
-    padding-top: 8px;
-    font-size: 9px;
-    letter-spacing: 0.12em;
+    align-items: center;
+    justify-content: center;
+    padding-top: 0;
+    font-size: 0;
+    letter-spacing: 0;
+    overflow: hidden;
   }
   .note.hold.active-hold {
     filter: brightness(1.25);
+  }
+
+  .lane-up .note.hold,
+  .lane-left .note.hold,
+  .lane-right .note.hold,
+  .lane-down .note.hold {
+    background-blend-mode: screen, normal;
+    background-size: 100% 11px, 100% 100%;
+    background-repeat: repeat-y, no-repeat;
+  }
+
+  .lane-up .note.hold {
+    background-image:
+      repeating-linear-gradient(to bottom, rgba(255,255,255,var(--hold-seg-alpha)) 0 7px, rgba(255,255,255,0.12) 7px 11px),
+      linear-gradient(to bottom, rgba(0,245,255,0.95), rgba(0,100,150,0.58));
+  }
+  .lane-left .note.hold {
+    background-image:
+      repeating-linear-gradient(to bottom, rgba(255,255,255,var(--hold-seg-alpha)) 0 7px, rgba(255,255,255,0.12) 7px 11px),
+      linear-gradient(to bottom, rgba(255,0,170,0.95), rgba(150,0,100,0.58));
+  }
+  .lane-right .note.hold {
+    background-image:
+      repeating-linear-gradient(to bottom, rgba(255,255,255,var(--hold-seg-alpha)) 0 7px, rgba(255,255,255,0.12) 7px 11px),
+      linear-gradient(to bottom, rgba(170,255,0,0.95), rgba(100,150,0,0.58));
+  }
+  .lane-down .note.hold {
+    background-image:
+      repeating-linear-gradient(to bottom, rgba(255,255,255,var(--hold-seg-alpha)) 0 7px, rgba(255,255,255,0.12) 7px 11px),
+      linear-gradient(to bottom, rgba(255,102,0,0.95), rgba(150,50,0,0.58));
   }
 
   .lane-up    .note { background: radial-gradient(circle, rgba(0,245,255,0.9), rgba(0,100,150,0.5)); box-shadow: 0 0 12px rgba(0,245,255,0.7); }
@@ -801,6 +956,41 @@
       <div id="track-list"></div>
     </div>
 
+    <h2>02B — Characters</h2>
+    <div class="var-row">
+      <div class="var-item">
+        <label>Player Character</label>
+        <select id="var-player-character" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
+          <option value="blank">None</option>
+          <option value="Mushy">Tote Singer</option>
+        </select>
+      </div>
+      <div class="var-item">
+        <label>Rival Character</label>
+        <select id="var-rival-character" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
+          <option value="blank">None</option>
+          <option value="Mushy">Tote Singer</option>
+        </select>
+      </div>
+    </div>
+
+    <h2>02C — Background Scene</h2>
+    <div class="var-row">
+      <div class="var-item">
+        <label>Song Scene</label>
+        <select id="var-background-scene" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
+          <option value="dark">Dark</option>
+          <option value="city-night">City - Night</option>
+        </select>
+      </div>
+      <div class="var-item">
+        <label>Scene Tempo BPM</label>
+        <input type="number" id="var-background-tempo" value="0" min="0" max="400" title="0 uses the MIDI tempo when available, otherwise 120 BPM">
+      </div>
+    </div>
+
+    <!-- Character offsets are now code-level constants (not stored per-project) -->
+
     <h2>03 — Parameters</h2>
     <div class="var-row">
       <div class="var-item">
@@ -862,8 +1052,16 @@
   </div>
   <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
   <div id="game-main">
+    <div id="scene-layer"></div>
     <div id="reference-field"></div>
     <div id="play-field"></div>
+    <div id="particle-layer"></div>
+    <div id="character-container-rival" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:1200;pointer-events:none;">
+      <canvas id="character-canvas-rival" style="image-rendering:pixelated;pointer-events:none;display:block;"></canvas>
+    </div>
+    <div id="character-container-player" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);z-index:1200;pointer-events:none;">
+      <canvas id="character-canvas-player" style="image-rendering:pixelated;pointer-events:none;display:block;"></canvas>
+    </div>
   </div>
 </div>
 <div id="countdown-overlay"><div id="countdown-value"></div></div>
@@ -1549,10 +1747,13 @@ function createEmptyProject() {
     midiBuffer: null,
     mp3Blob: null,
     updatedAt: Date.now(),
+      playerCharacterId: 'blank',
+      rivalCharacterId: 'blank',
   };
 }
 
 function readProjectSettingsFromUI() {
+  const sceneTempoValue = parseFloat(document.getElementById('var-background-tempo').value);
   return {
     noteSpeed: parseFloat(document.getElementById('var-speed').value) || DEFAULTS.noteSpeed,
     perfectMs: parseFloat(document.getElementById('var-perfect').value) || DEFAULTS.perfectMs,
@@ -1563,6 +1764,8 @@ function readProjectSettingsFromUI() {
     mergeMs: parseFloat(document.getElementById('var-merge-ms').value) || DEFAULTS.mergeMs,
     longNoteThresholdMs: parseFloat(document.getElementById('var-long-note-threshold').value) || DEFAULTS.longNoteThresholdMs,
     difficulty: document.getElementById('var-difficulty').value || DEFAULTS.difficulty,
+    backgroundScene: document.getElementById('var-background-scene').value || DEFAULTS.backgroundScene,
+    backgroundTempoBpm: Number.isFinite(sceneTempoValue) ? sceneTempoValue : DEFAULTS.backgroundTempoBpm,
   };
 }
 
@@ -1577,6 +1780,13 @@ function applyProjectSettingsToUI(settings = {}) {
   document.getElementById('var-merge-ms').value = merged.mergeMs;
   document.getElementById('var-long-note-threshold').value = merged.longNoteThresholdMs;
   document.getElementById('var-difficulty').value = merged.difficulty;
+  const sceneSelect = document.getElementById('var-background-scene');
+  if (sceneSelect) {
+    const sceneId = getBackgroundSceneConfig(merged.backgroundScene).id;
+    sceneSelect.value = sceneId;
+  }
+  const sceneTempo = document.getElementById('var-background-tempo');
+  if (sceneTempo) sceneTempo.value = String(Number.isFinite(merged.backgroundTempoBpm) ? merged.backgroundTempoBpm : DEFAULTS.backgroundTempoBpm);
 }
 
 function getMidiDurationMs(midi) {
@@ -1645,7 +1855,7 @@ function scheduleProjectPreviewTrack(midi, trackIdx, startTime, previewTrackVolu
   const clipId = previewTrackClipIds[trackIdx] || '__original__';
   const clip = getClipById(clipId);
   const volume = (typeof previewTrackVolumes[trackIdx] === 'number' ? previewTrackVolumes[trackIdx] : 0.8);
-  const useExactDuration = clipId === '__original__';
+  const useExactDuration = clipId === '__original__' || clipUsesPitchShiftAndExactDuration(clipId);
   const nodes = [];
 
   for (const ev of track.events) {
@@ -1783,6 +1993,23 @@ function updateProjectEditorTitle(text) {
 function setSongProjectFormFromProject(project) {
   document.getElementById('project-title-input').value = project.title || 'New Song Project';
   applyProjectSettingsToUI(project.settings || DEFAULTS);
+  applyCharacterSettingsToUI({
+    playerCharacterId: project.playerCharacterId || 'blank',
+    rivalCharacterId: project.rivalCharacterId || 'blank',
+  });
+  // Ensure editor shows the currently-selected characters and applies global offsets/scales
+  loadCharacterSprites(project.playerCharacterId || 'blank', 'player');
+  loadCharacterSprites(project.rivalCharacterId || 'blank', 'rival');
+  const playerContainer = document.getElementById('character-container-player');
+  const rivalContainer = document.getElementById('character-container-rival');
+  if (playerContainer) {
+    playerContainer.style.right = (10 + playerCharacterOffsetX) + 'px';
+    playerContainer.style.top = 'calc(50% + ' + playerCharacterOffsetY + 'px)';
+  }
+  if (rivalContainer) {
+    rivalContainer.style.left = (10 + rivalCharacterOffsetX) + 'px';
+    rivalContainer.style.top = 'calc(50% + ' + rivalCharacterOffsetY + 'px)';
+  }
   mp3OffsetMs = project.mp3OffsetMs || 0;
   const manualSongCheckbox = document.getElementById('manual-map-enable-song');
   if (manualSongCheckbox) manualSongCheckbox.checked = !!project.manualMapEnabled;
@@ -1801,6 +2028,9 @@ function syncProjectSettingsToDraft() {
   if (!project) return null;
   project.title = document.getElementById('project-title-input').value.trim() || 'New Song Project';
   project.settings = readProjectSettingsFromUI();
+  const charSettings = readCharacterSettingsFromUI();
+  project.playerCharacterId = charSettings.playerCharacterId || 'blank';
+  project.rivalCharacterId = charSettings.rivalCharacterId || 'blank';
   project.mp3OffsetMs = mp3OffsetMs || 0;
   project.trackRoles = trackRoles.slice();
   project.trackVolumes = trackVolumes.slice();
@@ -1810,6 +2040,7 @@ function syncProjectSettingsToDraft() {
   project.mp3DurationMs = mp3AudioBuffer ? (mp3AudioBuffer.length / mp3AudioBuffer.sampleRate) * 1000 : (project.mp3DurationMs || 0);
   project.midiName = dropZone?.dataset?.fileName || project.midiName || '';
   project.mp3Name = document.getElementById('mp3-file-input')?.dataset?.fileName || project.mp3Name || '';
+  return project;
 }
 
 function renderProjectList() {
@@ -2145,6 +2376,7 @@ async function openProjectEditor(projectId = null) {
   const stashedBeatmap = freshRecording ? cloneManualBeatmap(currentManualBeatmap) : null;
 
   setSongProjectFormFromProject(project);
+  populateCharacterDropdowns();
 
   // Restore the fresh recording if we had one — it takes priority over storage.
   if (stashedBeatmap) {
@@ -2267,6 +2499,10 @@ async function saveCurrentProject() {
   project.id = currentProjectId;
   project.title = document.getElementById('project-title-input').value.trim() || 'New Song Project';
   project.settings = readProjectSettingsFromUI();
+  // Save selected characters from editor
+  const charSettings = readCharacterSettingsFromUI();
+  project.playerCharacterId = charSettings.playerCharacterId || 'blank';
+  project.rivalCharacterId = charSettings.rivalCharacterId || 'blank';
   project.mp3OffsetMs = mp3OffsetMs || 0;
   project.trackRoles = trackRoles.slice();
   project.trackVolumes = trackVolumes.slice();
@@ -2325,6 +2561,10 @@ async function useProjectForPlayback(projectId) {
   songProjects = songProjects.map(item => item.id === project.id ? { ...item, ...project } : item);
   setSelectedProjectId(project.id);
   applyProjectSettingsToUI(project.settings || DEFAULTS);
+  applyCharacterSettingsToUI({
+    playerCharacterId: project.playerCharacterId || 'blank',
+    rivalCharacterId: project.rivalCharacterId || 'blank',
+  });
   mp3OffsetMs = project.mp3OffsetMs || 0;
   currentManualBeatmap = Array.isArray(project.manualBeatmap) ? cloneManualBeatmap(project.manualBeatmap) : [];
   manualBeatmapDraft = cloneManualBeatmap(currentManualBeatmap);
@@ -2459,6 +2699,143 @@ let SOUND_CLIPS = SOUND_CLIP_GROUPS.flatMap(group =>
   group.clips.map(clip => ({ ...clip, groupLabel: group.label }))
 );
 
+function createSpriteSheetConfig(src, cols = 1, rows = 1, scale = 1, frameCount = null) {
+  return { src, cols, rows, scale, frameCount };
+}
+
+function createCharacterConfig(config) {
+  return {
+    id: config.id,
+    label: config.label,
+    spriteSheets: config.spriteSheets,
+    soundClipIds: config.soundClipIds,
+    tauntClips: config.tauntClips || [],
+    frameCount: config.frameCount || 1,
+    frameDuration: config.frameDuration || 100,
+  };
+}
+
+// ─── CHARACTER DEFINITIONS ──────────────────────────────────────────────────
+const CHARACTERS = [
+  createCharacterConfig({
+    id: 'blank',
+    label: 'None',
+    spriteSheets: {
+      idle: createSpriteSheetConfig(null),
+      up: createSpriteSheetConfig(null),
+      left: createSpriteSheetConfig(null),
+      right: createSpriteSheetConfig(null),
+      down: createSpriteSheetConfig(null),
+    },
+    soundClipIds: {
+      up: null,
+      left: null,
+      right: null,
+      down: null,
+    },
+  }),
+  createCharacterConfig({
+    id: 'mushy',
+    label: 'Mushy Singer',
+    spriteSheets: {
+// cols, rows, scale, frameCount, frameDuration
+      idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8),
+      up: createSpriteSheetConfig('Art/Mushy/SS-MushySingerUP.png', 2, 1, 1.0, 2),
+      left: createSpriteSheetConfig('Art/Mushy/SS-MushySingerLeft.png', 2, 1, 1.0, 2),
+      right: createSpriteSheetConfig('Art/Mushy/SS-MushySingerRight.png', 2, 1, 1.0, 2),
+      down: createSpriteSheetConfig('Art/Mushy/SS-MushySingerDown.png', 2, 1, 1.0, 2),
+    },
+    soundClipIds: {
+      up: ['mushy-up'],
+      left: ['mushy-left'],
+      right: ['mushy-right'],
+      down: ['mushy-down'],
+    },
+    tauntClips: ['mushy-purchase', 'mushy-shake', 'mushy-eating'],
+    frameCount: 8,
+    frameDuration: 60,
+  }),
+];
+
+const BACKGROUND_SCENES = [
+  {
+    id: 'dark',
+    label: 'Dark',
+    backgroundColor: '#050510',
+    images: [],
+    beatOrder: [0],
+    backgroundPosition: 'center center',
+  },
+  {
+    id: 'city-night',
+    label: 'City - Night',
+    backgroundColor: '#050510',
+    images: [
+      'Art/Mushy/World/MM-CityScene-Night1.png',
+      'Art/Mushy/World/MM-CityScene-Night2.png',
+      'Art/Mushy/World/MM-CityScene-Night3.png',
+      'Art/Mushy/World/MM-CityScene-Night2.png',
+    ],
+    beatOrder: [0, 1, 2, 3],
+    backgroundPosition: 'center center',
+  },
+];
+
+function getBackgroundSceneConfig(sceneId) {
+  return BACKGROUND_SCENES.find(scene => scene.id === sceneId) || BACKGROUND_SCENES[0];
+}
+
+// Character fallback vocal (used when primary vocal fails to load)
+const CHARACTER_FALLBACK_VOCAL = {
+  id: 'character-fallback',
+  label: 'Character Fallback',
+  type: 'mp3',
+  url: 'SoundClip/Mushy/DialogueBlip.wav',
+  rootNote: 60
+};
+
+// Add character sound clips to the BASE_SOUND_CLIP_GROUPS
+const CHARACTER_SOUND_CLIPS = {
+  label: 'Character Vocals',
+  clips: [
+   // { id: 'tote-aa', label: 'Tote - AA', type: 'wav', url: 'SoundClip/Tote/MM - Tote aa.wav', rootNote: 60 },
+   // { id: 'tote-eeh', label: 'Tote - EEH', type: 'wav', url: 'SoundClip/Tote/MM - Tote eeh.wav', rootNote: 60 },
+   // { id: 'tote-ii', label: 'Tote - II', type: 'wav', url: 'SoundClip/Tote/MM - Tote ii.wav', rootNote: 60 },
+   // { id: 'tote-oo', label: 'Tote - OO', type: 'wav', url: 'SoundClip/Tote/MM - Tote oo.wav', rootNote: 60 },
+   // { id: 'tote-ha', label: 'Tote - HA', type: 'wav', url: 'SoundClip/Tote/MM - Tote ha.wav', rootNote: 60 },
+   // { id: 'tote-chop', label: 'Tote - CHOP', type: 'wav', url: 'SoundClip/Tote/MM - Tote CHOP.wav', rootNote: 60 },
+   // { id: 'tote-CHOP-best', label: 'Tote - CHOP best', type: 'mp3', url: 'SoundClip/Tote/MM-CHOP_best.mp3', rootNote: 60 },
+
+    { id: 'mushy-up', label: 'Mushy Up', type: 'wav', url: 'SoundClip/Mushy/DialogueBlip.wav', rootNote: 60 },
+    { id: 'mushy-left', label: 'Mushy Left', type: 'wav', url: 'SoundClip/Mushy/DialogueBlip.wav', rootNote: 60 },
+    { id: 'mushy-right', label: 'Mushy Right', type: 'wav', url: 'SoundClip/Mushy/DialogueBlip.wav', rootNote: 60 },
+    { id: 'mushy-down', label: 'Mushy Down', type: 'wav', url: 'SoundClip/Mushy/DialogueBlip.wav', rootNote: 60 },
+    { id: 'mushy-purchase', label: 'Mushy Purchase', type: 'mp3', url: 'SoundClip/Mushy/Purchase.mp3', rootNote: 60 },
+    { id: 'mushy-shake', label: 'Mushy Shake', type: 'wav', url: 'SoundClip/Mushy/ShakeWake.wav', rootNote: 60 },
+    { id: 'mushy-eating', label: 'Mushy Eating', type: 'wav', url: 'SoundClip/Mushy/Eating.wav', rootNote: 60 },
+
+  ],
+};
+
+// Rebuild SOUND_CLIP_GROUPS to include character vocals
+function rebuildSoundClipGroupsWithCharacters() {
+  const groups = buildSoundClipGroups();
+  // Insert character vocals near the top
+  return [CHARACTER_SOUND_CLIPS, ...groups];
+}
+
+// Rebuild SOUND_CLIP_GROUPS to include character vocals
+function rebuildSoundClipGroupsWithCharacters() {
+  const groups = buildSoundClipGroups();
+  // Insert character vocals near the top
+  return [CHARACTER_SOUND_CLIPS, ...groups];
+}
+
+SOUND_CLIP_GROUPS = rebuildSoundClipGroupsWithCharacters();
+SOUND_CLIPS = SOUND_CLIP_GROUPS.flatMap(group =>
+  group.clips.map(clip => ({ ...clip, groupLabel: group.label }))
+);
+
 function getClipUrlForLane(clipId, lane) {
   const clip = getClipById(clipId);
   if (!clip || clip.type !== 'mp3' || !lane) return null;
@@ -2486,6 +2863,7 @@ function resolveClipLabel(trackIdx, clipId) {
     return clip.label;
   }
   if (clipId === '__blank__') return 'Blank (silent)';
+  if (clipId === '__character__') return 'Character Vocals';
   const clip = SOUND_CLIPS.find(c => c.id === clipId) || SOUND_CLIPS[0];
   return clip.label;
 }
@@ -2495,6 +2873,51 @@ function getTrackConfig(trackIdx) {
     volume: trackVolumes[trackIdx] ?? 0.8,
     clipId: (trackClipIds[trackIdx] === '__original__') ? (window.trackOriginalClipIds && window.trackOriginalClipIds[trackIdx]) || SOUND_CLIPS[0].id : (trackClipIds[trackIdx] ?? SOUND_CLIPS[0].id),
   };
+}
+
+function clipUsesPitchShiftAndExactDuration(clipId) {
+  const clip = getClipById(clipId);
+  return !!clip && clip.type === 'mp3' && typeof clip.rootNote === 'number';
+}
+
+// Select a clip from an array of clip IDs based on MIDI note value.
+// Divides the MIDI note range evenly among clips in the array.
+// Example: if clipArray has 4 clips and MIDI range is 48-127 (80 notes),
+// each clip covers ~20 notes: notes 48-51 → clips[0], 52-63 → clips[1], etc.
+function selectClipFromClipArray(clipArray, midiNote = 60) {
+  if (!Array.isArray(clipArray) || clipArray.length === 0) return null;
+  if (clipArray.length === 1) return clipArray[0];
+
+  // Divide MIDI range into segments, one per clip
+  const MIN_NOTE = 48;  // C3
+  const MAX_NOTE = 127; // G9
+  const range = MAX_NOTE - MIN_NOTE;
+  const segmentSize = range / clipArray.length;
+  const segmentIndex = Math.floor((midiNote - MIN_NOTE) / segmentSize);
+  const clampedIndex = Math.min(segmentIndex, clipArray.length - 1);
+  
+  return clipArray[clampedIndex];
+}
+
+// Resolve a character clip id when the special '__character__' selection is used.
+function resolveCharacterClipForPlayback(sourceRole, lane, midiNote = 60) {
+  // sourceRole: 'player' or 'reference'
+  const dir = lane || 'idle';
+  const charId = (sourceRole === 'reference') ? currentRivalCharacterId : currentPlayerCharacterId;
+  const character = getCharacterById(charId);
+  if (!character || character.id === 'blank') return '__blank__';
+  
+  // Get clip array for this direction
+  const clipOrArray = character.soundClipIds[dir] || character.soundClipIds['idle'];
+  if (!clipOrArray) return '__blank__';
+  
+  // If it's an array, select from it based on MIDI note
+  if (Array.isArray(clipOrArray)) {
+    return selectClipFromClipArray(clipOrArray, midiNote) || '__blank__';
+  }
+  
+  // Backward compat: if it's a single string (old format), return it
+  return clipOrArray;
 }
 
 function populateTrackClipSelect(pickerEl, trackIdx) {
@@ -2527,6 +2950,14 @@ function populateTrackClipSelect(pickerEl, trackIdx) {
   blankBtn.onclick = (e) => { e.stopPropagation(); trackClipIds[trackIdx] = '__blank__'; populateTrackClipSelect(pickerEl, trackIdx); if (window.updateTrackClipLabel) window.updateTrackClipLabel(trackIdx); };
   origBar.appendChild(blankBtn);
 
+  // Character vocals special option
+  const charBtn = document.createElement('button');
+  charBtn.className = 'clip-picker-item';
+  charBtn.textContent = 'Character — Use character vocals';
+  if (selectedClipId === '__character__') charBtn.classList.add('selected');
+  charBtn.onclick = (e) => { e.stopPropagation(); trackClipIds[trackIdx] = '__character__'; populateTrackClipSelect(pickerEl, trackIdx); if (window.updateTrackClipLabel) window.updateTrackClipLabel(trackIdx); };
+  origBar.appendChild(charBtn);
+
   const contentContainer = document.createElement('div');
   contentContainer.className = 'clip-picker-content';
   pickerEl.appendChild(contentContainer);
@@ -2539,7 +2970,8 @@ function populateTrackClipSelect(pickerEl, trackIdx) {
   mainPane.className = 'clip-picker-pane active';
   mainPane.setAttribute('data-tab', '__main__');
 
-  for (const group of BASE_SOUND_CLIP_GROUPS) {
+  for (const group of SOUND_CLIP_GROUPS) {
+    if (group.label === 'SoundFonts') continue;
     const groupEl = document.createElement('div');
     groupEl.className = 'clip-picker-group';
     const labelEl = document.createElement('div');
@@ -2627,6 +3059,8 @@ function populateTrackClipSelect(pickerEl, trackIdx) {
 // Apply DEFAULTS to UI inputs on DOM ready and restore project list state.
 document.addEventListener('DOMContentLoaded', async () => {
   applyProjectSettingsToUI(DEFAULTS);
+  applyCharacterSettingsToUI({ playerCharacterId: 'blank', rivalCharacterId: 'blank' });
+  populateCharacterDropdowns();
 
   document.getElementById('btn-add-song-project').addEventListener('click', () => openProjectEditor());
   document.getElementById('btn-save-project').addEventListener('click', async () => {
@@ -2972,7 +3406,7 @@ function createSynthLikeVoice({ clip, note, velocity, volume, startTime, duratio
 function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note = 60, lane = null, exactDuration = false }) {
   const ctx = getAudioCtx();
   const fullLaneSet = ['left', 'up', 'down', 'right'].every(dir => clip[`url_${dir}`]);
-  const url = fullLaneSet && lane ? getClipUrlForLane(clipId, lane) : clip.url;
+  let url = fullLaneSet && lane ? getClipUrlForLane(clipId, lane) : clip.url;
   if (clip.type === 'blank') {
     // silent stub voice
     let stopped = false;
@@ -2983,28 +3417,55 @@ function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note
   audio.preload = 'auto';
   audio.volume = Math.max(0, Math.min(1, volume));
 
-  // If we have a full 4-sample set, use those samples directly.
-  // Otherwise, fall back to the current pitch-shifted single-sample behavior.
-  if (!fullLaneSet && lane) {
-    // Use clip rootNote when available, otherwise assume C4 (60).
-    // Limit pitch-shift to +/- 12 semitones to avoid extreme low-end dropouts.
-    const baselineNote = (clip && clip.rootNote) ? clip.rootNote : 60;
-    let semitoneDiff = note - baselineNote;
-    semitoneDiff = Math.max(-12, Math.min(12, semitoneDiff));
-    const playbackRate = Math.pow(2, semitoneDiff / 12);
-    audio.playbackRate = Math.max(0.5, Math.min(2, playbackRate)); // Clamp to a tighter, safer range
-  } else {
-    audio.playbackRate = 1.0;
-  }
+  // Pitch-shifting: apply before play() so it affects the audio from the start
+  const applyPitchShift = (aud, c, n) => {
+    if (typeof c.rootNote === 'number') {
+      const baselineNote = c.rootNote;
+      let semitoneDiff = n - baselineNote;
+      semitoneDiff = Math.max(-12, Math.min(12, semitoneDiff));
+      const playbackRate = Math.pow(2, semitoneDiff / 12);
+      aud.playbackRate = Math.max(0.5, Math.min(2, playbackRate));
+      console.debug(`[createMp3Voice] Applied pitch-shift: baseline=${baselineNote}, note=${n}, rate=${aud.playbackRate.toFixed(2)}`);
+    } else {
+      aud.playbackRate = 1.0;
+    }
+  };
+  applyPitchShift(audio, clip, note);
 
   let started = false;
   let stopped = false;
   let startTimer = null;
+  let loadError = false;
+
+  // Error handler: on load error, try fallback clip
+  audio.onerror = () => {
+    console.warn(`[createMp3Voice] Failed to load ${url}, attempting fallback`);
+    loadError = true;
+    if (clipId !== 'character-fallback') {
+      // Try the fallback vocal clip
+      try {
+        audio.src = CHARACTER_FALLBACK_VOCAL.url;
+        applyPitchShift(audio, CHARACTER_FALLBACK_VOCAL, note);
+        audio.load();
+        audio.play().catch(() => {});
+      } catch(e) {
+        console.error('[createMp3Voice] Fallback clip also failed:', e);
+      }
+    }
+  };
 
   function start() {
     if (started || stopped) return;
     started = true;
     audio.currentTime = 0;
+    // If caller requested an exact duration, allow looping so short samples can sustain.
+    try {
+      if (exactDuration && duration && duration > 0) {
+        audio.loop = true;
+      } else {
+        audio.loop = false;
+      }
+    } catch(_) {}
     audio.play().catch(() => {});
     audio.onended = () => stop();
   }
@@ -3023,6 +3484,7 @@ function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note
     stopped = true;
     if (startTimer) clearTimeout(startTimer);
     try {
+      audio.loop = false;
       audio.pause();
       audio.currentTime = 0;
       audio.onended = null;
@@ -3077,6 +3539,72 @@ function getBpmFromMidi(midi) {
   return bpm;
 }
 
+function getProjectBackgroundTempoBpm(projectData) {
+  const override = Number(projectData?.settings?.backgroundTempoBpm);
+  if (Number.isFinite(override) && override > 0) return override;
+  if (midiData) {
+    const bpm = getBpmFromMidi(midiData);
+    if (Number.isFinite(bpm) && bpm > 0) return bpm;
+  }
+  return 120;
+}
+
+function resetGameBackgroundScene() {
+  backgroundSceneState = {
+    sceneId: 'dark',
+    beatMs: 500,
+    lastBeatIndex: -1,
+    lastImageUrl: '',
+  };
+  const layer = document.getElementById('scene-layer');
+  if (!layer) return;
+  layer.style.backgroundColor = '#050510';
+  layer.style.backgroundImage = 'none';
+  layer.style.backgroundPosition = 'center center';
+}
+
+function updateGameBackgroundScene(elapsedMs = 0) {
+  const layer = document.getElementById('scene-layer');
+  if (!layer) return;
+
+  const projectData = activeGameplayProject || (currentProjectId ? songProjects.find(item => item.id === currentProjectId) : null);
+  const settings = projectData?.settings || DEFAULTS;
+  const scene = getBackgroundSceneConfig(settings.backgroundScene || DEFAULTS.backgroundScene);
+  const bpm = getProjectBackgroundTempoBpm(projectData);
+  const beatMs = 60000 / Math.max(1, bpm);
+  const beatOrder = Array.isArray(scene.beatOrder) && scene.beatOrder.length ? scene.beatOrder : [0];
+  const beatIndex = Math.floor(Math.max(0, elapsedMs) / beatMs);
+  const frameIndex = beatOrder[beatIndex % beatOrder.length] ?? 0;
+  const imageUrl = scene.images[frameIndex] || '';
+
+  if (backgroundSceneState.sceneId !== scene.id) {
+    backgroundSceneState.sceneId = scene.id;
+    backgroundSceneState.beatMs = beatMs;
+    backgroundSceneState.lastBeatIndex = -1;
+    backgroundSceneState.lastImageUrl = '';
+    layer.style.backgroundColor = scene.backgroundColor || '#050510';
+    layer.style.backgroundPosition = scene.backgroundPosition || 'center center';
+  }
+
+  if (scene.images.length) {
+    if (backgroundSceneState.lastBeatIndex !== beatIndex || backgroundSceneState.lastImageUrl !== imageUrl) {
+      backgroundSceneState.beatMs = beatMs;
+      backgroundSceneState.lastBeatIndex = beatIndex;
+      backgroundSceneState.lastImageUrl = imageUrl;
+      layer.style.backgroundColor = scene.backgroundColor || '#050510';
+      layer.style.backgroundPosition = scene.backgroundPosition || 'center center';
+      layer.style.backgroundImage = imageUrl ? `url("${imageUrl}")` : 'none';
+    }
+  } else {
+    backgroundSceneState.beatMs = beatMs;
+    backgroundSceneState.lastBeatIndex = beatIndex;
+    backgroundSceneState.lastImageUrl = '';
+    layer.style.backgroundColor = scene.backgroundColor || '#050510';
+    layer.style.backgroundImage = 'none';
+    layer.style.backgroundPosition = scene.backgroundPosition || 'center center';
+  }
+}
+
 function generateBackingBeat(midi, startTime) {
   // Generate a consistent low-pitched backing beat at the song's BPM
   const ctx = getAudioCtx();
@@ -3124,7 +3652,7 @@ function scheduleBackingTrack(midi, trackIdx, startTime) {
   const active  = new Map();
   const { volume, clipId } = getTrackConfig(trackIdx);
   const clip = getClipById(clipId);
-  const useExactDuration = trackClipIds[trackIdx] === '__original__';
+  const useExactDuration = trackClipIds[trackIdx] === '__original__' || clipUsesPitchShiftAndExactDuration(clipId);
   const nodes = [];
 
   for (const ev of track.events) {
@@ -3178,7 +3706,7 @@ let mp3Waveform = null;
 let midiMarkers = null; // array of times (ms) for MIDI markers
 let songStopTimer = null;
 let songDuckTimer = null;
-let songBaseVolume = 1;
+let songBaseVolume = 0.8;
 let projectPreviewAudio = null;
 let projectPreviewObjectUrl = '';
 let projectPreviewTimer = null;
@@ -3192,6 +3720,219 @@ let manualRecordingAwaitingConfirm = false;
 let manualBeatmapDraft = [];
 let manualMappingHeld = {};
 let currentManualBeatmap = [];
+// Character-related state
+let currentPlayerCharacterId = 'blank';
+let currentRivalCharacterId = 'blank';
+let playerCharacterOffsetX = -750;
+let playerCharacterOffsetY = 100;
+let rivalCharacterOffsetX = 750;
+let rivalCharacterOffsetY = 100;
+let playerCharacterAnimationFrame = 0;
+let rivalCharacterAnimationFrame = 0;
+let playerCharacterAnimationTimer = 0;
+let rivalCharacterAnimationTimer = 0;
+let lastPlayerInputLane = null;  // Track last input direction for character animation
+let playerCharacterDirection = 'idle';  // Current animation direction (idle/up/down/left/right)
+let playerCharacterIsReversing = false;  // Whether currently playing reverse animation
+let playerCharacterReverseTimer = 0;  // Timer for holding before reverse
+let playerCharacterPrevDirection = 'idle';  // Track previous direction to detect changes
+let rivalCharacterDirection = 'idle';
+let rivalCharacterIsReversing = false;
+let rivalCharacterReverseTimer = 0;
+let rivalCharacterPrevDirection = 'idle';
+const CHARACTER_RELEASE_HOLD_MS = 300;
+const CHARACTER_HOLD_FIRST_MS = 100;
+let playerCharacterHoldFirstTimer = 0;
+let rivalCharacterHoldFirstTimer = 0;
+let lastRivalInputLane = null;  // Track rival auto inputs for animation
+// Particle system for hit effects
+const particles = [];
+let nextParticleId = 1;
+// Spark configuration — adjust these to customize particle behavior
+const SPARK_SIZE_MIN = 8;           // Minimum spark size (px)
+const SPARK_SIZE_MAX = 22;           // Maximum spark size (px)
+const SPARK_COUNT_PERFECT = 18;      // Sparks emitted on perfect hits
+const SPARK_COUNT_GOOD = 8;         // Sparks emitted on good hits
+const SPARK_MAX_PER_NOTE = 30;      // Maximum sparks per note before cleanup
+const SPARK_HOLD_EMIT_INTERVAL_MIN = 80;  // Min ms between hold spark emissions (ms)
+const SPARK_HOLD_EMIT_INTERVAL_MAX = 150;  // Max ms between hold spark emissions (ms)
+
+function getLaneColorValue(lane) {
+  const rootStyle = getComputedStyle(document.documentElement);
+  const colorVar = ({ up: '--up', left: '--left', right: '--right', down: '--down' }[lane]) || '--up';
+  return (rootStyle.getPropertyValue(colorVar) || '#ffffff').trim();
+}
+
+function getTargetSpriteElement(lane, side) {
+  return document.getElementById(`${side === 'rival' ? 'ref' : 'play'}-target-${lane}`);
+}
+
+function getSparkState(note) {
+  if (!note._sparkState) {
+    note._sparkState = {
+      particles: [],
+      burstCount: 0,
+      nextHoldEmitAt: 0,
+      emitBudget: 0,
+      enabled: false,
+    };
+  }
+  return note._sparkState;
+}
+
+function destroySparkParticle(particle) {
+  if (!particle) return;
+  const state = particle.state;
+  if (state && state.particles) {
+    const idx = state.particles.indexOf(particle);
+    if (idx >= 0) state.particles.splice(idx, 1);
+  }
+  try { if (particle.el && particle.el.parentNode) particle.el.parentNode.removeChild(particle.el); } catch(_){}
+  const idxAll = particles.indexOf(particle);
+  if (idxAll >= 0) particles.splice(idxAll, 1);
+}
+
+function spawnSparkParticle(note, lane, side, x, y, velocityScale = 1) {
+  const state = getSparkState(note);
+  if (state.particles.length >= SPARK_MAX_PER_NOTE) {
+    destroySparkParticle(state.particles[0]);
+  }
+
+  const layer = document.getElementById('particle-layer');
+  if (!layer) return;
+
+  const baseColor = getLaneColorValue(lane);
+  const color = baseColor;
+  const size = Math.max(SPARK_SIZE_MIN, Math.round((SPARK_SIZE_MIN + Math.random() * (SPARK_SIZE_MAX - SPARK_SIZE_MIN)) * (velocityScale || 1)));
+  const angle = Math.random() * Math.PI * 2;
+  const speed = (0.8 + Math.random() * 2.8) * (velocityScale || 1);
+  const vx = Math.cos(angle) * speed;
+  const vy = Math.sin(angle) * speed - (1.2 + Math.random() * 1.8);
+  const life = 260 + Math.random() * 340;
+
+  const el = document.createElement('div');
+  el.className = 'spark-particle';
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  el.style.width = `${size}px`;
+  el.style.height = `${size}px`;
+  el.style.color = color;
+  el.style.opacity = '1';
+  el.innerHTML = '<span class="spark-outer"></span><span class="spark-inner"></span>';
+  layer.appendChild(el);
+
+  const particle = {
+    id: nextParticleId++,
+    note,
+    state,
+    el,
+    x,
+    y,
+    vx,
+    vy,
+    life,
+    age: 0,
+    gravity: 0.04 + Math.random() * 0.05,
+  };
+  state.particles.push(particle);
+  particles.push(particle);
+}
+
+function emitSparkBurst(note, lane, side, count) {
+  if (!note || count <= 0) return;
+  const target = getTargetSpriteElement(lane, side);
+  if (!target) return;
+  const parent = document.getElementById('particle-layer');
+  if (!parent) return;
+  const rect = target.getBoundingClientRect();
+  const gameMain = document.getElementById('game-main');
+  if (!gameMain) return;
+  const gameMainRect = gameMain.getBoundingClientRect();
+  const xBase = rect.left - gameMainRect.left + rect.width * 0.5;
+  const yBase = rect.top - gameMainRect.top + rect.height * 0.5;
+
+  const state = getSparkState(note);
+  const emitCount = Math.min(count, SPARK_MAX_PER_NOTE - state.particles.length);
+  for (let i = 0; i < emitCount; i++) {
+    const offsetX = (Math.random() - 0.5) * rect.width * 0.35;
+    const offsetY = (Math.random() - 0.5) * rect.height * 0.35;
+    spawnSparkParticle(note, lane, side, xBase + offsetX, yBase + offsetY, 1);
+  }
+  state.burstCount += emitCount;
+}
+
+function startNoteSparkEmission(note, lane, side, judgment) {
+  const state = getSparkState(note);
+  state.enabled = judgment === 'perfect' || judgment === 'good';
+  state.emitBudget = state.enabled ? (judgment === 'perfect' ? SPARK_COUNT_PERFECT : SPARK_COUNT_GOOD) : 0;
+  state.nextHoldEmitAt = performance.now() + 140;
+  if (!state.enabled) return;
+  emitSparkBurst(note, lane, side, judgment === 'perfect' ? SPARK_COUNT_PERFECT : SPARK_COUNT_GOOD);
+}
+
+function continueHoldSparkEmission(note, lane, side, elapsedMs) {
+  const state = getSparkState(note);
+  if (!state.enabled || note.completed || note.missed || !note.started || !note.hold) return;
+  if (state.emitBudget <= 0) return;
+  if (elapsedMs < state.nextHoldEmitAt) return;
+
+  const available = Math.max(0, SPARK_MAX_PER_NOTE - state.particles.length);
+  if (available <= 0) {
+    state.nextHoldEmitAt = elapsedMs + 120;
+    return;
+  }
+
+  emitSparkBurst(note, lane, side, 1);
+  state.emitBudget -= 1;
+  state.nextHoldEmitAt = elapsedMs + (SPARK_HOLD_EMIT_INTERVAL_MIN + Math.random() * (SPARK_HOLD_EMIT_INTERVAL_MAX - SPARK_HOLD_EMIT_INTERVAL_MIN));
+}
+
+function hexToRgba(hex, alpha = 1) {
+  if (!hex) return `rgba(255,255,255,${alpha})`;
+  hex = hex.trim();
+  if (hex.startsWith('rgb')) return hex;
+  if (hex[0] === '#') hex = hex.slice(1);
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const r = parseInt(hex.slice(0,2),16);
+  const g = parseInt(hex.slice(2,4),16);
+  const b = parseInt(hex.slice(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function updateParticles(deltaMs) {
+  if (!particles.length) return;
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.age += deltaMs;
+    p.vy += p.gravity * (deltaMs / 16);
+    p.x += p.vx * (deltaMs / 16) * 2;
+    p.y += p.vy * (deltaMs / 16) * 2;
+    const t = Math.min(1, p.age / p.life);
+    if (p.el) {
+      p.el.style.left = p.x + 'px';
+      p.el.style.top = p.y + 'px';
+      p.el.style.opacity = String(1 - t);
+      p.el.style.transform = `translate(-50%, -50%) scale(${1 - t * 0.55}) rotate(${t * 80}deg)`;
+    }
+    if (p.age >= p.life || p.y > window.innerHeight + 80 || p.x < -80 || p.x > window.innerWidth + 80) {
+      try { if (p.el && p.el.parentNode) p.el.parentNode.removeChild(p.el); } catch(_){}
+      particles.splice(i,1);
+      if (p.state && p.state.particles) {
+        const idx = p.state.particles.indexOf(p);
+        if (idx >= 0) p.state.particles.splice(idx, 1);
+      }
+    }
+  }
+}
+// Taunt state for player
+let playerTauntActive = false;
+let playerTauntRemainingMs = 0;
+const PLAYER_TAUNT_DURATION_MS = 700;
+// Sprite scale controls (code-level variables)
+let playerCharacterScale = 2.0;
+let rivalCharacterScale = 2.0;
+// Active voices per track to support same-track cutoff behavior
+let activeTrackVoices = {}; // trackIdx -> voice wrapper with stop()
 const FAILED_SOUND_POOL = [
   'SoundClip/Mistake1.mp3',
   'SoundClip/Mistake2.mp3',
@@ -3212,7 +3953,9 @@ const DEFAULTS = {
   minNoteLengthMs: 100,
   segmentDurationMs: 5000,
   easyModeVelocityThreshold: 70,
-  difficulty: 'normal'
+  difficulty: 'normal',
+  backgroundScene: 'dark',
+  backgroundTempoBpm: 0,
 };
 let beatmap       = [];
 let referenceBeatmap = [];
@@ -3242,6 +3985,39 @@ let laneEls       = {};  // lane key → DOM element
 let autoTimers    = [];  // timeouts for auto mode
 let countdownTimers = [];
 let gameStartQueued = false;
+let activeGameplayProject = null;
+let backgroundSceneState = {
+  sceneId: 'dark',
+  beatMs: 500,
+  lastBeatIndex: -1,
+  lastImageUrl: '',
+};
+
+const LAYOUT = {
+  playTrackWidth: 'clamp(780px, 78vw, 780px)',
+  referenceTrackWidth: 'clamp(780px, 58vw, 580px)',
+  playTrackX: '20px',
+  referenceTrackX: '20px',
+  noteSize: '44px',
+  holdNoteWidth: '34px',
+  laneGap: '58px',
+  targetSize: '64px',
+};
+
+function applyLayoutVars() {
+  const root = document.documentElement.style;
+  root.setProperty('--play-track-width', LAYOUT.playTrackWidth);
+  root.setProperty('--reference-track-width', LAYOUT.referenceTrackWidth);
+  root.setProperty('--play-track-x', LAYOUT.playTrackX);
+  root.setProperty('--reference-track-x', LAYOUT.referenceTrackX);
+  root.setProperty('--note-size', LAYOUT.noteSize);
+  root.setProperty('--hold-note-width', LAYOUT.holdNoteWidth);
+  root.setProperty('--track-width', LAYOUT.playTrackWidth);
+  root.setProperty('--lane-gap', LAYOUT.laneGap);
+  root.setProperty('--target-size', LAYOUT.targetSize);
+}
+
+applyLayoutVars();
 
 const LANE_KEYS = {
   up:    ['ArrowUp',   'w', 'W'],
@@ -3258,6 +4034,23 @@ const LANE_META = {
 };
 
 const LANE_ORDER = ['left', 'up', 'down', 'right'];
+
+function setPlayTargetSpriteState(lane, pressed) {
+  const el = document.getElementById(`play-target-${lane}`);
+  if (el) el.classList.toggle('pressed', !!pressed);
+}
+
+function setRivalTargetSpriteState(lane, pressed) {
+  const el = document.getElementById(`ref-target-${lane}`);
+  if (el) el.classList.toggle('pressed', !!pressed);
+}
+
+function clearAllTargetSpriteStates() {
+  for (const lane of LANE_ORDER) {
+    setPlayTargetSpriteState(lane, false);
+    setRivalTargetSpriteState(lane, false);
+  }
+}
 
 // ─── Drop zone / file input ──────────────────────────────────────────────────
 const dropZone  = document.getElementById('drop-zone');
@@ -3394,13 +4187,22 @@ function buildTrackSelector(options = {}) {
     const volume = document.createElement('input');
     volume.type = 'range';
     volume.min = '0';
-    volume.max = '100';
-    volume.value = '80';
+    volume.max = '150';
+    volume.step = '1';
+    volume.value = String(Math.round(Math.min(150, Math.max(0, (trackVolumes[i] ?? 0.8) * 100))));
     volume.className = 'track-volume';
-    volume.title = 'Track volume';
+    volume.title = 'Track volume (0% to 150%)';
     volume.addEventListener('input', () => {
       trackVolumes[i] = parseFloat(volume.value) / 100;
     });
+
+    const volumeWrap = document.createElement('div');
+    volumeWrap.className = 'track-volume-wrap';
+    const volumeScale = document.createElement('div');
+    volumeScale.className = 'track-volume-scale';
+    volumeScale.innerHTML = '<span>0%</span><span class="track-volume-mid">100%</span><span>150%</span>';
+    volumeWrap.appendChild(volume);
+    volumeWrap.appendChild(volumeScale);
 
     const clipPicker = document.createElement('div');
     clipPicker.className = 'track-clip';
@@ -3424,7 +4226,7 @@ function buildTrackSelector(options = {}) {
     const collapsedCtr = document.createElement('div');
     collapsedCtr.className = 'collapsed-controls';
     const smallVol = document.createElement('input');
-    smallVol.type = 'range'; smallVol.min='0'; smallVol.max='100'; smallVol.value = Math.round(trackVolumes[i]*100);
+    smallVol.type = 'range'; smallVol.min='0'; smallVol.max='150'; smallVol.step='1'; smallVol.value = String(Math.round(Math.min(150, Math.max(0, (trackVolumes[i] ?? 0.8) * 100))));
     smallVol.style.width = '120px';
     smallVol.addEventListener('input', () => { trackVolumes[i] = parseFloat(smallVol.value)/100; });
     const changeBtn = document.createElement('button');
@@ -3436,7 +4238,7 @@ function buildTrackSelector(options = {}) {
     collapsedCtr.appendChild(changeBtn);
     info.appendChild(collapsedCtr);
 
-    controls.appendChild(volume);
+    controls.appendChild(volumeWrap);
     controls.appendChild(clipPicker);
 
     row.appendChild(info);
@@ -3559,6 +4361,9 @@ function startDemoGame() {
   document.getElementById('game-screen').style.display = 'flex';
 
   buildPlayFields();
+  activeGameplayProject = createEmptyProject();
+  resetGameBackgroundScene();
+  updateGameBackgroundScene(0);
 
   totalNotes = beatmap.length;
 
@@ -3601,6 +4406,410 @@ function goMenu() {
   setEditorVisibility(false);
 }
 
+// ─── CHARACTER SYSTEM ───────────────────────────────────────────────────────
+function getCharacterById(characterId) {
+  return CHARACTERS.find(c => c.id === characterId) || CHARACTERS[0]; // Default to 'blank'
+}
+
+let characterSprites = {
+  player: {},
+  rival: {}
+};
+
+function loadCharacterSprites(characterId, side) {
+  const character = getCharacterById(characterId);
+  characterSprites[side] = {};
+  
+  if (character.id === 'blank') return; // No sprites for blank character
+  
+  // Load sprite sheets for each direction
+  for (const direction of ['idle', 'up', 'left', 'right', 'down']) {
+    const sheet = character.spriteSheets[direction];
+    const spritePath = sheet && typeof sheet === 'object' ? sheet.src : sheet;
+    if (spritePath) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = spritePath;
+      characterSprites[side][direction] = img;
+    }
+  }
+}
+
+function updateCharacterAnimation(side, deltaMs, direction = 'idle') {
+  const charId = side === 'player' ? currentPlayerCharacterId : currentRivalCharacterId;
+  const character = getCharacterById(charId);
+  if (character.id === 'blank') return;
+
+  let timer;
+  let frame;
+  let activeDirection;
+  let isReversing;
+  let reverseTimer;
+  let prevDirection;
+  let holdFirst;
+
+  if (side === 'player') {
+    timer = playerCharacterAnimationTimer;
+    frame = playerCharacterAnimationFrame;
+    activeDirection = playerCharacterDirection || 'idle';
+    isReversing = playerCharacterIsReversing;
+    reverseTimer = playerCharacterReverseTimer;
+    prevDirection = playerCharacterPrevDirection || 'idle';
+    holdFirst = playerCharacterHoldFirstTimer || 0;
+  } else {
+    timer = rivalCharacterAnimationTimer;
+    frame = rivalCharacterAnimationFrame;
+    activeDirection = rivalCharacterDirection || 'idle';
+    isReversing = rivalCharacterIsReversing;
+    reverseTimer = rivalCharacterReverseTimer;
+    prevDirection = rivalCharacterPrevDirection || 'idle';
+    holdFirst = rivalCharacterHoldFirstTimer || 0;
+  }
+
+  // Directional input: instantly snap to first frame of that direction.
+  if (direction !== 'idle') {
+    const changedDirection = direction !== activeDirection;
+    const comingFromIdle = prevDirection === 'idle';
+    const wasReleasing = isReversing || reverseTimer > 0;
+    isReversing = false;
+    reverseTimer = 0;
+    // Cancel any short first-frame hold when new input arrives
+    holdFirst = 0;
+    if (changedDirection || comingFromIdle || wasReleasing) {
+      frame = 0;
+      timer = 0;
+    }
+    activeDirection = direction;
+    prevDirection = direction;
+  } else {
+    if (holdFirst > 0) {
+      holdFirst = Math.max(0, holdFirst - deltaMs);
+      if (holdFirst > 0) {
+        if (side === 'player') {
+          playerCharacterAnimationTimer = timer;
+          playerCharacterAnimationFrame = frame;
+          playerCharacterDirection = activeDirection;
+          playerCharacterIsReversing = isReversing;
+          playerCharacterReverseTimer = reverseTimer;
+          playerCharacterPrevDirection = prevDirection;
+          playerCharacterHoldFirstTimer = holdFirst;
+        } else {
+          rivalCharacterAnimationTimer = timer;
+          rivalCharacterAnimationFrame = frame;
+          rivalCharacterDirection = activeDirection;
+          rivalCharacterIsReversing = isReversing;
+          rivalCharacterReverseTimer = reverseTimer;
+          rivalCharacterPrevDirection = prevDirection;
+          rivalCharacterHoldFirstTimer = holdFirst;
+        }
+        return;
+      }
+      activeDirection = 'idle';
+      frame = 0;
+      timer = 0;
+      isReversing = false;
+      reverseTimer = 0;
+      prevDirection = 'idle';
+      if (side === 'player') {
+        playerCharacterAnimationTimer = timer;
+        playerCharacterAnimationFrame = frame;
+        playerCharacterDirection = activeDirection;
+        playerCharacterIsReversing = isReversing;
+        playerCharacterReverseTimer = reverseTimer;
+        playerCharacterPrevDirection = prevDirection;
+        playerCharacterHoldFirstTimer = holdFirst;
+      } else {
+        rivalCharacterAnimationTimer = timer;
+        rivalCharacterAnimationFrame = frame;
+        rivalCharacterDirection = activeDirection;
+        rivalCharacterIsReversing = isReversing;
+        rivalCharacterReverseTimer = reverseTimer;
+        rivalCharacterPrevDirection = prevDirection;
+        rivalCharacterHoldFirstTimer = holdFirst;
+      }
+      return;
+    }
+    // No input: hold last directional frame, then reverse to frame 0, then switch to idle.
+    const wasDirectional = prevDirection !== 'idle';
+    if (wasDirectional && !isReversing) {
+      const dirSheet = character.spriteSheets[activeDirection] || character.spriteSheets.idle || {};
+      const dirFrameCount = dirSheet.frameCount || character.frameCount || 1;
+      frame = Math.max(0, dirFrameCount - 1);
+      timer = 0;
+      isReversing = true;
+      reverseTimer = CHARACTER_RELEASE_HOLD_MS;
+    }
+    prevDirection = 'idle';
+  }
+
+  const activeSheet = character.spriteSheets[activeDirection] || character.spriteSheets.idle || {};
+  const activeFrameCount = activeSheet.frameCount || character.frameCount || 1;
+
+  if (isReversing) {
+    if (reverseTimer > 0) {
+      reverseTimer = Math.max(0, reverseTimer - deltaMs);
+    } else {
+      timer += deltaMs;
+      if (timer >= character.frameDuration) {
+        timer = 0;
+        frame = Math.max(0, frame - 1);
+        if (frame === 0) {
+          // Finished reversing: hold the first frame for a short moment
+          isReversing = false;
+          frame = 0;
+          timer = 0;
+          holdFirst = CHARACTER_HOLD_FIRST_MS;
+        }
+      }
+    }
+  } else {
+    // Normal animation update
+    timer += deltaMs;
+    if (timer >= character.frameDuration) {
+      timer = 0;
+      if (activeDirection === 'idle') {
+        frame = (frame + 1) % activeFrameCount;
+      } else if (frame < activeFrameCount - 1) {
+        frame += 1;
+      }
+    }
+  }
+
+  if (side === 'player') {
+    playerCharacterAnimationTimer = timer;
+    playerCharacterAnimationFrame = frame;
+    playerCharacterDirection = activeDirection;
+    playerCharacterIsReversing = isReversing;
+    playerCharacterReverseTimer = reverseTimer;
+    playerCharacterPrevDirection = prevDirection;
+    playerCharacterHoldFirstTimer = holdFirst;
+  } else {
+    rivalCharacterAnimationTimer = timer;
+    rivalCharacterAnimationFrame = frame;
+    rivalCharacterDirection = activeDirection;
+    rivalCharacterIsReversing = isReversing;
+    rivalCharacterReverseTimer = reverseTimer;
+    rivalCharacterPrevDirection = prevDirection;
+    rivalCharacterHoldFirstTimer = holdFirst;
+  }
+}
+
+function renderCharacterSpriteSheet(canvasId, side, direction = 'idle') {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  
+  const charId = side === 'player' ? currentPlayerCharacterId : currentRivalCharacterId;
+  const character = getCharacterById(charId);
+  
+  if (character.id === 'blank') {
+    canvas.width = 0;
+    canvas.height = 0;
+    canvas.style.display = 'none';
+    return;
+  }
+  canvas.style.display = 'block';
+  
+  const spriteImg = characterSprites[side][direction];
+  if (!spriteImg || !spriteImg.complete) return;
+  
+  const sheet = character.spriteSheets[direction] || character.spriteSheets.idle || {};
+  const cols = sheet.cols || 1;
+  const rows = sheet.rows || 1;
+  const totalFrames = sheet.frameCount || character.frameCount || (cols * rows) || 1;
+
+  // Calculate frame position on sprite sheet grid
+  const stateFrame = side === 'player' ? playerCharacterAnimationFrame : rivalCharacterAnimationFrame;
+  const currentFrame = (stateFrame || 0) % totalFrames;
+  const frameWidth = spriteImg.width / cols;
+  const frameHeight = spriteImg.height / rows;
+  const sx = (currentFrame % cols) * frameWidth;
+  const sy = Math.floor(currentFrame / cols) * frameHeight;
+
+  // Compute destination size with scale variables
+  const charScale = (side === 'player' ? playerCharacterScale : rivalCharacterScale) * (sheet.scale || 1);
+  const srcFrameW = frameWidth;
+  const srcFrameH = frameHeight;
+  const destW = Math.max(1, Math.round(srcFrameW * charScale));
+  const destH = Math.max(1, Math.round(srcFrameH * charScale));
+
+  // Set canvas size to fit the sprite (no cropping)
+  canvas.width = destW;
+  canvas.height = destH;
+
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Pixel-art sharp rendering
+  try { ctx.imageSmoothingEnabled = false; } catch(_) {}
+  try { ctx.mozImageSmoothingEnabled = false; } catch(_) {}
+  try { ctx.webkitImageSmoothingEnabled = false; } catch(_) {}
+
+  ctx.save();
+  if (side === 'rival') {
+    // Flip rival character horizontally around canvas vertical axis
+    ctx.translate(destW, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(
+    spriteImg,
+    sx, sy,
+    frameWidth, frameHeight,
+    0, 0,
+    destW, destH
+  );
+  ctx.restore();
+}
+
+// Trigger a player taunt: play a random taunt clip and run a short animation
+function triggerPlayerTaunt() {
+  if (!gameRunning) return;
+  if (playerTauntActive) return; // already taunting
+  const character = getCharacterById(currentPlayerCharacterId);
+  if (!character || character.id === 'blank') return;
+  const pool = character.tauntClips || [];
+  if (!pool.length) return;
+
+  // Pick random clip
+  const cid = pool[Math.floor(Math.random() * pool.length)];
+  try {
+    createClipVoice({ clipId: cid, note: 60, velocity: 100, volume: 1.0, startTime: getAudioCtx().currentTime, duration: 400 });
+  } catch (e) { console.warn('taunt play failed', e); }
+
+  // Start taunt animation (use left sprite sheet as taunt)
+  playerTauntActive = true;
+  playerTauntRemainingMs = PLAYER_TAUNT_DURATION_MS;
+  playerCharacterAnimationFrame = 0;
+  playerCharacterAnimationTimer = 0;
+}
+
+function playCharacterNote(characterId, direction, note, velocity, duration, pitchShift = 1) {
+  const character = getCharacterById(characterId);
+  if (!character || character.id === 'blank') return;
+  
+  const soundClipId = character.soundClipIds[direction];
+  if (!soundClipId) return;
+  
+  // Find the clip by ID
+  const clip = SOUND_CLIPS.find(c => c.id === soundClipId);
+  if (!clip) return;
+  
+  // Play the clip with pitch shifting
+  playTrackNote(soundClipId, note, velocity, 1.0, duration, direction, false);
+}
+
+function initializeCharactersForGame(projectData) {
+  currentPlayerCharacterId = projectData.playerCharacterId || 'blank';
+  currentRivalCharacterId = projectData.rivalCharacterId || 'blank';
+  // Offsets are code-level variables and are not taken from project data
+  
+  // Reset animation state
+  playerCharacterAnimationFrame = 0;
+  rivalCharacterAnimationFrame = 0;
+  playerCharacterAnimationTimer = 0;
+  rivalCharacterAnimationTimer = 0;
+  playerCharacterDirection = 'idle';
+  playerCharacterIsReversing = false;
+  playerCharacterReverseTimer = 0;
+  playerCharacterPrevDirection = 'idle';
+  rivalCharacterDirection = 'idle';
+  rivalCharacterIsReversing = false;
+  rivalCharacterReverseTimer = 0;
+  rivalCharacterPrevDirection = 'idle';
+  lastPlayerInputLane = null;
+  
+  // Load sprites
+  loadCharacterSprites(currentPlayerCharacterId, 'player');
+  loadCharacterSprites(currentRivalCharacterId, 'rival');
+
+  const playerCanvas = document.getElementById('character-canvas-player');
+  const rivalCanvas = document.getElementById('character-canvas-rival');
+  if (playerCanvas) {
+    playerCanvas.style.display = currentPlayerCharacterId === 'blank' ? 'none' : 'block';
+    if (currentPlayerCharacterId === 'blank') {
+      playerCanvas.width = 0;
+      playerCanvas.height = 0;
+    }
+  }
+  if (rivalCanvas) {
+    rivalCanvas.style.display = currentRivalCharacterId === 'blank' ? 'none' : 'block';
+    if (currentRivalCharacterId === 'blank') {
+      rivalCanvas.width = 0;
+      rivalCanvas.height = 0;
+    }
+  }
+  
+  // Position character containers
+  const playerContainer = document.getElementById('character-container-player');
+  const rivalContainer = document.getElementById('character-container-rival');
+  
+  if (playerContainer) {
+    playerContainer.style.right = (10 - playerCharacterOffsetX) + 'px';
+    playerContainer.style.top = 'calc(50% + ' + playerCharacterOffsetY + 'px)';
+  }
+  if (rivalContainer) {
+    rivalContainer.style.left = (10 + rivalCharacterOffsetX) + 'px';
+    rivalContainer.style.top = 'calc(50% + ' + rivalCharacterOffsetY + 'px)';
+  }
+}
+
+function populateCharacterDropdowns() {
+  const playerChar = document.getElementById('var-player-character');
+  const rivalChar = document.getElementById('var-rival-character');
+  if (!playerChar || !rivalChar) return;
+
+  // Clear and rebuild options
+  [playerChar, rivalChar].forEach(select => {
+    const currentValue = select.value || 'blank';
+    select.innerHTML = '';
+    // Add "None" option
+    const noneOpt = document.createElement('option');
+    noneOpt.value = 'blank';
+    noneOpt.textContent = 'None';
+    select.appendChild(noneOpt);
+    // Add each available character
+    for (const char of CHARACTERS) {
+      if (char.id === 'blank') continue; // Skip blank, already added
+      const opt = document.createElement('option');
+      opt.value = char.id;
+      opt.textContent = char.label;
+      select.appendChild(opt);
+    }
+    // Restore previous value if available, else default to blank
+    if (Array.from(select.options).some(o => o.value === currentValue)) {
+      select.value = currentValue;
+    } else {
+      select.value = 'blank';
+    }
+  });
+}
+
+function readCharacterSettingsFromUI() {
+  return {
+    playerCharacterId: document.getElementById('var-player-character')?.value || 'blank',
+    rivalCharacterId: document.getElementById('var-rival-character')?.value || 'blank',
+  };
+}
+
+function applyCharacterSettingsToUI(settings = {}) {
+  const playerChar = document.getElementById('var-player-character');
+  const rivalChar = document.getElementById('var-rival-character');
+  
+  if (playerChar) {
+    // Check if the saved value exists in options; if not, default to blank
+    if (Array.from(playerChar.options).some(o => o.value === settings.playerCharacterId)) {
+      playerChar.value = settings.playerCharacterId || 'blank';
+    } else {
+      playerChar.value = 'blank';
+    }
+  }
+  if (rivalChar) {
+    if (Array.from(rivalChar.options).some(o => o.value === settings.rivalCharacterId)) {
+      rivalChar.value = settings.rivalCharacterId || 'blank';
+    } else {
+      rivalChar.value = 'blank';
+    }
+  }
+}
+
 function startGame() {
   stopProjectSelectionPreview();
   console.debug('startGame called — midiData?', !!midiData, 'mp3?', !!currentMp3Blob, 'trackRoles=', trackRoles);
@@ -3639,6 +4848,16 @@ function startGame() {
   document.getElementById('game-screen').style.display = 'flex';
 
   buildPlayFields();
+  
+  // Initialize characters from current project
+  const currentProject = songProjects.find(p => p.id === currentProjectId);
+  if (currentProject) {
+    initializeCharactersForGame(currentProject);
+  }
+  activeGameplayProject = currentProject || createEmptyProject();
+  resetGameBackgroundScene();
+  updateGameBackgroundScene(0);
+  
   console.debug('after buildPlayFields — laneEls:', Object.keys(laneEls || {}), 'referenceLaneEls:', Object.keys(referenceLaneEls || {}));
 
   // ── Build beatmap for the chosen mode ────────────────────────────────────
@@ -3755,9 +4974,10 @@ function startGame() {
       autoPlayActiveNotes.forEach(note => {
         const tSec = startSec + note.time / 1000;
         const trackConfig = getTrackConfig(gameTrackIdx);
-        const useExactDuration = trackClipIds[gameTrackIdx] === '__original__';
+        const resolvedClip = (trackConfig.clipId === '__character__') ? resolveCharacterClipForPlayback('reference', note.lane, note.note) : trackConfig.clipId;
+        const useExactDuration = trackClipIds[gameTrackIdx] === '__original__' || clipUsesPitchShiftAndExactDuration(resolvedClip);
         const voice = createClipVoice({
-          clipId: trackConfig.clipId,
+          clipId: resolvedClip,
           note: note.note,
           velocity: note.velocity,
           volume: trackConfig.volume * 0.5,
@@ -3820,6 +5040,9 @@ function stopGame() {
   gameStartQueued = false;
   manualMappingActive = false;
   manualMappingHeld = {};
+  activeGameplayProject = null;
+  resetGameBackgroundScene();
+  clearAllTargetSpriteStates();
   try { for (const t of countdownTimers) clearTimeout(t); } catch(_) {}
   countdownTimers = [];
   const countdownOverlay = document.getElementById('countdown-overlay');
@@ -3858,6 +5081,7 @@ function buildPlayFields() {
   playField.innerHTML = '';
   laneEls = {};
   referenceLaneEls = {};
+  clearAllTargetSpriteStates();
 
   buildLaneSet(referenceField, referenceLaneEls, true);
   buildLaneSet(playField, laneEls, false);
@@ -3975,7 +5199,6 @@ function buildLaneSet(field, store, isReference) {
     const target = document.createElement('div');
     target.className = 'target-zone';
     target.id = `${isReference ? 'ref' : 'play'}-target-${key}`;
-    target.innerHTML = arrowSVG(key, meta.color);
     lane.appendChild(target);
 
     const label = document.createElement('div');
@@ -3987,16 +5210,6 @@ function buildLaneSet(field, store, isReference) {
     field.appendChild(lane);
     store[key] = lane;
   });
-}
-
-function arrowSVG(dir, color) {
-  const paths = {
-    up:    'M12 19V5m0 0l-7 7m7-7l7 7',
-    down:  'M12 5v14m0 0l-7-7m7 7l7-7',
-    left:  'M19 12H5m0 0l7-7m-7 7l7 7',
-    right: 'M5 12h14m0 0l-7-7m7 7l-7 7',
-  };
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="${paths[dir]}"/></svg>`;
 }
 
 // ─── GAME LOOP ───────────────────────────────────────────────────────────────
@@ -4013,9 +5226,27 @@ function gameLoop(now) {
   const fieldH  = laneHeight();
   const songDurationMs = (midiData ? currentMidiDurationMs : 0) || (mp3AudioBuffer ? (mp3AudioBuffer.length / mp3AudioBuffer.sampleRate) * 1000 : 0);
 
+  // Update character animations
+  const deltaTime = 16; // Approximate frame delta for 60fps
+  const playerDirection = playerTauntActive ? 'left' : (lastPlayerInputLane || 'idle');
+  updateCharacterAnimation('player', deltaTime, playerDirection);
+  const rivalDirection = lastRivalInputLane || 'idle';
+  updateCharacterAnimation('rival', deltaTime, rivalDirection);
+
+  // Taunt timer update
+  if (playerTauntActive) {
+    playerTauntRemainingMs -= deltaTime;
+    if (playerTauntRemainingMs <= 0) {
+      playerTauntActive = false;
+      playerTauntRemainingMs = 0;
+      lastPlayerInputLane = null;
+    }
+  }
+
   if (manualMappingActive) {
     const progress = songDurationMs ? Math.min(100, elapsed / songDurationMs * 100) : 0;
     document.getElementById('progress-bar').style.width = progress + '%';
+    updateGameBackgroundScene(elapsed);
     if (songDurationMs && elapsed >= songDurationMs) {
       finishManualMappingSession();
       manualMappingMode = false;
@@ -4057,12 +5288,30 @@ function gameLoop(now) {
   const progress = progressTarget ? Math.min(100, elapsed / progressTarget * 100) : 0;
   document.getElementById('progress-bar').style.width = progress + '%';
 
+  updateGameBackgroundScene(elapsed);
+
   // Check done
   if (activeNotes.every(n => n.hit || n.missed) && activeNotes.length > 0) {
     gameRunning = false;
     setTimeout(showResults, 600);
     return;
   }
+
+  // Render character sprites
+  const playerChar = getCharacterById(currentPlayerCharacterId);
+  const rivalChar = getCharacterById(currentRivalCharacterId);
+  
+  if (playerChar.id !== 'blank') {
+    const playerDirection = playerTauntActive ? 'left' : (playerCharacterDirection || 'idle');
+    renderCharacterSpriteSheet('character-canvas-player', 'player', playerDirection);
+  }
+  if (rivalChar.id !== 'blank') {
+    const rivalDirectionRender = rivalCharacterDirection || lastRivalInputLane || 'idle';
+    renderCharacterSpriteSheet('character-canvas-rival', 'rival', rivalDirectionRender);
+  }
+
+  // Update particles
+  updateParticles(deltaTime);
 
   requestAnimationFrame(gameLoop);
 }
@@ -4086,6 +5335,10 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
       if (!note.started && elapsed >= note.time) {
         autoPlayReferenceNote(note);
       }
+      if (note.hold) {
+        updateHoldSegmentVisual(note, elapsed);
+        emitHoldParticlesIfNeeded(note, elapsed, true);
+      }
       if (note.hold && note.started && !note.completed && elapsed >= note.endTime) {
         finalizeReferenceHold(note);
       } else if (!note.hold && note.started && elapsed >= note.time + 180) {
@@ -4103,13 +5356,14 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
       note.started = true;
       // Automatically complete the note without player input
       const trackConfig = getTrackConfig(note.trackIdx);
-      const useExactDuration = trackClipIds[note.trackIdx] === '__original__';
+      const resolvedClip = (trackConfig.clipId === '__character__') ? resolveCharacterClipForPlayback('reference', note.lane, note.note) : trackConfig.clipId;
+      const useExactDuration = trackClipIds[note.trackIdx] === '__original__' || clipUsesPitchShiftAndExactDuration(resolvedClip);
       const noteDuration = getNotePlayDuration(note, 300, useExactDuration);
       if (note.pitches && Array.isArray(note.pitches)) {
-        note.voice = playPitches(trackConfig.clipId, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, noteDuration, note.lane, useExactDuration);
+        note.voice = playPitches(resolvedClip, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, noteDuration, note.lane, useExactDuration);
       } else {
         note.voice = createClipVoice({
-          clipId: trackConfig.clipId,
+          clipId: resolvedClip,
           note: note.note,
           velocity: note.velocity,
           volume: trackConfig.volume,
@@ -4123,6 +5377,7 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
         note.completed = true;
         note.hit = true;
         if (note.el) { note.el.remove(); note.el = null; }
+        startNoteSparkEmission(note, note.lane, 'play', 'perfect');
       }
       continue;
     }
@@ -4148,6 +5403,8 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
     }
 
     if (note.hold && note.started && !note.completed) {
+      updateHoldSegmentVisual(note, elapsed);
+      emitHoldParticlesIfNeeded(note, elapsed, false);
       if (elapsed >= note.endTime) {
         finalizeHoldNote(note);
       }
@@ -4173,8 +5430,8 @@ function spawnNote(note, fieldH, laneMap, isReference = false) {
   el.style.top = fieldH + 'px';
   if (note.hold) {
     const holdPixels = Math.max(0, (note.endTime - note.time) * CFG.noteSpeed * 60 / 1000);
-    el.style.height = (50 + holdPixels) + 'px';
-    el.textContent = 'HOLD';
+    el.style.height = (Math.max(1, parseFloat(LAYOUT.noteSize) || 46) + holdPixels) + 'px';
+    el.style.clipPath = 'inset(0% 0 0 0)';
   }
   lane.appendChild(el);
   console.debug('spawnNote appended element — lane children now=', lane.children.length);
@@ -4183,15 +5440,18 @@ function spawnNote(note, fieldH, laneMap, isReference = false) {
 
 function autoPlayReferenceNote(note) {
   note.started = true;
+  if (note.holdStartedAt == null) note.holdStartedAt = note.time;
   const trackConfig = getTrackConfig(note.trackIdx);
   const useExactDuration = trackClipIds[note.trackIdx] === '__original__';
   
+  // Resolve character clip if needed (reference uses rival vocals)
+  const resolvedClipId = (trackConfig.clipId === '__character__') ? resolveCharacterClipForPlayback('reference', note.lane, note.note) : trackConfig.clipId;
   // Play the note normally (no muting, full volume)
   if (note.pitches && Array.isArray(note.pitches)) {
-    note.voice = playPitches(trackConfig.clipId, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, getNotePlayDuration(note, 300, useExactDuration), note.lane, useExactDuration);
+    note.voice = playPitches(resolvedClipId, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, getNotePlayDuration(note, 300, useExactDuration), note.lane, useExactDuration);
   } else {
     note.voice = createClipVoice({
-      clipId: trackConfig.clipId,
+      clipId: resolvedClipId,
       note: note.note,
       velocity: note.velocity,
       volume: trackConfig.volume,
@@ -4206,6 +5466,17 @@ function autoPlayReferenceNote(note) {
     note.completed = true;
     note.hit = true;
     if (note.el) { note.el.remove(); note.el = null; }
+    // brief press for rival animation/targets
+    lastRivalInputLane = note.lane;
+    setRivalTargetSpriteState(note.lane, true);
+    // clear shortly after to simulate a tap
+    setTimeout(() => { try { setRivalTargetSpriteState(note.lane, false); } catch(_){}; lastRivalInputLane = null; }, 120);
+    startNoteSparkEmission(note, note.lane, 'rival', 'perfect');
+  } else {
+    // For hold notes, mark rival as pressing target until hold finishes
+    lastRivalInputLane = note.lane;
+    setRivalTargetSpriteState(note.lane, true);
+    startNoteSparkEmission(note, note.lane, 'rival', 'perfect');
   }
 }
 
@@ -4214,6 +5485,21 @@ function completeReferenceTap(note) {
   note.completed = true;
   note.hit = true;
   if (note.el) { note.el.remove(); note.el = null; }
+  // clear rival press state for this lane
+  try { setRivalTargetSpriteState(note.lane, false); } catch(_){ }
+  lastRivalInputLane = null;
+}
+
+function updateHoldSegmentVisual(note, elapsed) {
+  if (!note || !note.hold || !note.el) return;
+  if (!note.started) {
+    note.el.style.clipPath = 'inset(0% 0 0 0)';
+    return;
+  }
+  const startMs = note.holdStartedAt != null ? note.holdStartedAt : note.time;
+  const holdDuration = Math.max(1, note.endTime - startMs);
+  const progress = Math.min(1, Math.max(0, (elapsed - startMs) / holdDuration));
+  note.el.style.clipPath = `inset(${(progress * 100).toFixed(2)}% 0 0 0)`;
 }
 
 function finalizeReferenceHold(note) {
@@ -4221,11 +5507,26 @@ function finalizeReferenceHold(note) {
   note.completed = true;
   note.hit = true;
   if (note.el) { note.el.remove(); note.el = null; }
+  try { setRivalTargetSpriteState(note.lane, false); } catch(_){ }
+  lastRivalInputLane = null;
+}
+
+function emitHoldParticlesIfNeeded(note, elapsed, isReference) {
+  if (!note || !note.hold || !note.started || note.completed || note.missed) return;
+  if (note.judgment !== 'perfect' && note.judgment !== 'good' && !isReference) return;
+  const side = isReference ? 'rival' : 'play';
+  continueHoldSparkEmission(note, note.lane, side, elapsed);
 }
 
 // ─── INPUT HANDLING ──────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (!gameRunning) return;
+  // Space triggers player taunt
+  if (e.code === 'Space' || e.key === ' ') {
+    e.preventDefault();
+    triggerPlayerTaunt();
+    return;
+  }
   const lane = keyToLane(e.key);
   if (manualMappingActive && (e.key === 'r' || e.key === 'R')) {
     e.preventDefault();
@@ -4237,12 +5538,14 @@ document.addEventListener('keydown', e => {
   if (manualMappingActive) {
     if (e.repeat || manualMappingHeld[lane]) return;
     recordManualNoteStart(lane);
+    setPlayTargetSpriteState(lane, true);
     flashLane(lane);
     flashTarget(lane);
     return;
   }
   if (e.repeat || pressedLanes.has(lane)) return;
   pressedLanes.add(lane);
+  setPlayTargetSpriteState(lane, true);
   handleInput(lane);
 });
 
@@ -4252,9 +5555,15 @@ document.addEventListener('keyup', e => {
   if (!lane) return;
   if (manualMappingActive) {
     recordManualNoteEnd(lane);
+    setPlayTargetSpriteState(lane, false);
     return;
   }
   pressedLanes.delete(lane);
+  setPlayTargetSpriteState(lane, false);
+  // Reset character animation to idle when no keys are pressed
+  if (pressedLanes.size === 0) {
+    lastPlayerInputLane = null;
+  }
   releaseHoldNote(lane);
 });
 
@@ -4266,6 +5575,9 @@ function keyToLane(key) {
 }
 
 function handleInput(lane) {
+  // Update character animation based on input
+  lastPlayerInputLane = lane;
+  
   const elapsed = performance.now() - gameStartTime;
   const holdPerfectMs = Math.max(CFG.perfectMs + 40, Math.round(CFG.perfectMs * 1.6));
   const holdGoodMs = Math.max(CFG.goodMs + 70, Math.round(CFG.goodMs * 1.45));
@@ -4305,14 +5617,15 @@ function handleInput(lane) {
     best.holdReleasedEarly = false;
     best.startDist = bestDist;
     best.judgment = bestDist <= holdPerfectMs ? 'perfect' : bestDist <= holdGoodMs ? 'good' : 'bad';
-    const useExactDuration = trackClipIds[best.trackIdx] === '__original__';
     const trackConfig = getTrackConfig(best.trackIdx);
+    const resolvedBestClip = (trackConfig.clipId === '__character__') ? resolveCharacterClipForPlayback('player', lane, best.note) : trackConfig.clipId;
+    const useExactDuration = trackClipIds[best.trackIdx] === '__original__' || clipUsesPitchShiftAndExactDuration(resolvedBestClip);
     const noteDuration = getNotePlayDuration(best, 300, useExactDuration);
     if (best.pitches && Array.isArray(best.pitches)) {
-      best.voice = playPitches(trackConfig.clipId, best.pitches, best.velocity, trackConfig.volume, getAudioCtx().currentTime, noteDuration, lane, useExactDuration);
+      best.voice = playPitches(resolvedBestClip, best.pitches, best.velocity, trackConfig.volume, getAudioCtx().currentTime, noteDuration, lane, useExactDuration);
     } else {
       best.voice = createClipVoice({
-        clipId: trackConfig.clipId,
+        clipId: resolvedBestClip,
         note: best.note,
         velocity: best.velocity,
         volume: trackConfig.volume,
@@ -4322,7 +5635,9 @@ function handleInput(lane) {
         exactDuration: useExactDuration,
       });
     }
+    try { if (best.voice && best.trackIdx != null) { activeTrackVoices[best.trackIdx] = best.voice; } } catch(_){}
     if (best.el) best.el.classList.add('active-hold');
+    startNoteSparkEmission(best, lane, 'play', best.judgment);
     heldNotes[lane] = best;
     flashLane(lane);
     flashTarget(lane);
@@ -4370,6 +5685,11 @@ function completeTapNote(note, lane, dist) {
   if (judgment === 'perfect') glowTarget(lane);
   updateHUD();
 
+  // Spawn satisfying particles for good/perfect
+  if (judgment === 'perfect' || judgment === 'good') {
+    startNoteSparkEmission(note, lane, 'play', judgment);
+  }
+
   // Increase persistent song volume slightly on correct hits (cap at 1.0)
   try { adjustSongBaseVolume(SONG_VOL_UP_STEP); } catch(_) {}
 
@@ -4385,11 +5705,29 @@ function completeTapNote(note, lane, dist) {
     ? trackConfig.clipId
     : ((judgment === 'perfect' || judgment === 'good') ? originalClipId : trackConfig.clipId);
 
+  // If the clip is the special character placeholder, resolve to player vocal clip
+  const clipToPlayResolved = (clipToPlay === '__character__') ? resolveCharacterClipForPlayback('player', lane, note.note) : clipToPlay;
   if (note.pitches && Array.isArray(note.pitches)) {
-    const wrapper = playPitches(clipToPlay, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, noteDuration, lane, useExactDuration);
+    const wrapper = playPitches(clipToPlayResolved, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, noteDuration, lane, useExactDuration);
+    // Cut any previous voice on this track
+    try { if (activeTrackVoices[note.trackIdx]) { activeTrackVoices[note.trackIdx].stop(); } } catch(_){}
     note.voice = wrapper;
+    try { activeTrackVoices[note.trackIdx] = wrapper; } catch(_){}
   } else {
-    playTrackNote(clipToPlay, note.note, note.velocity, trackConfig.volume, noteDuration, lane, useExactDuration);
+    // Cut any previous voice on this track
+    try { if (activeTrackVoices[note.trackIdx]) { activeTrackVoices[note.trackIdx].stop(); } } catch(_){}
+    const v = createClipVoice({
+      clipId: clipToPlayResolved,
+      note: note.note,
+      velocity: note.velocity,
+      volume: trackConfig.volume,
+      startTime: getAudioCtx().currentTime,
+      duration: noteDuration,
+      lane: lane,
+      exactDuration: useExactDuration,
+    });
+    note.voice = v;
+    try { activeTrackVoices[note.trackIdx] = v; } catch(_){}
   }
 }
 
@@ -4408,15 +5746,23 @@ function autoCompleteTapNote(note, lane) {
   showJudgment(lane, judgment);
   flashTarget(lane);
   updateHUD();
+  // Particles for auto-perfect
+  startNoteSparkEmission(note, lane, 'play', 'perfect');
 
   // Play the note automatically (no input needed, just like reference)
   const trackConfig = getTrackConfig(note.trackIdx);
-  const useExactDuration = trackClipIds[note.trackIdx] === '__original__';
+  const resolvedAutoClip = (trackConfig.clipId === '__character__') ? resolveCharacterClipForPlayback('reference', note.lane, note.note) : trackConfig.clipId;
+  const useExactDuration = trackClipIds[note.trackIdx] === '__original__' || clipUsesPitchShiftAndExactDuration(resolvedAutoClip);
   if (note.pitches && Array.isArray(note.pitches)) {
-    note.voice = playPitches(trackConfig.clipId, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, getNotePlayDuration(note, 300, useExactDuration), note.lane, useExactDuration);
+    // Cut any previous voice on this track
+    try { if (activeTrackVoices[note.trackIdx]) { activeTrackVoices[note.trackIdx].stop(); } } catch(_){}
+    const wrapper = playPitches(resolvedAutoClip, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, getNotePlayDuration(note, 300, useExactDuration), note.lane, useExactDuration);
+    note.voice = wrapper;
+    try { activeTrackVoices[note.trackIdx] = wrapper; } catch(_){}
   } else {
-    note.voice = createClipVoice({
-      clipId: trackConfig.clipId,
+    try { if (activeTrackVoices[note.trackIdx]) { activeTrackVoices[note.trackIdx].stop(); } } catch(_){}
+    const v = createClipVoice({
+      clipId: resolvedAutoClip,
       note: note.note,
       velocity: note.velocity,
       volume: trackConfig.volume,
@@ -4425,6 +5771,8 @@ function autoCompleteTapNote(note, lane) {
       lane: note.lane,
       exactDuration: useExactDuration,
     });
+    note.voice = v;
+    try { activeTrackVoices[note.trackIdx] = v; } catch(_){}
   }
 }
 
@@ -4461,6 +5809,12 @@ function finalizeHoldNote(note) {
   showJudgment(lane, judgment);
   flashTarget(lane);
   updateHUD();
+  if (judgment === 'perfect' || judgment === 'good') startNoteSparkEmission(note, lane, 'play', judgment);
+  // stop any sustaining voice for this track and clear active mapping
+  try {
+    if (note.voice && note.voice.stop) note.voice.stop();
+  } catch(_){}
+  try { if (typeof note.trackIdx !== 'undefined') delete activeTrackVoices[note.trackIdx]; } catch(_){}
   delete heldNotes[lane];
 }
 
