@@ -27,6 +27,16 @@ There will also be an option to expand to small adjustment settings where you ca
 
 
 
-Shit thats not working:
- - Manual tracking being used in songs
- - Adding mp3
+Add a rougelike mode which uses increasing difficulty (either choosing songs with more notes, shortening timing windows, or other obstacles), each stage has the character vs a different character (which could have a random re colour to make it feel like it isn't the same few characters)
+
+next steps:
+
+Improve UI, making a main menu, more easily navigated song project settings and playing.
+Fix Character audio so they can have unique sounds and taunts (Also fix taunts so more than one works).
+Make in game midi maker (which let's users record different tracks for different sound clips with a keyboard)
+Make Rougelike mode (which grabs a random midi file from a midi archive if I can find the API for), with each song progressively getting harder.
+
+Add more characters (Could use Mushroom soldier from Mushrum and the Husks from Vampire Heartattack)
+
+
+Fix Player visual positioning

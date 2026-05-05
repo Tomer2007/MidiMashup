@@ -72,6 +72,43 @@
     pointer-events: none;
   }
 
+  #main-menu-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 1500;
+    display: none;
+    overflow: hidden;
+    background: #0a0a18;
+  }
+  #main-menu-screen.visible { display: block; }
+  #main-menu-visual {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    user-select: none;
+    pointer-events: none;
+  }
+  #main-menu-hitbox-layer {
+    position: absolute;
+    inset: 0;
+  }
+  .main-menu-hotspot {
+    position: absolute;
+    background: rgba(255, 255, 255, 0);
+    cursor: pointer;
+  }
+  #main-menu-hover-overlay {
+    position: absolute;
+    display: none;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.18);
+    outline: 2px solid rgba(255, 255, 255, 0.42);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    mix-blend-mode: screen;
+  }
+
   .logo {
     font-family: 'Orbitron', sans-serif;
     font-size: clamp(28px, 5vw, 56px);
@@ -890,6 +927,7 @@
         <div id="selected-project-score" class="project-selected-score">Saved score: 0</div>
       </div>
       <div class="project-toolbar-actions">
+        <button class="btn-primary" id="btn-main-menu" style="padding:10px 14px; width:auto; background:#2f2f55; color:#fff;">MAIN MENU</button>
         <button class="btn-primary" id="btn-add-song-project" style="padding:10px 14px; width:auto;">Add Song Project</button>
         <button class="btn-primary" id="btn-start" disabled style="padding:10px 14px; width:auto;">PLAY PROJECT</button>
         <button class="btn-primary" id="btn-demo" style="padding:10px 14px; width:auto; background: #4444aa;">DEMO MODE</button>
@@ -1039,6 +1077,13 @@
 
 </div> <!-- /project-editor -->
 </div> <!-- /setup-screen -->
+
+<!-- ═══════════════ MAIN MENU ═══════════════ -->
+<div id="main-menu-screen" aria-label="Main menu">
+  <img id="main-menu-visual" src="Art/MM-MainMenuDraft-Visual.png" alt="Midi Mashup main menu art">
+  <div id="main-menu-hitbox-layer"></div>
+  <div id="main-menu-hover-overlay"></div>
+</div>
 
 <!-- ═══════════════ GAME SCREEN ═══════════════ -->
 <div id="game-screen">
@@ -1712,6 +1757,18 @@ function setSelectedProjectId(id) {
   updateSelectedProjectSummary();
   if (id) startProjectSelectionPreview(id).catch(err => console.warn('Project preview failed', err));
   else stopProjectSelectionPreview();
+  if (id) syncSelectedProjectCharacterState(id).catch(err => console.warn('Character sync failed', err));
+}
+
+async function syncSelectedProjectCharacterState(projectId) {
+  const project = await loadProjectFromStorage(projectId);
+  if (!project) return;
+  currentPlayerCharacterId = project.playerCharacterId || 'blank';
+  currentRivalCharacterId = project.rivalCharacterId || 'blank';
+  applyCharacterSettingsToUI({
+    playerCharacterId: currentPlayerCharacterId,
+    rivalCharacterId: currentRivalCharacterId,
+  });
 }
 
 function updateSelectedProjectSummary() {
@@ -1854,7 +1911,7 @@ function scheduleProjectPreviewTrack(midi, trackIdx, startTime, previewTrackVolu
   const active = new Map();
   const clipId = previewTrackClipIds[trackIdx] || '__original__';
   const clip = getClipById(clipId);
-  const volume = (typeof previewTrackVolumes[trackIdx] === 'number' ? previewTrackVolumes[trackIdx] : 0.8);
+  const volume = finiteOr(previewTrackVolumes[trackIdx], 0.8);
   const useExactDuration = clipId === '__original__' || clipUsesPitchShiftAndExactDuration(clipId);
   const nodes = [];
 
@@ -2003,12 +2060,13 @@ function setSongProjectFormFromProject(project) {
   const playerContainer = document.getElementById('character-container-player');
   const rivalContainer = document.getElementById('character-container-rival');
   if (playerContainer) {
-    playerContainer.style.right = (10 + playerCharacterOffsetX) + 'px';
-    playerContainer.style.top = 'calc(50% + ' + playerCharacterOffsetY + 'px)';
+    // Restore previous pixel positions for quick visual tuning
+    playerContainer.style.right = '-540px';
+    playerContainer.style.top = 'calc(50% + 100px)';
   }
   if (rivalContainer) {
-    rivalContainer.style.left = (10 + rivalCharacterOffsetX) + 'px';
-    rivalContainer.style.top = 'calc(50% + ' + rivalCharacterOffsetY + 'px)';
+    rivalContainer.style.left = '560px';
+    rivalContainer.style.top = 'calc(50% + 100px)';
   }
   mp3OffsetMs = project.mp3OffsetMs || 0;
   const manualSongCheckbox = document.getElementById('manual-map-enable-song');
@@ -2121,6 +2179,7 @@ async function refreshProjectListFromStorage() {
   const startButton = document.getElementById('btn-start');
   if (startButton) startButton.disabled = !selectedProjectId;
   renderProjectList();
+  if (selectedProjectId) syncSelectedProjectCharacterState(selectedProjectId).catch(err => console.warn('Character sync failed', err));
 }
 
 async function loadProjectFromStorage(projectId) {
@@ -2357,6 +2416,7 @@ async function importProjectFromJSON(jsonText) {
 
 async function openProjectEditor(projectId = null) {
   stopProjectSelectionPreview();
+  showSetupScreen(true);
   const project = projectId
     ? (await loadProjectFromStorage(projectId))
     : createEmptyProject();
@@ -2699,8 +2759,8 @@ let SOUND_CLIPS = SOUND_CLIP_GROUPS.flatMap(group =>
   group.clips.map(clip => ({ ...clip, groupLabel: group.label }))
 );
 
-function createSpriteSheetConfig(src, cols = 1, rows = 1, scale = 1, frameCount = null) {
-  return { src, cols, rows, scale, frameCount };
+function createSpriteSheetConfig(src, cols = 1, rows = 1, scale = 1, frameCount = null, frameDuration = null) {
+  return { src, cols, rows, scale, frameCount, frameDuration };
 }
 
 function createCharacterConfig(config) {
@@ -2739,7 +2799,7 @@ const CHARACTERS = [
     label: 'Mushy Singer',
     spriteSheets: {
 // cols, rows, scale, frameCount, frameDuration
-      idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8),
+      idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
       up: createSpriteSheetConfig('Art/Mushy/SS-MushySingerUP.png', 2, 1, 1.0, 2),
       left: createSpriteSheetConfig('Art/Mushy/SS-MushySingerLeft.png', 2, 1, 1.0, 2),
       right: createSpriteSheetConfig('Art/Mushy/SS-MushySingerRight.png', 2, 1, 1.0, 2),
@@ -2851,6 +2911,10 @@ function getClipUrlForLane(clipId, lane) {
 // Convert MIDI note number to frequency
 function midiToFreq(note) { return 440 * Math.pow(2, (note - 69) / 12); }
 
+function finiteOr(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
 function getClipById(clipId) {
   if (clipId === '__blank__') return { id: '__blank__', label: 'Blank (silent)', type: 'blank' };
   return SOUND_CLIPS.find(clip => clip.id === clipId) || SOUND_CLIPS[0];
@@ -2869,8 +2933,9 @@ function resolveClipLabel(trackIdx, clipId) {
 }
 
 function getTrackConfig(trackIdx) {
+  const rawVolume = trackVolumes[trackIdx];
   return {
-    volume: trackVolumes[trackIdx] ?? 0.8,
+    volume: finiteOr(rawVolume, 0.8),
     clipId: (trackClipIds[trackIdx] === '__original__') ? (window.trackOriginalClipIds && window.trackOriginalClipIds[trackIdx]) || SOUND_CLIPS[0].id : (trackClipIds[trackIdx] ?? SOUND_CLIPS[0].id),
   };
 }
@@ -3239,9 +3304,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setManualMapMode(false);
 
     // 3. Swap back to the setup screen
-    document.getElementById('results-screen').classList.remove('visible');
-    document.getElementById('game-screen').style.display = 'none';
-    document.getElementById('setup-screen').style.display = 'flex';
+  showSetupScreen(true);
 
     // 4. Restore the editor from in-memory state — do NOT call openProjectEditor()
     //    because that reloads from storage and may not yet see the freshly saved
@@ -3265,9 +3328,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderProjectList();
     checkReady();
   });
+  const btnMainMenu = document.getElementById('btn-main-menu');
+  if (btnMainMenu) {
+    btnMainMenu.addEventListener('click', () => {
+      stopProjectSelectionPreview();
+      stopGame();
+      showMainMenu();
+    });
+  }
   document.getElementById('btn-menu').addEventListener('click', goMenu);
   document.getElementById('btn-back').addEventListener('click', goMenu);
   document.getElementById('btn-demo').addEventListener('click', startDemoGame);
+
+  const playerCharacterSelect = document.getElementById('var-player-character');
+  const rivalCharacterSelect = document.getElementById('var-rival-character');
+  if (playerCharacterSelect) {
+    playerCharacterSelect.addEventListener('change', () => {
+      currentPlayerCharacterId = playerCharacterSelect.value || 'blank';
+    });
+  }
+  if (rivalCharacterSelect) {
+    rivalCharacterSelect.addEventListener('change', () => {
+      currentRivalCharacterId = rivalCharacterSelect.value || 'blank';
+    });
+  }
 
   await refreshProjectListFromStorage();
   if (selectedProjectId) {
@@ -3278,12 +3362,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateSelectedProjectSummary();
     }
   }
+  await initMainMenuScreen();
+  showMainMenu();
 });
 
 function createClipVoice({ clipId, note, velocity, volume, startTime, duration = null, lane = null, exactDuration = false }) {
   const ctx = getAudioCtx();
   const clip = getClipById(clipId);
-  const peak = (velocity / 127) * volume;
+  const safeNote = finiteOr(note, 60);
+  const safeVelocity = finiteOr(velocity, 100);
+  const safeVolume = finiteOr(volume, 0.8);
+  const safeStartTime = finiteOr(startTime, ctx.currentTime);
+  const safeDuration = finiteOr(duration, null);
+  const attack = finiteOr(clip.attack, 0.01);
+  const decay = finiteOr(clip.decay, 0.08);
+  const sustain = finiteOr(clip.sustain, 0.6);
+  const release = finiteOr(clip.release, 0.16);
+  const peak = (safeVelocity / 127) * safeVolume;
 
   if (clip.type === 'blank') {
     return { stop: () => {} };
@@ -3300,17 +3395,17 @@ function createClipVoice({ clipId, note, velocity, volume, startTime, duration =
   }
 
   // Handle synthesis clips
-  const freq = midiToFreq(note);
+  const freq = midiToFreq(safeNote);
   const osc  = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
   gain.connect(ctx.destination);
 
   osc.type = clip.waveform;
-  osc.frequency.setValueAtTime(freq, startTime);
-  gain.gain.setValueAtTime(0.001, startTime);
-  gain.gain.linearRampToValueAtTime(peak, startTime + clip.attack);
-  gain.gain.linearRampToValueAtTime(Math.max(peak * clip.sustain, 0.001), startTime + clip.attack + clip.decay);
+  osc.frequency.setValueAtTime(freq, safeStartTime);
+  gain.gain.setValueAtTime(0.001, safeStartTime);
+  gain.gain.linearRampToValueAtTime(Math.max(peak, 0.001), safeStartTime + attack);
+  gain.gain.linearRampToValueAtTime(Math.max(Math.max(peak, 0.001) * sustain, 0.001), safeStartTime + attack + decay);
 
   let stopped = false;
   function stop(stopTime = ctx.currentTime) {
@@ -3319,19 +3414,19 @@ function createClipVoice({ clipId, note, velocity, volume, startTime, duration =
     try {
       gain.gain.cancelScheduledValues(stopTime);
       gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.001), stopTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, stopTime + clip.release);
-      osc.stop(stopTime + clip.release + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, stopTime + release);
+      osc.stop(stopTime + release + 0.03);
     } catch (_) {}
   }
 
-  osc.start(startTime);
+  osc.start(safeStartTime);
 
   // Auto-stop after duration, with minimum length enforced
   const minDurationMs = exactDuration ? 0 : (CFG.minNoteLengthMs || 100);
-  let stopDurationMs = duration && duration > 0 ? duration : 800; // Default to 800ms if no duration
+  let stopDurationMs = safeDuration && safeDuration > 0 ? safeDuration : 800; // Default to 800ms if no duration
   stopDurationMs = Math.max(stopDurationMs, minDurationMs); // Enforce minimum unless exact duration is requested
   
-  const stopTime = startTime + (stopDurationMs / 1000);
+  const stopTime = safeStartTime + (stopDurationMs / 1000);
   const autoStop = () => stop(stopTime);
   const delayMs = Math.max(0, (stopTime - ctx.currentTime) * 1000);
   setTimeout(autoStop, delayMs);
@@ -3347,17 +3442,17 @@ function createSoundfontVoice({ clip, clipId, note, velocity, volume, startTime,
       type: 'mp3',
       url: clip.sample_url,
     };
-    return createMp3Voice({ clip: mp3LikeClip, clipId, volume: (velocity / 127) * volume, startTime, duration, note, lane, exactDuration });
+    return createMp3Voice({ clip: mp3LikeClip, clipId, volume: (finiteOr(velocity, 100) / 127) * finiteOr(volume, 0.8), startTime, duration, note, lane, exactDuration });
   }
 
   // Fallback: synth profile per preset so SoundFont entries are immediately usable.
   const synthLikeClip = {
     type: 'synth',
     waveform: clip.fallbackWaveform || 'triangle',
-    attack: clip.attack ?? 0.01,
-    decay: clip.decay ?? 0.08,
-    sustain: clip.sustain ?? 0.6,
-    release: clip.release ?? 0.16,
+    attack: finiteOr(clip.attack, 0.01),
+    decay: finiteOr(clip.decay, 0.08),
+    sustain: finiteOr(clip.sustain, 0.6),
+    release: finiteOr(clip.release, 0.16),
   };
 
   return createSynthLikeVoice({ clip: synthLikeClip, note, velocity, volume, startTime, duration, exactDuration });
@@ -3365,8 +3460,17 @@ function createSoundfontVoice({ clip, clipId, note, velocity, volume, startTime,
 
 function createSynthLikeVoice({ clip, note, velocity, volume, startTime, duration = null, exactDuration = false }) {
   const ctx = getAudioCtx();
-  const peak = (velocity / 127) * volume;
-  const freq = midiToFreq(note);
+  const safeNote = finiteOr(note, 60);
+  const safeVelocity = finiteOr(velocity, 100);
+  const safeVolume = finiteOr(volume, 0.8);
+  const safeStartTime = finiteOr(startTime, ctx.currentTime);
+  const safeDuration = finiteOr(duration, null);
+  const attack = finiteOr(clip.attack, 0.01);
+  const decay = finiteOr(clip.decay, 0.08);
+  const sustain = finiteOr(clip.sustain, 0.6);
+  const release = finiteOr(clip.release, 0.16);
+  const peak = (safeVelocity / 127) * safeVolume;
+  const freq = midiToFreq(safeNote);
   const osc  = ctx.createOscillator();
   const gain = ctx.createGain();
 
@@ -3374,10 +3478,10 @@ function createSynthLikeVoice({ clip, note, velocity, volume, startTime, duratio
   gain.connect(ctx.destination);
 
   osc.type = clip.waveform;
-  osc.frequency.setValueAtTime(freq, startTime);
-  gain.gain.setValueAtTime(0.001, startTime);
-  gain.gain.linearRampToValueAtTime(peak, startTime + clip.attack);
-  gain.gain.linearRampToValueAtTime(Math.max(peak * clip.sustain, 0.001), startTime + clip.attack + clip.decay);
+  osc.frequency.setValueAtTime(freq, safeStartTime);
+  gain.gain.setValueAtTime(0.001, safeStartTime);
+  gain.gain.linearRampToValueAtTime(Math.max(peak, 0.001), safeStartTime + attack);
+  gain.gain.linearRampToValueAtTime(Math.max(Math.max(peak, 0.001) * sustain, 0.001), safeStartTime + attack + decay);
 
   let stopped = false;
   function stop(stopTime = ctx.currentTime) {
@@ -3386,17 +3490,17 @@ function createSynthLikeVoice({ clip, note, velocity, volume, startTime, duratio
     try {
       gain.gain.cancelScheduledValues(stopTime);
       gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.001), stopTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, stopTime + clip.release);
-      osc.stop(stopTime + clip.release + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, stopTime + release);
+      osc.stop(stopTime + release + 0.03);
     } catch (_) {}
   }
 
-  osc.start(startTime);
+  osc.start(safeStartTime);
 
   const minDurationMs = exactDuration ? 0 : (CFG.minNoteLengthMs || 100);
-  let stopDurationMs = duration && duration > 0 ? duration : 800;
+  let stopDurationMs = safeDuration && safeDuration > 0 ? safeDuration : 800;
   stopDurationMs = Math.max(stopDurationMs, minDurationMs);
-  const stopTime = startTime + (stopDurationMs / 1000);
+  const stopTime = safeStartTime + (stopDurationMs / 1000);
   const delayMs = Math.max(0, (stopTime - ctx.currentTime) * 1000);
   setTimeout(() => stop(stopTime), delayMs);
 
@@ -3405,6 +3509,10 @@ function createSynthLikeVoice({ clip, note, velocity, volume, startTime, duratio
 
 function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note = 60, lane = null, exactDuration = false }) {
   const ctx = getAudioCtx();
+  const safeVolume = finiteOr(volume, 0.8);
+  const safeStartTime = finiteOr(startTime, ctx.currentTime);
+  const safeDuration = finiteOr(duration, null);
+  const safeNote = finiteOr(note, 60);
   const fullLaneSet = ['left', 'up', 'down', 'right'].every(dir => clip[`url_${dir}`]);
   let url = fullLaneSet && lane ? getClipUrlForLane(clipId, lane) : clip.url;
   if (clip.type === 'blank') {
@@ -3415,7 +3523,7 @@ function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note
   }
   const audio = new Audio(url);
   audio.preload = 'auto';
-  audio.volume = Math.max(0, Math.min(1, volume));
+  audio.volume = Math.max(0, Math.min(1, safeVolume));
 
   // Pitch-shifting: apply before play() so it affects the audio from the start
   const applyPitchShift = (aud, c, n) => {
@@ -3430,7 +3538,7 @@ function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note
       aud.playbackRate = 1.0;
     }
   };
-  applyPitchShift(audio, clip, note);
+  applyPitchShift(audio, clip, safeNote);
 
   let started = false;
   let stopped = false;
@@ -3445,7 +3553,7 @@ function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note
       // Try the fallback vocal clip
       try {
         audio.src = CHARACTER_FALLBACK_VOCAL.url;
-        applyPitchShift(audio, CHARACTER_FALLBACK_VOCAL, note);
+        applyPitchShift(audio, CHARACTER_FALLBACK_VOCAL, safeNote);
         audio.load();
         audio.play().catch(() => {});
       } catch(e) {
@@ -3460,7 +3568,7 @@ function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note
     audio.currentTime = 0;
     // If caller requested an exact duration, allow looping so short samples can sustain.
     try {
-      if (exactDuration && duration && duration > 0) {
+      if (exactDuration && safeDuration && safeDuration > 0) {
         audio.loop = true;
       } else {
         audio.loop = false;
@@ -3470,11 +3578,11 @@ function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note
     audio.onended = () => stop();
   }
 
-  const waitMs = Math.max(0, (startTime - ctx.currentTime) * 1000);
+  const waitMs = Math.max(0, (safeStartTime - ctx.currentTime) * 1000);
   startTimer = setTimeout(start, waitMs);
 
-  if (exactDuration && duration && duration > 0) {
-    const stopTime = startTime + (duration / 1000);
+  if (exactDuration && safeDuration && safeDuration > 0) {
+    const stopTime = safeStartTime + (safeDuration / 1000);
     const delayMs = Math.max(0, (stopTime - ctx.currentTime) * 1000);
     setTimeout(() => stop(), delayMs);
   }
@@ -3498,7 +3606,7 @@ function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note
 function playPitches(clipId, pitches, velocity, volume, startTime, duration = null, lane = null, exactDuration = false) {
   const voices = [];
   for (const p of pitches) {
-    const v = createClipVoice({ clipId, note: p.note, velocity: p.velocity || velocity, volume, startTime, duration, lane, exactDuration });
+    const v = createClipVoice({ clipId, note: finiteOr(p.note, 60), velocity: finiteOr(p.velocity, velocity), volume, startTime, duration, lane, exactDuration });
     voices.push(v);
   }
   return {
@@ -3518,7 +3626,7 @@ function playTrackNote(clipId, note, velocity, volume, duration = null, lane = n
 }
 
 function getNotePlayDuration(note, fallbackMs = 300, exactDuration = false) {
-  const actualDuration = Math.max(0, (note.endTime ?? note.time) - note.time);
+  const actualDuration = Math.max(0, finiteOr((note.endTime ?? note.time) - note.time, 0));
   if (exactDuration) return actualDuration;
   return note.hold ? actualDuration : fallbackMs;
 }
@@ -3723,10 +3831,31 @@ let currentManualBeatmap = [];
 // Character-related state
 let currentPlayerCharacterId = 'blank';
 let currentRivalCharacterId = 'blank';
-let playerCharacterOffsetX = -750;
-let playerCharacterOffsetY = 100;
-let rivalCharacterOffsetX = 750;
-let rivalCharacterOffsetY = 100;
+// Character offsets now use viewport units for consistent scaling
+let playerCharacterOffsetXvw = 0; // vw offset (added to right)
+let playerCharacterOffsetYvh = 0;  // vh offset (added to 50% vertical centre)
+let rivalCharacterOffsetXvw = 0;    // vw offset (added to left)
+let rivalCharacterOffsetYvh = 0;    // vh offset (added to 50% vertical centre)
+
+// Pixel fallbacks to restore previous positions for quick adjustment.
+const playerCharacterOffsetXPx = -350;
+const playerCharacterOffsetYPx = 300;
+const rivalCharacterOffsetXPx = 350;
+const rivalCharacterOffsetYPx = 300;
+
+function updateCharacterContainerPositions() {
+  const playerContainer = document.getElementById('character-container-player');
+  const rivalContainer = document.getElementById('character-container-rival');
+  if (playerContainer) {
+    // Use pixel fallback positions so sprites appear where they were before the vw change
+    playerContainer.style.right = (10 + playerCharacterOffsetXPx) + 'px';
+    playerContainer.style.top = 'calc(50% + ' + playerCharacterOffsetYPx + 'px)';
+  }
+  if (rivalContainer) {
+    rivalContainer.style.left = (10 + rivalCharacterOffsetXPx) + 'px';
+    rivalContainer.style.top = 'calc(50% + ' + rivalCharacterOffsetYPx + 'px)';
+  }
+}
 let playerCharacterAnimationFrame = 0;
 let rivalCharacterAnimationFrame = 0;
 let playerCharacterAnimationTimer = 0;
@@ -3994,13 +4123,14 @@ let backgroundSceneState = {
 };
 
 const LAYOUT = {
-  playTrackWidth: 'clamp(780px, 78vw, 780px)',
-  referenceTrackWidth: 'clamp(780px, 58vw, 580px)',
-  playTrackX: '20px',
-  referenceTrackX: '20px',
+  // Use viewport-relative widths so tracks scale consistently across devices
+  playTrackWidth: '38vw',
+  referenceTrackWidth: '38vw',
+  playTrackX: '4vw',
+  referenceTrackX: '4vw',
   noteSize: '44px',
   holdNoteWidth: '34px',
-  laneGap: '58px',
+  laneGap: '1vw',
   targetSize: '64px',
 };
 
@@ -4018,6 +4148,232 @@ function applyLayoutVars() {
 }
 
 applyLayoutVars();
+
+const MAIN_MENU_VISUAL_SRC = 'Art/MM-MainMenuDraft-Visual.png';
+const MAIN_MENU_HITBOX_SRC = 'Art/MM-MainMenuDraft-Hitboxes.png';
+
+let mainMenuHotspots = [];
+let mainMenuHoverRegion = null;
+
+function showMainMenu() {
+  const mainMenu = document.getElementById('main-menu-screen');
+  const setupScreen = document.getElementById('setup-screen');
+  const gameScreen = document.getElementById('game-screen');
+  const resultsScreen = document.getElementById('results-screen');
+  if (setupScreen) setupScreen.style.display = 'none';
+  if (gameScreen) gameScreen.style.display = 'none';
+  if (resultsScreen) resultsScreen.classList.remove('visible');
+  setEditorVisibility(false);
+  if (mainMenu) mainMenu.classList.add('visible');
+}
+
+function showSetupScreen(showEditor = false) {
+  const mainMenu = document.getElementById('main-menu-screen');
+  const setupScreen = document.getElementById('setup-screen');
+  const gameScreen = document.getElementById('game-screen');
+  const resultsScreen = document.getElementById('results-screen');
+  if (mainMenu) mainMenu.classList.remove('visible');
+  if (gameScreen) gameScreen.style.display = 'none';
+  if (resultsScreen) resultsScreen.classList.remove('visible');
+  if (setupScreen) setupScreen.style.display = 'flex';
+  setEditorVisibility(!!showEditor);
+}
+
+function showGameplayScreen() {
+  const mainMenu = document.getElementById('main-menu-screen');
+  const setupScreen = document.getElementById('setup-screen');
+  const gameScreen = document.getElementById('game-screen');
+  const resultsScreen = document.getElementById('results-screen');
+  if (mainMenu) mainMenu.classList.remove('visible');
+  if (setupScreen) setupScreen.style.display = 'none';
+  if (resultsScreen) resultsScreen.classList.remove('visible');
+  setEditorVisibility(false);
+  if (gameScreen) gameScreen.style.display = 'flex';
+}
+
+function rgbToHue(r, g, b) {
+  const red = r / 255;
+  const green = g / 255;
+  const blue = b / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+  if (delta === 0) return 0;
+  let hue = 0;
+  if (max === red) {
+    hue = ((green - blue) / delta) % 6;
+  } else if (max === green) {
+    hue = (blue - red) / delta + 2;
+  } else {
+    hue = (red - green) / delta + 4;
+  }
+  hue *= 60;
+  return hue < 0 ? hue + 360 : hue;
+}
+
+function classifyMainMenuPixel(r, g, b, a) {
+  if (a < 32) return 0;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max < 80 || (max - min) < 35) return 0;
+  const hue = rgbToHue(r, g, b);
+  if (hue >= 85 && hue <= 155) return 1;
+  if (hue >= 18 && hue < 55) return 2;
+  if (hue >= 55 && hue < 85) return 3;
+  return 0;
+}
+
+async function loadImageForMainMenu(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+function parseMainMenuHotspots(image) {
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const context = canvas.getContext('2d');
+  context.drawImage(image, 0, 0);
+  const imageData = context.getImageData(0, 0, image.width, image.height);
+  const { data, width, height } = imageData;
+  const labels = new Uint8Array(width * height);
+  for (let index = 0, offset = 0; index < labels.length; index += 1, offset += 4) {
+    labels[index] = classifyMainMenuPixel(data[offset], data[offset + 1], data[offset + 2], data[offset + 3]);
+  }
+
+  const visited = new Uint8Array(labels.length);
+  const regions = [];
+  const labelToAction = { 1: 'menu', 2: 'editor', 3: 'taunt' };
+
+  for (let index = 0; index < labels.length; index += 1) {
+    if (!labels[index] || visited[index]) continue;
+
+    const label = labels[index];
+    const stack = [index];
+    visited[index] = 1;
+    let minX = width;
+    let minY = height;
+    let maxX = 0;
+    let maxY = 0;
+
+    while (stack.length) {
+      const currentIndex = stack.pop();
+      const x = currentIndex % width;
+      const y = (currentIndex / width) | 0;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+
+      const neighbors = [currentIndex - 1, currentIndex + 1, currentIndex - width, currentIndex + width];
+      for (const neighborIndex of neighbors) {
+        if (neighborIndex < 0 || neighborIndex >= labels.length || visited[neighborIndex] || labels[neighborIndex] !== label) continue;
+        const neighborX = neighborIndex % width;
+        const neighborY = (neighborIndex / width) | 0;
+        if (Math.abs(neighborX - x) + Math.abs(neighborY - y) !== 1) continue;
+        visited[neighborIndex] = 1;
+        stack.push(neighborIndex);
+      }
+    }
+
+    const regionWidth = maxX - minX + 1;
+    const regionHeight = maxY - minY + 1;
+    if (regionWidth < 24 || regionHeight < 24) continue;
+
+    regions.push({
+      action: labelToAction[label] || null,
+      left: minX,
+      top: minY,
+      width: regionWidth,
+      height: regionHeight,
+      imageWidth: width,
+      imageHeight: height,
+    });
+  }
+
+  return regions;
+}
+
+function clearMainMenuHover() {
+  const overlay = document.getElementById('main-menu-hover-overlay');
+  if (overlay) overlay.style.display = 'none';
+  mainMenuHoverRegion = null;
+}
+
+function setMainMenuHover(region) {
+  const overlay = document.getElementById('main-menu-hover-overlay');
+  if (!overlay || !region || region.action === 'taunt') {
+    clearMainMenuHover();
+    return;
+  }
+  overlay.style.left = `${region.leftPct}%`;
+  overlay.style.top = `${region.topPct}%`;
+  overlay.style.width = `${region.widthPct}%`;
+  overlay.style.height = `${region.heightPct}%`;
+  overlay.style.display = 'block';
+  mainMenuHoverRegion = region;
+}
+
+function runMainMenuAction(region) {
+  if (!region || !region.action) return;
+  if (region.action === 'menu') {
+    goMenu();
+    return;
+  }
+  if (region.action === 'editor') {
+    showSetupScreen(true);
+    openProjectEditor(selectedProjectId || currentProjectId || null);
+    return;
+  }
+  if (region.action === 'taunt') {
+    triggerPlayerTaunt();
+  }
+}
+
+async function initMainMenuScreen() {
+  const visual = document.getElementById('main-menu-visual');
+  const layer = document.getElementById('main-menu-hitbox-layer');
+  if (!visual || !layer) return;
+  visual.src = MAIN_MENU_VISUAL_SRC;
+  try {
+    const image = await loadImageForMainMenu(MAIN_MENU_HITBOX_SRC);
+    mainMenuHotspots = parseMainMenuHotspots(image).map(region => ({
+      ...region,
+      leftPct: (region.left / region.imageWidth) * 100,
+      topPct: (region.top / region.imageHeight) * 100,
+      widthPct: (region.width / region.imageWidth) * 100,
+      heightPct: (region.height / region.imageHeight) * 100,
+    }));
+    layer.innerHTML = '';
+    for (const region of mainMenuHotspots) {
+      if (!region.action) continue;
+      const hotspot = document.createElement('div');
+      hotspot.className = 'main-menu-hotspot';
+      hotspot.dataset.action = region.action;
+      hotspot.style.left = `${region.leftPct}%`;
+      hotspot.style.top = `${region.topPct}%`;
+      hotspot.style.width = `${region.widthPct}%`;
+      hotspot.style.height = `${region.heightPct}%`;
+      hotspot.addEventListener('pointerenter', () => setMainMenuHover(region));
+      hotspot.addEventListener('pointermove', () => setMainMenuHover(region));
+      hotspot.addEventListener('pointerleave', clearMainMenuHover);
+      hotspot.addEventListener('click', event => {
+        event.preventDefault();
+        runMainMenuAction(region);
+      });
+      layer.appendChild(hotspot);
+    }
+    layer.addEventListener('pointerleave', clearMainMenuHover);
+  } catch (error) {
+    console.warn('Main menu hitbox load failed', error);
+    mainMenuHotspots = [];
+    layer.innerHTML = '';
+  }
+}
 
 const LANE_KEYS = {
   up:    ['ArrowUp',   'w', 'W'],
@@ -4189,11 +4545,11 @@ function buildTrackSelector(options = {}) {
     volume.min = '0';
     volume.max = '150';
     volume.step = '1';
-    volume.value = String(Math.round(Math.min(150, Math.max(0, (trackVolumes[i] ?? 0.8) * 100))));
+    volume.value = String(Math.round(Math.min(150, Math.max(0, finiteOr(trackVolumes[i], 0.8) * 100))));
     volume.className = 'track-volume';
     volume.title = 'Track volume (0% to 150%)';
     volume.addEventListener('input', () => {
-      trackVolumes[i] = parseFloat(volume.value) / 100;
+      trackVolumes[i] = finiteOr(parseFloat(volume.value) / 100, 0.8);
     });
 
     const volumeWrap = document.createElement('div');
@@ -4226,9 +4582,9 @@ function buildTrackSelector(options = {}) {
     const collapsedCtr = document.createElement('div');
     collapsedCtr.className = 'collapsed-controls';
     const smallVol = document.createElement('input');
-    smallVol.type = 'range'; smallVol.min='0'; smallVol.max='150'; smallVol.step='1'; smallVol.value = String(Math.round(Math.min(150, Math.max(0, (trackVolumes[i] ?? 0.8) * 100))));
+    smallVol.type = 'range'; smallVol.min='0'; smallVol.max='150'; smallVol.step='1'; smallVol.value = String(Math.round(Math.min(150, Math.max(0, finiteOr(trackVolumes[i], 0.8) * 100))));
     smallVol.style.width = '120px';
-    smallVol.addEventListener('input', () => { trackVolumes[i] = parseFloat(smallVol.value)/100; });
+    smallVol.addEventListener('input', () => { trackVolumes[i] = finiteOr(parseFloat(smallVol.value) / 100, 0.8); });
     const changeBtn = document.createElement('button');
     changeBtn.className = 'btn-primary';
     changeBtn.style.padding = '6px 8px';
@@ -4400,10 +4756,7 @@ function startDemoGame() {
 function goMenu() {
   stopProjectSelectionPreview();
   stopGame();
-  document.getElementById('results-screen').classList.remove('visible');
-  document.getElementById('game-screen').style.display = 'none';
-  document.getElementById('setup-screen').style.display = 'flex';
-  setEditorVisibility(false);
+  showSetupScreen(false);
 }
 
 // ─── CHARACTER SYSTEM ───────────────────────────────────────────────────────
@@ -4542,7 +4895,10 @@ function updateCharacterAnimation(side, deltaMs, direction = 'idle') {
     prevDirection = 'idle';
   }
 
+  // Determine active sheet and frame duration (allow per-sheet override)
   const activeSheet = character.spriteSheets[activeDirection] || character.spriteSheets.idle || {};
+  const frameDuration = finiteOr(activeSheet.frameDuration, character.frameDuration || 100);
+
   const activeFrameCount = activeSheet.frameCount || character.frameCount || 1;
 
   if (isReversing) {
@@ -4550,7 +4906,7 @@ function updateCharacterAnimation(side, deltaMs, direction = 'idle') {
       reverseTimer = Math.max(0, reverseTimer - deltaMs);
     } else {
       timer += deltaMs;
-      if (timer >= character.frameDuration) {
+      if (timer >= frameDuration) {
         timer = 0;
         frame = Math.max(0, frame - 1);
         if (frame === 0) {
@@ -4565,7 +4921,7 @@ function updateCharacterAnimation(side, deltaMs, direction = 'idle') {
   } else {
     // Normal animation update
     timer += deltaMs;
-    if (timer >= character.frameDuration) {
+    if (timer >= frameDuration) {
       timer = 0;
       if (activeDirection === 'idle') {
         frame = (frame + 1) % activeFrameCount;
@@ -4661,7 +5017,6 @@ function renderCharacterSpriteSheet(canvasId, side, direction = 'idle') {
 
 // Trigger a player taunt: play a random taunt clip and run a short animation
 function triggerPlayerTaunt() {
-  if (!gameRunning) return;
   if (playerTauntActive) return; // already taunting
   const character = getCharacterById(currentPlayerCharacterId);
   if (!character || character.id === 'blank') return;
@@ -4674,11 +5029,13 @@ function triggerPlayerTaunt() {
     createClipVoice({ clipId: cid, note: 60, velocity: 100, volume: 1.0, startTime: getAudioCtx().currentTime, duration: 400 });
   } catch (e) { console.warn('taunt play failed', e); }
 
-  // Start taunt animation (use left sprite sheet as taunt)
-  playerTauntActive = true;
-  playerTauntRemainingMs = PLAYER_TAUNT_DURATION_MS;
-  playerCharacterAnimationFrame = 0;
-  playerCharacterAnimationTimer = 0;
+  if (gameRunning) {
+    // Start taunt animation (use left sprite sheet as taunt)
+    playerTauntActive = true;
+    playerTauntRemainingMs = PLAYER_TAUNT_DURATION_MS;
+    playerCharacterAnimationFrame = 0;
+    playerCharacterAnimationTimer = 0;
+  }
 }
 
 function playCharacterNote(characterId, direction, note, velocity, duration, pitchShift = 1) {
@@ -4742,12 +5099,13 @@ function initializeCharactersForGame(projectData) {
   const rivalContainer = document.getElementById('character-container-rival');
   
   if (playerContainer) {
-    playerContainer.style.right = (10 - playerCharacterOffsetX) + 'px';
-    playerContainer.style.top = 'calc(50% + ' + playerCharacterOffsetY + 'px)';
+    // Restore previous pixel positions for quick visual tuning
+    playerContainer.style.right = '-540px';
+    playerContainer.style.top = 'calc(50% + 100px)';
   }
   if (rivalContainer) {
-    rivalContainer.style.left = (10 + rivalCharacterOffsetX) + 'px';
-    rivalContainer.style.top = 'calc(50% + ' + rivalCharacterOffsetY + 'px)';
+    rivalContainer.style.left = '560px';
+    rivalContainer.style.top = 'calc(50% + 100px)';
   }
 }
 
@@ -4808,6 +5166,8 @@ function applyCharacterSettingsToUI(settings = {}) {
       rivalChar.value = 'blank';
     }
   }
+  currentPlayerCharacterId = playerChar?.value || 'blank';
+  currentRivalCharacterId = rivalChar?.value || 'blank';
 }
 
 function startGame() {
@@ -4843,17 +5203,13 @@ function startGame() {
 
   readConfig();
   setLoadingOverlayVisible(false);
-  document.getElementById('results-screen').classList.remove('visible');
-  document.getElementById('setup-screen').style.display = 'none';
-  document.getElementById('game-screen').style.display = 'flex';
+  showGameplayScreen();
 
   buildPlayFields();
   
   // Initialize characters from current project
   const currentProject = songProjects.find(p => p.id === currentProjectId);
-  if (currentProject) {
-    initializeCharactersForGame(currentProject);
-  }
+  showGameplayScreen();
   activeGameplayProject = currentProject || createEmptyProject();
   resetGameBackgroundScene();
   updateGameBackgroundScene(0);
