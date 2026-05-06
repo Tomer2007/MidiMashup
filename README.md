@@ -50,4 +50,3 @@ Each `.sf2` file can have a sibling manifest named `*.manifest.json` next to it 
 This means you only need to convert new instruments once, when you add them to the repository. Uploaded MIDI songs still play normally at runtime; only the instrument pack is prebuilt.
 
 
-06/05/2026 an entire day of working and still nothing works, Sounds are completely broken and don't work with short notes no matter what I do, all the sounds are broken, and the Character sprites keep fucking moving around the fucking screen. I can't do this shit no more.

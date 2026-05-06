@@ -2822,8 +2822,10 @@ const CHARACTERS = [
       right: createSpriteSheetConfig('Art/Mushy/SS-MushySingerRight.png', 2, 1, 1.0, 2),
       down: createSpriteSheetConfig('Art/Mushy/SS-MushySingerDown.png', 2, 1, 1.0, 2),
     },
-    voiceClipBankId: 'sf-mushy-draft',
-    voiceClips: [],
+    voiceClipBankId:[],// 'sf-mushy-draft',
+    voiceClips: [
+       { id: 'martin-blip', label: 'Martin Blip', type: 'mp3', url: 'SoundClip/Mushy/DialogueBlip.wav', rootNote: 60 }
+    ],
     tauntClips: ['mushy-purchase', 'mushy-shake', 'mushy-eating'],
     frameCount: 8,
     frameDuration: 60,
