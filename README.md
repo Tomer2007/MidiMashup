@@ -40,3 +40,14 @@ Add more characters (Could use Mushroom soldier from Mushrum and the Husks from 
 
 
 Fix Player visual positioning
+
+## SoundFont workflow
+
+SoundFont characters are loaded from converted offline packs instead of parsing raw `.sf2` files in the browser.
+
+Each `.sf2` file can have a sibling manifest named `*.manifest.json` next to it in the repository. The manifest points to pre-rendered sample files and may define one or more presets. When the manifest is present, the game loads those samples at startup and uses them for note playback. If a converted pack is missing, the existing fallback voice logic still works.
+
+This means you only need to convert new instruments once, when you add them to the repository. Uploaded MIDI songs still play normally at runtime; only the instrument pack is prebuilt.
+
+
+06/05/2026 an entire day of working and still nothing works, Sounds are completely broken and don't work with short notes no matter what I do, all the sounds are broken, and the Character sprites keep fucking moving around the fucking screen. I can't do this shit no more.

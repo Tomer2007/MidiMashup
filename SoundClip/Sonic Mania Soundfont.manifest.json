@@ -1,0 +1,105 @@
+{
+  "defaultProgram": 0,
+  "defaultRootNote": 60,
+  "presets": [
+    {
+      "program": 0,
+      "name": "Acoustic Bass",
+      "rootNote": 40,
+      "attack": 0.01,
+      "decay": 0.1,
+      "sustain": 0.5,
+      "release": 0.2,
+      "gain": 1,
+      "sample_url": "SoundClip/AcousticGuitar.mp3"
+    },
+    {
+      "program": 1,
+      "name": "Bandoneon",
+      "rootNote": 52,
+      "attack": 0.02,
+      "decay": 0.08,
+      "sustain": 0.4,
+      "release": 0.15,
+      "gain": 1,
+      "sample_url": "SoundClip/MusicBox.mp3"
+    },
+    {
+      "program": 2,
+      "name": "Banjo",
+      "rootNote": 55,
+      "attack": 0.015,
+      "decay": 0.12,
+      "sustain": 0.3,
+      "release": 0.18,
+      "gain": 1,
+      "sample_url": "SoundClip/GuitarF.mp3"
+    },
+    {
+      "program": 3,
+      "name": "Bass 1",
+      "rootNote": 43,
+      "attack": 0.008,
+      "decay": 0.15,
+      "sustain": 0.6,
+      "release": 0.25,
+      "gain": 1,
+      "sample_url": "SoundClip/PianoG.mp3"
+    },
+    {
+      "program": 4,
+      "name": "Bass 2",
+      "rootNote": 45,
+      "attack": 0.008,
+      "decay": 0.12,
+      "sustain": 0.55,
+      "release": 0.22,
+      "gain": 1,
+      "sample_url": "SoundClip/Flute.mp3"
+    },
+    {
+      "program": 5,
+      "name": "Bass Fingered",
+      "rootNote": 47,
+      "attack": 0.01,
+      "decay": 0.1,
+      "sustain": 0.45,
+      "release": 0.2,
+      "gain": 1,
+      "sample_url": "SoundClip/GuitarF.mp3"
+    },
+    {
+      "program": 6,
+      "name": "Bass Fretless+",
+      "rootNote": 48,
+      "attack": 0.012,
+      "decay": 0.11,
+      "sustain": 0.5,
+      "release": 0.21,
+      "gain": 1,
+      "sample_url": "SoundClip/AcousticGuitar.mp3"
+    },
+    {
+      "program": 7,
+      "name": "Bassoon",
+      "rootNote": 50,
+      "attack": 0.03,
+      "decay": 0.12,
+      "sustain": 0.55,
+      "release": 0.18,
+      "gain": 1,
+      "sample_url": "SoundClip/Flute.mp3"
+    },
+    {
+      "program": 8,
+      "name": "Bassoon+Strings",
+      "rootNote": 52,
+      "attack": 0.035,
+      "decay": 0.13,
+      "sustain": 0.6,
+      "release": 0.2,
+      "gain": 1,
+      "sample_url": "SoundClip/MusicBox.mp3"
+    }
+  ]
+}
