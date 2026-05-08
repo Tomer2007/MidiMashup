@@ -49,4 +49,27 @@ Each `.sf2` file can have a sibling manifest named `*.manifest.json` next to it 
 
 This means you only need to convert new instruments once, when you add them to the repository. Uploaded MIDI songs still play normally at runtime; only the instrument pack is prebuilt.
 
+Different modes:
+- Battle, DDR styke
+- Drum, two inputs focussing on timing over different inputs.
+- Piano, a difficult mode that functions similar to Battle but with more inputs and slower songs
+- Gauntlet, a mode which switches mode while in the song, and may add some more simple input modes (inspired by Rythm Heaven's minigame style)
+
+
+In order to control scope for now I'll scope in on making a polished DDR style game mode, with around 5 characters, and hopefully a rougelike mode.
+For this I'll need to work on adjusting the algorithm that sets up notes to make it more enjoyable to play, then fix the bugs with the character voices, making them use sound fonts which allow a variety of chords from a couple wav files.
+
+Current bugs
+- 
+
+
+
+
+
+5 success criteria
+- Create something that feels polished and feels like a finished product.
+- Create something that is easy and enjoyable to use.
+- Create something with mostly polished visual design, with most UI and sprites finished.
+- Create something with variety of ways to interact to keep user's interested.
+- 
 
