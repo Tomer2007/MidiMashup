@@ -347,7 +347,7 @@
 
   #reference-field,
   #play-field {
-    z-index: 10;
+    z-index: 1;
     position: absolute;
     top: 0;
     bottom: 0;
@@ -631,6 +631,18 @@
   #reference-field .note { opacity: 0.8; }
   #reference-field .target-zone { opacity: 0.78; filter: saturate(0.9) brightness(1.08); }
 
+  /* Recorder upload visibility */
+  #recorder-drop-zone, #btn-clear-recorder { display: none; }
+  #recorder-drop-zone.visible, #btn-clear-recorder.visible { display: block; }
+
+  /* Directional note sprites */
+  .note.sprite { border-radius: 0; background-size: contain; background-repeat: no-repeat; background-position: center; }
+  .note.sprite.hold { display: none; }
+  .lane-up .note.sprite { background-image: url('Art/Mushy/Mushy-UpNote.png'); }
+  .lane-left .note.sprite { background-image: url('Art/Mushy/Mushy-LeftNote.png'); }
+  .lane-right .note.sprite { background-image: url('Art/Mushy/Mushy_RightNote.png'); }
+  .lane-down .note.sprite { background-image: url('Art/Mushy/Mushy-DownNote.png'); }
+
   #countdown-overlay {
     position: fixed;
     inset: 0;
@@ -905,13 +917,127 @@
   .project-editor-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
   .project-editor-actions { display:flex; gap:10px; flex-wrap:wrap; }
   .setup-card-inner { display:flex; flex-direction:column; gap:10px; }
+
+  .setup-view {
+    width: var(--setup-card-width);
+    position: relative;
+    z-index: 1;
+  }
+
+  #play-menu-view,
+  #editor-menu-view {
+    transition: opacity 180ms ease;
+    will-change: transform, opacity, filter;
+  }
+
+  #editor-menu-view.hidden,
+  #play-menu-view.hidden {
+    display: none !important;
+  }
+
+  .menu-fly-out {
+    animation: menuFlyOut 220ms ease-in forwards;
+  }
+
+  .menu-fly-in {
+    animation: menuFlyIn 280ms ease-out forwards;
+  }
+
+  @keyframes menuFlyOut {
+    0% { transform: translateX(0) scale(1); opacity: 1; filter: blur(0); }
+    100% { transform: translateX(-18vw) scale(0.97); opacity: 0; filter: blur(7px); }
+  }
+
+  @keyframes menuFlyIn {
+    0% { transform: translateX(18vw) scale(0.97); opacity: 0; filter: blur(8px); }
+    100% { transform: translateX(0) scale(1); opacity: 1; filter: blur(0); }
+  }
+
+  .project-editor {
+    min-height: min(84vh, 920px);
+  }
+
+  .editor-menu-grid {
+    display: grid;
+    grid-template-columns: minmax(360px, 42%) minmax(420px, 58%);
+    grid-template-rows: minmax(180px, 32%) minmax(320px, 68%);
+    gap: 12px;
+    height: min(74vh, 760px);
+  }
+
+  .editor-pane {
+    border: 1px solid #b8b8d2;
+    border-radius: 4px;
+    background: rgba(12, 12, 34, 0.8);
+    padding: 10px;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .editor-pane-scroll {
+    height: 100%;
+    overflow: auto;
+    padding-right: 4px;
+  }
+
+  .editor-pane-songlist { grid-column: 1; grid-row: 1; }
+  .editor-pane-game { grid-column: 1; grid-row: 2; }
+  .editor-pane-track { grid-column: 2; grid-row: 1 / span 2; }
+
+  #editor-project-list {
+    height: calc(100% - 44px);
+    overflow: auto;
+    margin-top: 8px;
+    border: 1px solid rgba(255,255,255,0.18);
+    padding: 8px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.12);
+  }
+
+  #editor-project-list .project-card {
+    padding: 10px 12px;
+  }
+
+  #editor-project-list .project-card-title {
+    font-size: 13px;
+  }
+
+  #editor-project-list .project-card-meta,
+  #editor-project-list .project-card-submeta {
+    font-size: 11px;
+  }
+
+  .editor-pane h3 {
+    font-family:'Orbitron', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: #d9d9f3;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  @media (max-width: 1100px) {
+    .editor-menu-grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto auto;
+      height: auto;
+      max-height: none;
+    }
+    .editor-pane-songlist,
+    .editor-pane-game,
+    .editor-pane-track {
+      grid-column: 1;
+      grid-row: auto;
+      min-height: 220px;
+    }
+  }
 </style>
 </head>
 <body>
 
 <div id="scanlines"></div>
 <div id="loading-overlay" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:linear-gradient(rgba(0,0,0,0.6),rgba(0,0,0,0.6));z-index:10000;color:#fff;font-size:18px;">
-  <div id="loading-overlay-text" style="background:rgba(10,10,20,0.9);padding:18px 26px;border-radius:8px;box-shadow:0 6px 30px rgba(0,0,0,0.6);">Loading... please wait</div>
+  <div style="background:rgba(10,10,20,0.9);padding:18px 26px;border-radius:8px;box-shadow:0 6px 30px rgba(0,0,0,0.6);">Loading… please wait</div>
 </div>
 
 <!-- ═══════════════ SETUP SCREEN ═══════════════ -->
@@ -919,163 +1045,194 @@
   <div class="logo">MIDI Beat Engine</div>
   <div class="subtitle">Projects · Play · Edit</div>
 
-  <div class="setup-card">
-    <h2>Song Projects</h2>
-    <div class="project-toolbar">
-      <div class="project-toolbar-meta">
-        <div id="selected-project-title" class="project-selected-title">No project selected</div>
-        <div id="selected-project-score" class="project-selected-score">Saved score: 0</div>
-      </div>
-      <div class="project-toolbar-actions">
-        <button class="btn-primary" id="btn-main-menu" style="padding:10px 14px; width:auto; background:#2f2f55; color:#fff;">MAIN MENU</button>
-        <button class="btn-primary" id="btn-add-song-project" style="padding:10px 14px; width:auto;">Add Song Project</button>
-        <button class="btn-primary" id="btn-start" disabled style="padding:10px 14px; width:auto;">PLAY PROJECT</button>
-        <button class="btn-primary" id="btn-demo" style="padding:10px 14px; width:auto; background: #4444aa;">DEMO MODE</button>
-      </div>
-    </div>
-    <div id="project-list" class="project-list"></div>
-  </div>
-
-  <div id="project-editor" class="setup-card project-editor hidden">
-    <div class="project-editor-head">
-      <h2 id="project-editor-title">Edit Song Project</h2>
-      <div class="project-editor-actions">
-        <button id="btn-cancel-project" class="btn-primary" style="padding:8px 12px; width:auto; background:#2f2f55; color:#fff;">Cancel</button>
-        <button id="btn-save-project" class="btn-primary" style="padding:8px 12px; width:auto;">Save Project</button>
-        <button id="btn-export-project" class="btn-primary" style="padding:8px 12px; width:auto;">Export</button>
-        <button id="btn-import-project" class="btn-primary" style="padding:8px 12px; width:auto;">Import</button>
-        <input id="project-import-input" type="file" accept="application/json,.mmp,.mmp.json" style="display:none">
-      </div>
-    </div>
-    <div class="field-row">
-      <label>Song Title</label>
-      <input type="text" id="project-title-input" placeholder="New Song Project" style="background:#080818;border:1px solid #2a2a4a;color:var(--text);padding:10px 12px;font-family:'Share Tech Mono', monospace;font-size:14px;border-radius:2px;">
-    </div>
-
-    <h2>01 — MIDI File</h2>
-    <div class="drop-zone" id="drop-zone">
-      Drop a .mid / .midi file here, or click to browse
-      <input type="file" id="file-input" accept=".mid,.midi" style="display:none">
-    </div>
-    <button id="btn-clear-midi" class="btn-primary" style="padding:6px 10px; margin-top:8px; width:auto; background:#8b4444; display:none;">Clear MIDI File</button>
-
-    <div class="setup-card-inner">
-      <div class="waveform-card" style="margin-top:10px;">
-        <canvas id="midi-waveform" class="waveform-canvas"></canvas>
-        <canvas id="mp3-waveform" class="waveform-canvas"></canvas>
-        <div class="waveform-controls">
-          <input type="range" id="mp3-offset-slider" min="-5000" max="5000" step="10" value="0">
-          <button id="mp3-align-zero" class="btn-primary" style="padding:6px 8px;">Zero</button>
+  <div id="play-menu-view" class="setup-view">
+    <div class="setup-card">
+      <h2>Song Projects</h2>
+      <div class="project-toolbar">
+        <div class="project-toolbar-meta">
+          <div id="selected-project-title" class="project-selected-title">No project selected</div>
+          <div id="selected-project-score" class="project-selected-score">Saved score: 0</div>
+        </div>
+        <div class="project-toolbar-actions">
+          <button class="btn-primary" id="btn-main-menu" style="padding:10px 14px; width:auto; background:#2f2f55; color:#fff;">MAIN MENU</button>
+          <button class="btn-primary" id="btn-add-song-project" style="padding:10px 14px; width:auto;">Add Song Project</button>
+          <button class="btn-primary" id="btn-start" disabled style="padding:10px 14px; width:auto;">PLAY PROJECT</button>
+          <button class="btn-primary" id="btn-demo" style="padding:10px 14px; width:auto; background: #4444aa;">DEMO MODE</button>
         </div>
       </div>
-      <div class="drop-zone" id="mp4-drop-zone" style="margin-top:8px;">
-        <span id="mp4-drop-label">Drop an .mp4 / .mp3 file here, or click to browse</span>
-        <input type="file" id="mp3-file-input" accept=".mp3,.mp4,audio/*,video/*" style="display:none">
-      </div>
-      <button id="btn-clear-mp4" class="btn-primary" style="padding:6px 10px; margin-top:8px; width:auto; background:#8b4444; display:none;">Clear MP4 File</button>
-      <div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap;">
-        <button id="mp3-preview" class="btn-primary" style="padding:6px 10px;width:auto;">Preview</button>
-        <div style="flex:1"></div>
-        <div style="font-size:11px;color:#7777aa">Offset (ms): <span id="mp3-offset-label">0</span></div>
-      </div>
-    </div>
-
-    <div id="track-selector">
-      <h2 style="display:inline-block">02 — Track Assignment</h2>
-      <button id="btn-clip-fullscreen" class="btn-primary" style="padding:6px 10px; font-size:13px; margin-left:10px; width:auto;">Fullscreen Clips</button>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px;margin-bottom:8px;">
-        <button id="btn-manual-map" class="btn-primary" style="padding:6px 10px; font-size:13px; width:auto; background:#2f5a4b;">Record Manual Tracking</button>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#99ddcc;">
-          <input type="checkbox" id="manual-map-enable-song">
-          Active for this song
-        </label>
-      </div>
-      <div style="font-size:11px;color:#555588;">Click each track's badge to cycle: GAME → BACKING → OFF. Manual mapping opens a record-and-confirm mode; press R to restart the attempt.</div>
-      <div id="track-list"></div>
-    </div>
-
-    <h2>02B — Characters</h2>
-    <div class="var-row">
-      <div class="var-item">
-        <label>Player Character</label>
-        <select id="var-player-character" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
-          <option value="blank">None</option>
-          <option value="mushy">Tote Singer</option>
-        </select>
-      </div>
-      <div class="var-item">
-        <label>Rival Character</label>
-        <select id="var-rival-character" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
-          <option value="blank">None</option>
-          <option value="mushy">Tote Singer</option>
-        </select>
-      </div>
-    </div>
-
-    <h2>02C — Background Scene</h2>
-    <div class="var-row">
-      <div class="var-item">
-        <label>Song Scene</label>
-        <select id="var-background-scene" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
-          <option value="dark">Dark</option>
-          <option value="city-night">City - Night</option>
-        </select>
-      </div>
-      <div class="var-item">
-        <label>Scene Tempo BPM</label>
-        <input type="number" id="var-background-tempo" value="0" min="0" max="400" title="0 uses the MIDI tempo when available, otherwise 120 BPM">
-      </div>
-    </div>
-
-    <!-- Character offsets are now code-level constants (not stored per-project) -->
-
-    <h2>03 — Parameters</h2>
-    <div class="var-row">
-      <div class="var-item">
-        <label>Note Speed (px/frame)</label>
-        <input type="number" id="var-speed" value="5" min="1" max="20">
-      </div>
-      <div class="var-item">
-        <label>Hit Window — Perfect (ms)</label>
-        <input type="number" id="var-perfect" value="50" min="10" max="200">
-      </div>
-      <div class="var-item">
-        <label>Hit Window — Good (ms)</label>
-        <input type="number" id="var-good" value="120" min="30" max="400">
-      </div>
-      <div class="var-item">
-        <label>Hit Window — Bad (ms)</label>
-        <input type="number" id="var-bad" value="220" min="50" max="600">
-      </div>
-      <div class="var-item">
-        <label>Pitch Range % (top/bottom)</label>
-        <input type="number" id="var-pitch-range" value="100" min="10" max="100" title="Use top X% of pitch range for lane assignment">
-      </div>
-      <div class="var-item">
-        <label>Min Velocity (0-127)</label>
-        <input type="number" id="var-min-vel" value="30" min="0" max="127" title="Notes below this velocity are ignored">
-      </div>
-      <div class="var-item">
-        <label>Merge Window (ms)</label>
-        <input type="number" id="var-merge-ms" value="120" min="0" max="1000" title="Notes within this gap become a hold note">
-      </div>
-      <div class="var-item">
-        <label>Long Note Threshold (ms)</label>
-        <input type="number" id="var-long-note-threshold" value="180" min="0" max="5000" title="Notes longer than this become long/hold notes">
-      </div>
-      <div class="var-item">
-        <label>Difficulty</label>
-        <select id="var-difficulty" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
-          <option value="normal">Normal</option>
-          <option value="easy">Easy (Auto-play quiet notes)</option>
-          <option value="hard">Hard (No reference, player plays full track)</option>
-          <option value="auto">Auto (Full auto-play)</option>
-        </select>
-      </div>
+      <div id="project-list" class="project-list"></div>
     </div>
   </div>
 
-</div> <!-- /project-editor -->
+  <div id="editor-menu-view" class="setup-view hidden">
+    <div id="project-editor" class="setup-card project-editor">
+      <div class="project-editor-head">
+        <h2 id="project-editor-title">Edit Song Project</h2>
+        <div class="project-editor-actions">
+          <button id="btn-cancel-project" class="btn-primary" style="padding:8px 12px; width:auto; background:#2f2f55; color:#fff;">Back</button>
+          <button id="btn-save-project" class="btn-primary" style="padding:8px 12px; width:auto;">Save Project</button>
+          <button id="btn-export-project" class="btn-primary" style="padding:8px 12px; width:auto;">Export</button>
+          <button id="btn-import-project" class="btn-primary" style="padding:8px 12px; width:auto;">Import</button>
+          <input id="project-import-input" type="file" accept="application/json,.mmp,.mmp.json" style="display:none">
+        </div>
+      </div>
+
+      <div class="editor-menu-grid">
+        <section class="editor-pane editor-pane-songlist">
+          <h3>Song Projects</h3>
+          <button id="btn-editor-add-song-project" class="btn-primary" style="padding:8px 12px; width:auto;">+ Add Song</button>
+          <div id="editor-project-list" class="editor-project-list"></div>
+        </section>
+
+        <section class="editor-pane editor-pane-track">
+          <div class="editor-pane-scroll">
+            <h3>Track Settings</h3>
+
+            <h2>01 — MIDI File</h2>
+            <div class="drop-zone" id="drop-zone">
+              Drop a .mid / .midi file here, or click to browse
+              <input type="file" id="file-input" accept=".mid,.midi" style="display:none">
+            </div>
+            <button id="btn-clear-midi" class="btn-primary" style="padding:6px 10px; margin-top:8px; width:auto; background:#8b4444; display:none;">Clear MIDI File</button>
+
+            <div class="setup-card-inner">
+              <div class="waveform-card" style="margin-top:10px;">
+                <canvas id="midi-waveform" class="waveform-canvas"></canvas>
+                <canvas id="mp3-waveform" class="waveform-canvas"></canvas>
+                <div class="waveform-controls">
+                  <input type="range" id="mp3-offset-slider" min="-5000" max="5000" step="10" value="0">
+                  <button id="mp3-align-zero" class="btn-primary" style="padding:6px 8px;">Zero</button>
+                </div>
+              </div>
+              <div class="drop-zone" id="mp4-drop-zone" style="margin-top:8px;">
+                <span id="mp4-drop-label">Drop an .mp4 / .mp3 file here, or click to browse</span>
+                <input type="file" id="mp3-file-input" accept=".mp3,.mp4,audio/*,video/*" style="display:none">
+              </div>
+              <button id="btn-clear-mp4" class="btn-primary" style="padding:6px 10px; margin-top:8px; width:auto; background:#8b4444; display:none;">Clear MP4 File</button>
+              <div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+                <button id="mp3-preview" class="btn-primary" style="padding:6px 10px;width:auto;">Preview</button>
+                <div style="flex:1"></div>
+                <div style="font-size:11px;color:#7777aa">Offset (ms): <span id="mp3-offset-label">0</span></div>
+              </div>
+            </div>
+
+            <div id="track-selector">
+              <h2 style="display:inline-block">02 — Track Assignment</h2>
+              <button id="btn-clip-fullscreen" class="btn-primary" style="padding:6px 10px; font-size:13px; margin-left:10px; width:auto;">Fullscreen Clips</button>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px;margin-bottom:8px;">
+                <button id="btn-manual-map" class="btn-primary" style="padding:6px 10px; font-size:13px; width:auto; background:#2f5a4b;">Record Manual Tracking</button>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#99ddcc;">
+                  <input type="checkbox" id="manual-map-enable-song">
+                  Active for this song
+                </label>
+              </div>
+              <div style="font-size:11px;color:#555588;">Click each track's badge to cycle: GAME → BACKING → OFF. Manual mapping opens a record-and-confirm mode; press R to restart the attempt.</div>
+              <div id="track-list"></div>
+            </div>
+
+            <h2>02B — Characters</h2>
+            <div class="var-row">
+              <div class="var-item">
+                <label>Player Character</label>
+                <select id="var-player-character" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
+                  <option value="blank">None</option>
+                  <option value="Mushy">Tote Singer</option>
+                </select>
+              </div>
+              <div class="var-item">
+                <label>Rival Character</label>
+                <select id="var-rival-character" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
+                  <option value="blank">None</option>
+                  <option value="Mushy">Tote Singer</option>
+                </select>
+              </div>
+            </div>
+            <div class="setup-card-inner" style="margin-top:8px;">
+              <div class="drop-zone" id="recorder-drop-zone">
+                <span id="recorder-drop-label">Drop a vocal .mp3 / .wav for Recorder here, or click to browse</span>
+                <input type="file" id="recorder-file-input" accept=".mp3,.wav,audio/*" style="display:none">
+              </div>
+              <button id="btn-clear-recorder" class="btn-primary" style="padding:6px 10px; margin-top:8px; width:auto; background:#8b4444; display:none;">Clear Recorder Vocal</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="editor-pane editor-pane-game">
+          <div class="editor-pane-scroll">
+            <h3>Game Settings</h3>
+            <div class="field-row">
+              <label>Song Title</label>
+              <input type="text" id="project-title-input" placeholder="New Song Project" style="background:#080818;border:1px solid #2a2a4a;color:var(--text);padding:10px 12px;font-family:'Share Tech Mono', monospace;font-size:14px;border-radius:2px;">
+            </div>
+            <div class="field-row">
+              <label>Artist / Credit</label>
+              <input type="text" id="project-artist-input" placeholder="Artist Name" style="background:#080818;border:1px solid #2a2a4a;color:var(--text);padding:8px 10px;font-family:'Share Tech Mono', monospace;font-size:13px;border-radius:2px;">
+            </div>
+
+            <h2>02C — Background Scene</h2>
+            <div class="var-row">
+              <div class="var-item">
+                <label>Song Scene</label>
+                <select id="var-background-scene" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
+                  <option value="dark">Dark</option>
+                  <option value="city-night">City - Night</option>
+                </select>
+              </div>
+              <div class="var-item">
+                <label>Scene Tempo BPM</label>
+                <input type="number" id="var-background-tempo" value="0" min="0" max="400" title="0 uses the MIDI tempo when available, otherwise 120 BPM">
+              </div>
+            </div>
+
+            <h2>03 — Parameters</h2>
+            <div class="var-row">
+              <div class="var-item">
+                <label>Note Speed (px/frame)</label>
+                <input type="number" id="var-speed" value="5" min="1" max="20">
+              </div>
+              <div class="var-item">
+                <label>Hit Window — Perfect (ms)</label>
+                <input type="number" id="var-perfect" value="50" min="10" max="200">
+              </div>
+              <div class="var-item">
+                <label>Hit Window — Good (ms)</label>
+                <input type="number" id="var-good" value="120" min="30" max="400">
+              </div>
+              <div class="var-item">
+                <label>Hit Window — Bad (ms)</label>
+                <input type="number" id="var-bad" value="220" min="50" max="600">
+              </div>
+              <div class="var-item">
+                <label>Pitch Range % (top/bottom)</label>
+                <input type="number" id="var-pitch-range" value="100" min="10" max="100" title="Use top X% of pitch range for lane assignment">
+              </div>
+              <div class="var-item">
+                <label>Min Velocity (0-127)</label>
+                <input type="number" id="var-min-vel" value="30" min="0" max="127" title="Notes below this velocity are ignored">
+              </div>
+              <div class="var-item">
+                <label>Merge Window (ms)</label>
+                <input type="number" id="var-merge-ms" value="120" min="0" max="1000" title="Notes within this gap become a hold note">
+              </div>
+              <div class="var-item">
+                <label>Long Note Threshold (ms)</label>
+                <input type="number" id="var-long-note-threshold" value="180" min="0" max="5000" title="Notes longer than this become long/hold notes">
+              </div>
+              <div class="var-item">
+                <label>Difficulty</label>
+                <select id="var-difficulty" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
+                  <option value="normal">Normal</option>
+                  <option value="easy">Easy (Auto-play quiet notes)</option>
+                  <option value="hard">Hard (No reference, player plays full track)</option>
+                  <option value="auto">Auto (Full auto-play)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
 </div> <!-- /setup-screen -->
 
 <!-- ═══════════════ MAIN MENU ═══════════════ -->
@@ -1098,15 +1255,15 @@
   <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
   <div id="game-main">
     <div id="scene-layer"></div>
-    <div id="character-container-rival" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);z-index:1;pointer-events:none;">
-      <canvas id="character-canvas-rival" style="image-rendering:pixelated;pointer-events:none;display:block;"></canvas>
-    </div>
-    <div id="character-container-player" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);z-index:1;pointer-events:none;">
-      <canvas id="character-canvas-player" style="image-rendering:pixelated;pointer-events:none;display:block;"></canvas>
-    </div>
     <div id="reference-field"></div>
     <div id="play-field"></div>
     <div id="particle-layer"></div>
+    <div id="character-container-rival" style="position:absolute;z-index:1200;pointer-events:none;">
+      <canvas id="character-canvas-rival" style="image-rendering:pixelated;pointer-events:none;display:block;"></canvas>
+    </div>
+    <div id="character-container-player" style="position:absolute;z-index:1200;pointer-events:none;">
+      <canvas id="character-canvas-player" style="image-rendering:pixelated;pointer-events:none;display:block;"></canvas>
+    </div>
   </div>
 </div>
 <div id="countdown-overlay"><div id="countdown-value"></div></div>
@@ -1128,6 +1285,8 @@
     <button class="btn-primary" id="btn-menu" style="background:#1a1a3a;color:var(--text);margin-top:0px">MENU</button>
   </div>
 </div>
+
+<script src="SoundClip/Tote/ExpandedSoundList/ToteSound.manifest.js"></script>
 
 <!-- ════════════════════════ MIDI PARSER (pure JS) ════════════════════════ -->
 <script>
@@ -1260,8 +1419,13 @@ function buildBeatmaps(midi, gameTrackIdx, pitchRangePercent, minVelocity) {
 
   const split = splitNotesIntoReferenceAndPlay(raw);
   const referenceBeatmap = assignLanes(split.reference, gameTrackIdx, pitchRangePercent);
-  const playBeatmap = assignLanes(split.play, gameTrackIdx, pitchRangePercent);
+  let playBeatmap = assignLanes(split.play, gameTrackIdx, pitchRangePercent);
   const autoPlayBeatmap = assignLanes(split.autoPlay, gameTrackIdx, pitchRangePercent);
+  
+  // If player character is Recorder, mute all play notes so only background vocal plays
+  if (currentPlayerCharacterId === 'recorder') {
+    playBeatmap = playBeatmap.map(n => ({ ...n, playerMuted: true }));
+  }
   const preRollMs = 1000;
   const addPreRoll = (notes, ms) => notes.map(n => ({
     ...n,
@@ -1679,6 +1843,21 @@ function getAudioCtx() {
   return audioCtx;
 }
 
+const SAMPLE_BUFFER_CACHE = new Map();
+
+function getSampleBuffer(url) {
+  if (!url) return Promise.reject(new Error('Missing sample URL'));
+  if (SAMPLE_BUFFER_CACHE.has(url)) return SAMPLE_BUFFER_CACHE.get(url);
+  const loadPromise = fetch(url)
+    .then(res => {
+      if (!res.ok) throw new Error(`Failed to fetch sample: ${url}`);
+      return res.arrayBuffer();
+    })
+    .then(arrayBuffer => getAudioCtx().decodeAudioData(arrayBuffer.slice(0)));
+  SAMPLE_BUFFER_CACHE.set(url, loadPromise);
+  return loadPromise;
+}
+
 const PROJECT_INDEX_KEY = 'mbe.songProjects.index';
 const PROJECT_SELECTED_KEY = 'mbe.songProjects.selected';
 const PROJECT_DB_NAME = 'mbe.songProjects.db';
@@ -1768,6 +1947,8 @@ async function syncSelectedProjectCharacterState(projectId) {
   applyCharacterSettingsToUI({
     playerCharacterId: currentPlayerCharacterId,
     rivalCharacterId: currentRivalCharacterId,
+    playerMissSoundId: project.playerMissSoundId || 'default',
+    rivalMissSoundId: project.rivalMissSoundId || 'default',
   });
 }
 
@@ -1803,9 +1984,12 @@ function createEmptyProject() {
     manualBeatmap: [],
     midiBuffer: null,
     mp3Blob: null,
+    recorderVoiceBlob: null,
     updatedAt: Date.now(),
       playerCharacterId: 'blank',
       rivalCharacterId: 'blank',
+      playerMissSoundId: 'default',
+      rivalMissSoundId: 'default',
   };
 }
 
@@ -1823,6 +2007,7 @@ function readProjectSettingsFromUI() {
     difficulty: document.getElementById('var-difficulty').value || DEFAULTS.difficulty,
     backgroundScene: document.getElementById('var-background-scene').value || DEFAULTS.backgroundScene,
     backgroundTempoBpm: Number.isFinite(sceneTempoValue) ? sceneTempoValue : DEFAULTS.backgroundTempoBpm,
+    artist: (document.getElementById('project-artist-input')?.value || '').trim(),
   };
 }
 
@@ -1844,6 +2029,8 @@ function applyProjectSettingsToUI(settings = {}) {
   }
   const sceneTempo = document.getElementById('var-background-tempo');
   if (sceneTempo) sceneTempo.value = String(Number.isFinite(merged.backgroundTempoBpm) ? merged.backgroundTempoBpm : DEFAULTS.backgroundTempoBpm);
+  const artistInput = document.getElementById('project-artist-input');
+  if (artistInput) artistInput.value = merged.artist || '';
 }
 
 function getMidiDurationMs(midi) {
@@ -1909,20 +2096,18 @@ function scheduleProjectPreviewTrack(midi, trackIdx, startTime, previewTrackVolu
   const resolve = ticksToMs(midi);
   const track = midi.tracks[trackIdx];
   const active = new Map();
-  const clipIdRaw = previewTrackClipIds[trackIdx] || '__original__';
+  const clipId = previewTrackClipIds[trackIdx] || '__original__';
+  const clip = getClipById(clipId);
   const volume = finiteOr(previewTrackVolumes[trackIdx], 0.8);
+  const useExactDuration = clipId === '__original__' || clipUsesPitchShiftAndExactDuration(clipId);
   const nodes = [];
 
   for (const ev of track.events) {
     const tSec = startTime + resolve(ev.tick) / 1000;
     const key = `${ev.note}_${ev.channel || 0}`;
     if (ev.type === 'noteOn' && ev.velocity > 0) {
-      // Resolve any special '__character__' placeholder per-note
-      const resolvedClipId = (clipIdRaw === '__character__') ? resolveCharacterClipForPlayback('reference', 'idle', ev.note) : clipIdRaw;
-      const clip = getClipById(resolvedClipId);
-      const useExactDuration = resolvedClipId === '__original__' || clipUsesPitchShiftAndExactDuration(resolvedClipId);
       const voice = createClipVoice({
-        clipId: resolvedClipId,
+        clipId,
         note: ev.note,
         velocity: ev.velocity,
         volume: volume * 0.25,
@@ -1931,7 +2116,7 @@ function scheduleProjectPreviewTrack(midi, trackIdx, startTime, previewTrackVolu
       });
       if (clip.type !== 'mp3' || useExactDuration) active.set(key, voice);
       nodes.push(voice);
-    } else if ((ev.type === 'noteOff' || (ev.type === 'noteOn' && ev.velocity === 0)) && active.has(key)) {
+    } else if ((clip.type !== 'mp3' || useExactDuration) && (ev.type === 'noteOff' || (ev.type === 'noteOn' && ev.velocity === 0)) && active.has(key)) {
       const voice = active.get(key);
       voice.stop(tSec);
       active.delete(key);
@@ -2029,19 +2214,79 @@ function adjustSongBaseVolume(delta) {
   setSongBaseVolume((songBaseVolume || 0) + (Number(delta) || 0));
 }
 
-function playFailedSound() {
+function getRecorderVoiceSourceUrl() {
+  return currentRecorderVoiceObjectUrl || currentMp3ObjectUrl || CHARACTER_FALLBACK_VOCAL.url;
+}
+
+function clearRecorderMute(trackIdx = null) {
+  if (trackIdx == null) {
+    recorderMutedTrackIds = new Set();
+    return;
+  }
+  recorderMutedTrackIds.delete(trackIdx);
+}
+
+function setRecorderMute(trackIdx = null) {
+  if (trackIdx == null) return;
+  recorderMutedTrackIds.add(trackIdx);
+}
+
+function isRecorderMuted(trackIdx = null) {
+  if (trackIdx == null) return false;
+  return recorderMutedTrackIds.has(trackIdx);
+}
+
+function playFailedSound(characterId = null) {
   try {
     duckSongTemporarily();
-    const fail = new Audio(pickRandomFailedSoundUrl());
+    const missIds = characterId ? getCharacterMissSoundIds(characterId) : DEFAULT_MISS_SOUND_IDS;
+    const missClipId = missIds[Math.floor(Math.random() * missIds.length)] || 'miss-1';
+    const missClip = getClipById(missClipId);
+    const fail = new Audio((missClip && missClip.url) ? missClip.url : pickRandomFailedSoundUrl());
     fail.volume = 1.0;
     fail.play().catch(() => {});
   } catch (_) {}
 }
 
 function setEditorVisibility(visible) {
-  const editor = document.getElementById('project-editor');
-  if (!editor) return;
-  editor.classList.toggle('hidden', !visible);
+  setSetupMenuMode(visible ? 'editor' : 'play', true);
+}
+
+let setupMenuMode = 'play';
+let setupMenuAnimTimer = null;
+
+function setSetupMenuMode(mode = 'play', animate = true) {
+  const playView = document.getElementById('play-menu-view');
+  const editorView = document.getElementById('editor-menu-view');
+  if (!playView || !editorView) return;
+  const nextMode = mode === 'editor' ? 'editor' : 'play';
+  if (setupMenuAnimTimer) {
+    clearTimeout(setupMenuAnimTimer);
+    setupMenuAnimTimer = null;
+  }
+
+  const fromView = setupMenuMode === 'editor' ? editorView : playView;
+  const toView = nextMode === 'editor' ? editorView : playView;
+
+  const finish = () => {
+    playView.classList.toggle('hidden', nextMode !== 'play');
+    editorView.classList.toggle('hidden', nextMode !== 'editor');
+    playView.classList.remove('menu-fly-out', 'menu-fly-in');
+    editorView.classList.remove('menu-fly-out', 'menu-fly-in');
+    setupMenuMode = nextMode;
+  };
+
+  if (!animate || fromView === toView) {
+    finish();
+    return;
+  }
+
+  fromView.classList.remove('menu-fly-out', 'menu-fly-in');
+  toView.classList.remove('menu-fly-out', 'menu-fly-in');
+  toView.classList.remove('hidden');
+  fromView.classList.add('menu-fly-out');
+  toView.classList.add('menu-fly-in');
+  setupMenuAnimTimer = setTimeout(finish, 300);
 }
 
 function updateProjectEditorTitle(text) {
@@ -2052,9 +2297,14 @@ function updateProjectEditorTitle(text) {
 function setSongProjectFormFromProject(project) {
   document.getElementById('project-title-input').value = project.title || 'New Song Project';
   applyProjectSettingsToUI(project.settings || DEFAULTS);
+  // restore artist top-level if present
+  const artistInput = document.getElementById('project-artist-input');
+  if (artistInput) artistInput.value = project.artist || (project.settings && project.settings.artist) || '';
   applyCharacterSettingsToUI({
     playerCharacterId: project.playerCharacterId || 'blank',
     rivalCharacterId: project.rivalCharacterId || 'blank',
+    playerMissSoundId: project.playerMissSoundId || 'default',
+    rivalMissSoundId: project.rivalMissSoundId || 'default',
   });
   // Ensure editor shows the currently-selected characters and applies global offsets/scales
   loadCharacterSprites(project.playerCharacterId || 'blank', 'player');
@@ -2080,6 +2330,11 @@ function setSongProjectFormFromProject(project) {
   const label = document.getElementById('mp3-offset-label');
   if (slider) slider.value = String(mp3OffsetMs);
   if (label) label.textContent = String(mp3OffsetMs);
+  if (project.recorderVoiceBlob) {
+    loadRecorderVoiceBlob(project.recorderVoiceBlob, project.recorderVoiceName || 'recorder-vocal', false).catch(() => {});
+  } else {
+    clearRecorderVoiceBlob(false);
+  }
 }
 
 function syncProjectSettingsToDraft() {
@@ -2091,6 +2346,9 @@ function syncProjectSettingsToDraft() {
   const charSettings = readCharacterSettingsFromUI();
   project.playerCharacterId = charSettings.playerCharacterId || 'blank';
   project.rivalCharacterId = charSettings.rivalCharacterId || 'blank';
+  project.playerMissSoundId = charSettings.playerMissSoundId || 'default';
+  project.rivalMissSoundId = charSettings.rivalMissSoundId || 'default';
+  project.artist = project.settings.artist || '';
   project.mp3OffsetMs = mp3OffsetMs || 0;
   project.trackRoles = trackRoles.slice();
   project.trackVolumes = trackVolumes.slice();
@@ -2100,6 +2358,8 @@ function syncProjectSettingsToDraft() {
   project.mp3DurationMs = mp3AudioBuffer ? (mp3AudioBuffer.length / mp3AudioBuffer.sampleRate) * 1000 : (project.mp3DurationMs || 0);
   project.midiName = dropZone?.dataset?.fileName || project.midiName || '';
   project.mp3Name = document.getElementById('mp3-file-input')?.dataset?.fileName || project.mp3Name || '';
+  project.recorderVoiceName = document.getElementById('recorder-file-input')?.dataset?.fileName || project.recorderVoiceName || '';
+  project.recorderVoiceBlob = currentRecorderVoiceBlob || project.recorderVoiceBlob || null;
   return project;
 }
 
@@ -2120,12 +2380,16 @@ function renderProjectList() {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = 'project-card' + (project.id === selectedProjectId ? ' selected' : '');
+    const recorderMeta = project.recorderVoiceName ? ` · Recorder: ${project.recorderVoiceName}` : '';
+    const difficulty = (project.settings && project.settings.difficulty) ? project.settings.difficulty : (project.difficulty || 'normal');
+    const artist = project.artist || (project.settings && project.settings.artist) || '';
     card.innerHTML = `
       <div class="project-card-title">${project.title || 'Untitled Project'}</div>
-      <div class="project-card-meta">Saved score: ${project.savedScore || 0}</div>
-      <div class="project-card-submeta">${project.midiName || 'No MIDI loaded'}${project.mp3Name ? ` · ${project.mp3Name}` : ''}</div>
+      <div class="project-card-meta">Difficulty: ${difficulty} · Highscore: ${project.savedScore || 0}</div>
+      <div class="project-card-submeta">${artist ? `By: ${artist}` : ''} ${project.midiName ? `· ${project.midiName}` : ''}${recorderMeta}</div>
     `;
     card.addEventListener('click', () => setSelectedProjectId(project.id));
+    // double-click still opens editor
     card.addEventListener('dblclick', () => {
       stopProjectSelectionPreview();
       openProjectEditor(project.id);
@@ -2133,6 +2397,87 @@ function renderProjectList() {
     list.appendChild(card);
   }
   updateSelectedProjectSummary();
+}
+
+// Render project list into an arbitrary container (used by editor-side project list)
+function renderProjectListInto(containerId, opts = {}) {
+  const list = document.getElementById(containerId);
+  if (!list) return;
+  list.innerHTML = '';
+  if (!songProjects.length) {
+    const empty = document.createElement('div');
+    empty.className = 'project-empty';
+    empty.textContent = 'No song projects yet.';
+    list.appendChild(empty);
+    return;
+  }
+  for (const project of songProjects) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'project-card' + (project.id === selectedProjectId ? ' selected' : '');
+    const difficulty = (project.settings && project.settings.difficulty) ? project.settings.difficulty : (project.difficulty || 'normal');
+    const artist = project.artist || (project.settings && project.settings.artist) || '';
+    card.innerHTML = `
+      <div class="project-card-title">${project.title || 'Untitled Project'}</div>
+      <div class="project-card-meta">Difficulty: ${difficulty} · Highscore: ${project.savedScore || 0}</div>
+      <div class="project-card-submeta">${artist ? `By: ${artist}` : ''}</div>
+    `;
+    card.addEventListener('click', () => {
+      // in-editor selection should check for unsaved changes
+      if (typeof onEditorProjectCardClick === 'function') onEditorProjectCardClick(project.id);
+      else setSelectedProjectId(project.id);
+    });
+    card.addEventListener('dblclick', () => {
+      stopProjectSelectionPreview();
+      openProjectEditor(project.id);
+    });
+    list.appendChild(card);
+  }
+}
+
+function attachEditorDirtyHandlers() {
+  try {
+    const inputs = [
+      'project-title-input','project-artist-input','mp3-file-input','recorder-file-input',
+      'var-speed','var-perfect','var-good','var-bad','var-pitch-range','var-min-vel','var-merge-ms','var-long-note-threshold','var-difficulty','var-background-scene','var-background-tempo','manual-map-enable-song'
+    ];
+    for (const id of inputs) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      el.addEventListener('change', () => { currentProjectDirty = true; });
+      el.addEventListener('input', () => { currentProjectDirty = true; });
+    }
+  } catch (e) { console.warn('attachEditorDirtyHandlers failed', e); }
+}
+
+async function onEditorProjectCardClick(projectId) {
+  if (!projectId) return;
+  if (projectId === currentProjectId) { setSelectedProjectId(projectId); return; }
+  const loadNewProject = async () => {
+    const proj = await loadProjectFromStorage(projectId);
+    if (!proj) return;
+    setSelectedProjectId(proj.id);
+    editingProjectId = proj.id;
+    currentProjectId = proj.id;
+    setSongProjectFormFromProject(proj);
+    if (proj.midiBuffer) await loadMidiProjectBuffer(proj.midiBuffer, proj.midiName || 'project.mid', false);
+    else { currentMidiArrayBuffer = null; midiData = null; }
+    if (proj.mp3Blob) await loadMp3ProjectBlob(proj.mp3Blob, proj.mp3Name || 'project.mp3', false);
+    else clearMp3ProjectBlob(false);
+    if (proj.recorderVoiceBlob) await loadRecorderVoiceBlob(proj.recorderVoiceBlob, proj.recorderVoiceName || 'recorder-vocal', false);
+    else clearRecorderVoiceBlob(false);
+    renderProjectListInto('editor-project-list', { inEditor: true });
+    currentProjectDirty = false;
+  };
+
+  if (currentProjectDirty) {
+    showConfirmModal('You have unsaved changes. Discard changes and switch projects?', async () => {
+      currentProjectDirty = false;
+      await loadNewProject();
+    }, () => {});
+  } else {
+    await loadNewProject();
+  }
 }
 
 async function saveProjectIndexAndSelection() {
@@ -2330,8 +2675,10 @@ async function exportProjectToFile(projectId) {
   if (!proj) return alert('Project not found');
   const midiAB = proj.midiBuffer ? (proj.midiBuffer instanceof ArrayBuffer ? proj.midiBuffer : proj.midiBuffer.buffer) : null;
   const mp3AB = proj.mp3Blob ? await proj.mp3Blob.arrayBuffer() : null;
+  const recorderAB = proj.recorderVoiceBlob ? await proj.recorderVoiceBlob.arrayBuffer() : null;
   const midiHash = midiAB ? await computeHashHex(midiAB) : null;
   const mp3Hash = mp3AB ? await computeHashHex(mp3AB) : null;
+  const recorderHash = recorderAB ? await computeHashHex(recorderAB) : null;
   const payload = {
     meta: {
       id: proj.id,
@@ -2346,13 +2693,15 @@ async function exportProjectToFile(projectId) {
       manualBeatmap: proj.manualBeatmap || [],
       midiName: proj.midiName,
       mp3Name: proj.mp3Name,
+      recorderVoiceName: proj.recorderVoiceName,
       midiDurationMs: proj.midiDurationMs,
       mp3DurationMs: proj.mp3DurationMs,
       updatedAt: proj.updatedAt || Date.now()
     },
     midiBase64: midiAB ? arrayBufferToBase64(midiAB) : null,
     mp3Base64: mp3AB ? arrayBufferToBase64(mp3AB) : null,
-    midiHash, mp3Hash,
+    recorderVoiceBase64: recorderAB ? arrayBufferToBase64(recorderAB) : null,
+    midiHash, mp3Hash, recorderHash,
   };
   const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -2385,6 +2734,7 @@ async function importProjectFromJSON(jsonText) {
   proj.mp3Name = meta.mp3Name || '';
   proj.midiDurationMs = meta.midiDurationMs || 0;
   proj.mp3DurationMs = meta.mp3DurationMs || 0;
+  proj.recorderVoiceName = meta.recorderVoiceName || '';
   proj.updatedAt = meta.updatedAt || Date.now();
 
   if (data.midiBase64) {
@@ -2396,6 +2746,11 @@ async function importProjectFromJSON(jsonText) {
     proj.mp3Blob = new Blob([ab], { type: 'audio/mpeg' });
   } else proj.mp3Blob = null;
 
+  if (data.recorderVoiceBase64) {
+    const ab = base64ToArrayBuffer(data.recorderVoiceBase64);
+    proj.recorderVoiceBlob = new Blob([ab], { type: 'audio/mpeg' });
+  } else proj.recorderVoiceBlob = null;
+
   // verify checksums if provided
   if (data.midiHash && proj.midiBuffer) {
     const ok = (await computeHashHex(proj.midiBuffer)) === data.midiHash;
@@ -2405,6 +2760,11 @@ async function importProjectFromJSON(jsonText) {
     const ab = await proj.mp3Blob.arrayBuffer();
     const ok = (await computeHashHex(ab)) === data.mp3Hash;
     if (!ok) console.warn('Imported MP3 checksum mismatch');
+  }
+  if (data.recorderHash && proj.recorderVoiceBlob) {
+    const ab = await proj.recorderVoiceBlob.arrayBuffer();
+    const ok = (await computeHashHex(ab)) === data.recorderHash;
+    if (!ok) console.warn('Imported Recorder checksum mismatch');
   }
 
   // persist and refresh UI
@@ -2418,7 +2778,7 @@ async function importProjectFromJSON(jsonText) {
 
 async function openProjectEditor(projectId = null) {
   stopProjectSelectionPreview();
-  showSetupScreen(true);
+  showSetupScreen(false);
   const project = projectId
     ? (await loadProjectFromStorage(projectId))
     : createEmptyProject();
@@ -2428,6 +2788,7 @@ async function openProjectEditor(projectId = null) {
   currentProjectId = project.id;
   currentMidiArrayBuffer = project.midiBuffer || null;
   currentMp3Blob = project.mp3Blob || null;
+  currentRecorderVoiceBlob = project.recorderVoiceBlob || null;
   currentMidiDurationMs = project.midiDurationMs || 0;
   setEditorVisibility(true);
   updateProjectEditorTitle(projectId ? 'Edit Song Project' : 'Add Song Project');
@@ -2440,12 +2801,18 @@ async function openProjectEditor(projectId = null) {
   setSongProjectFormFromProject(project);
   populateCharacterDropdowns();
 
+  // Render editor-side project list for quick switching
+  try { renderProjectListInto('editor-project-list', { inEditor: true }); } catch(_) {}
+
+  // Mark form as clean initially
+  currentProjectDirty = false;
+  // attach more dirty handlers for many editor inputs
+  attachEditorDirtyHandlers();
+
   // Restore the fresh recording if we had one — it takes priority over storage.
   if (stashedBeatmap) {
     currentManualBeatmap = stashedBeatmap;
     manualBeatmapDraft   = cloneManualBeatmap(stashedBeatmap);
-    const manualSongCheckbox = document.getElementById('manual-map-enable-song');
-    if (manualSongCheckbox) manualSongCheckbox.checked = true;
   }
 
   if (project.midiBuffer) {
@@ -2464,6 +2831,11 @@ async function openProjectEditor(projectId = null) {
     await loadMp3ProjectBlob(project.mp3Blob, project.mp3Name || 'project.mp3', false);
   } else {
     clearMp3ProjectBlob(false);
+  }
+  if (project.recorderVoiceBlob) {
+    await loadRecorderVoiceBlob(project.recorderVoiceBlob, project.recorderVoiceName || 'recorder-vocal', false);
+  } else {
+    clearRecorderVoiceBlob(false);
   }
   if (project.trackRoles && project.trackRoles.length && midiData) {
     trackRoles     = project.trackRoles.slice();
@@ -2485,12 +2857,6 @@ async function loadMidiProjectBuffer(arrayBuffer, fileName, markDirty = true) {
   dropZone.dataset.fileName = fileName;
   const btnClearMidi = document.getElementById('btn-clear-midi');
   if (btnClearMidi) btnClearMidi.style.display = 'block';
-  setLoadingOverlayVisible(true, 'Preloading character soundfont notes...');
-  try {
-    await preloadConvertedSoundFontSamples();
-  } finally {
-    setLoadingOverlayVisible(false);
-  }
   buildTrackSelector();
   checkReady();
   drawWaveforms();
@@ -2530,6 +2896,48 @@ async function loadMp3ProjectBlob(blob, fileName, markDirty = true) {
   }
   drawWaveforms();
   return songAudio;
+}
+
+async function loadRecorderVoiceBlob(blob, fileName, markDirty = true) {
+  currentRecorderVoiceBlob = blob;
+  const recorderInput = document.getElementById('recorder-file-input');
+  if (recorderInput) recorderInput.dataset.fileName = fileName;
+  const recorderDropZone = document.getElementById('recorder-drop-zone');
+  if (recorderDropZone) {
+    const label = document.getElementById('recorder-drop-label');
+    if (label) label.textContent = `✓ ${fileName}`;
+    recorderDropZone.classList.add('loaded');
+    recorderDropZone.dataset.fileName = fileName;
+  }
+  const btnClearRecorder = document.getElementById('btn-clear-recorder');
+  if (btnClearRecorder) btnClearRecorder.style.display = 'block';
+  if (currentRecorderVoiceObjectUrl) URL.revokeObjectURL(currentRecorderVoiceObjectUrl);
+  currentRecorderVoiceObjectUrl = URL.createObjectURL(blob);
+  if (markDirty && currentProjectId) syncProjectSettingsToDraft();
+  return currentRecorderVoiceObjectUrl;
+}
+
+function clearRecorderVoiceBlob(markDirty = true) {
+  currentRecorderVoiceBlob = null;
+  if (currentRecorderVoiceObjectUrl) {
+    URL.revokeObjectURL(currentRecorderVoiceObjectUrl);
+    currentRecorderVoiceObjectUrl = '';
+  }
+  const recorderInput = document.getElementById('recorder-file-input');
+  if (recorderInput) {
+    recorderInput.value = '';
+    recorderInput.dataset.fileName = '';
+  }
+  const recorderDropZone = document.getElementById('recorder-drop-zone');
+  if (recorderDropZone) {
+    const label = document.getElementById('recorder-drop-label');
+    if (label) label.textContent = 'Drop a vocal .mp3 / .wav for Recorder here, or click to browse';
+    recorderDropZone.classList.remove('loaded', 'drag-over');
+    recorderDropZone.dataset.fileName = '';
+  }
+  const btnClearRecorder = document.getElementById('btn-clear-recorder');
+  if (btnClearRecorder) btnClearRecorder.style.display = 'none';
+  if (markDirty && currentProjectId) syncProjectSettingsToDraft();
 }
 
 function clearMp3ProjectBlob(markDirty = true) {
@@ -2578,11 +2986,13 @@ async function saveCurrentProject() {
   project.trackCollapsed = trackCollapsed.slice();
   project.midiBuffer = currentMidiArrayBuffer ? currentMidiArrayBuffer.slice(0) : null;
   project.mp3Blob = currentMp3Blob || null;
+  project.recorderVoiceBlob = currentRecorderVoiceBlob || null;
   project.manualBeatmap = cloneManualBeatmap(manualBeatmapDraft.length ? manualBeatmapDraft : currentManualBeatmap);
   project.manualMapEnabled = !!document.getElementById('manual-map-enable-song')?.checked;
   project.savedScore = project.savedScore || 0;
   project.midiName = dropZone?.dataset?.fileName || project.midiName || '';
   project.mp3Name = document.getElementById('mp3-file-input')?.dataset?.fileName || project.mp3Name || '';
+  project.recorderVoiceName = document.getElementById('recorder-file-input')?.dataset?.fileName || project.recorderVoiceName || '';
   project.midiDurationMs = currentMidiDurationMs || 0;
   project.mp3DurationMs = mp3AudioBuffer ? (mp3AudioBuffer.length / mp3AudioBuffer.sampleRate) * 1000 : 0;
   project.updatedAt = Date.now();
@@ -2615,6 +3025,7 @@ async function saveCurrentProject() {
   selectedProjectId = project.id;
   editingProjectId = project.id;
   renderProjectList();
+  renderProjectListInto('editor-project-list', { inEditor: true });
   // NOTE: intentionally does NOT call setEditorVisibility(false).
   // Callers that want to close the editor after saving must do so themselves.
   return project;
@@ -2625,6 +3036,7 @@ async function useProjectForPlayback(projectId) {
   console.debug('useProjectForPlayback — loaded project id=', projectId, 'project?', !!project, 'midiBuffer?', !!(project && project.midiBuffer), 'mp3Blob?', !!(project && project.mp3Blob));
   if (!project || (!project.midiBuffer && !project.mp3Blob && !(Array.isArray(project.manualBeatmap) && project.manualBeatmap.length))) return false;
   currentProjectHasMp3 = !!project.mp3Blob;
+  currentRecorderVoiceBlob = project.recorderVoiceBlob || null;
   currentProjectId = project.id;
   songProjects = songProjects.map(item => item.id === project.id ? { ...item, ...project } : item);
   setSelectedProjectId(project.id);
@@ -2632,6 +3044,8 @@ async function useProjectForPlayback(projectId) {
   applyCharacterSettingsToUI({
     playerCharacterId: project.playerCharacterId || 'blank',
     rivalCharacterId: project.rivalCharacterId || 'blank',
+    playerMissSoundId: project.playerMissSoundId || 'default',
+    rivalMissSoundId: project.rivalMissSoundId || 'default',
   });
   mp3OffsetMs = project.mp3OffsetMs || 0;
   currentManualBeatmap = Array.isArray(project.manualBeatmap) ? cloneManualBeatmap(project.manualBeatmap) : [];
@@ -2655,6 +3069,8 @@ async function useProjectForPlayback(projectId) {
   }
   if (project.mp3Blob) await loadMp3ProjectBlob(project.mp3Blob, project.mp3Name || 'project.mp3', false);
   else clearMp3ProjectBlob(false);
+  if (project.recorderVoiceBlob) await loadRecorderVoiceBlob(project.recorderVoiceBlob, project.recorderVoiceName || 'recorder-vocal', false);
+  else clearRecorderVoiceBlob(false);
   trackRoles = (project.trackRoles && project.trackRoles.length) ? project.trackRoles.slice() : trackRoles;
   trackVolumes = (project.trackVolumes && project.trackVolumes.length) ? project.trackVolumes.slice() : trackVolumes;
   trackClipIds = (project.trackClipIds && project.trackClipIds.length) ? project.trackClipIds.slice() : trackClipIds;
@@ -2708,18 +3124,6 @@ const SOUND_FONT_FOLDERS = [
       { id: 'sf-soft-piano-1-alt-a', label: 'Soft Keys A', preset: 1, fallbackWaveform: 'sine', attack: 0.012, decay: 0.09, sustain: 0.66, release: 0.2 },
       { id: 'sf-soft-piano-1-alt-b', label: 'Soft Keys B', preset: 2, fallbackWaveform: 'sawtooth', attack: 0.005, decay: 0.06, sustain: 0.42, release: 0.12 },
     ],
-  },
-  {
-    id: 'sf-tote-draft',
-    label: 'ToteSoundFontDraft-1.sf2',
-    sf2File: 'SoundClip/Tote/ToteSoundFontDraft-1.sf2',
-    clips: [],
-  },
-  {
-    id: 'sf-mushy-draft',
-    label: 'MushySoundFontDraft-1.sf2',
-    sf2File: 'SoundClip/Mushy/DialogueBlip.wav',
-    clips: [],
   },
   {
     id: 'sf-sonic-mania',
@@ -2788,14 +3192,86 @@ function createCharacterConfig(config) {
     id: config.id,
     label: config.label,
     spriteSheets: config.spriteSheets,
-    voiceClipBankId: config.voiceClipBankId || null,
-    voiceClipId: config.voiceClipId || null,
-    voiceClips: config.voiceClips || [],
+    soundClipIds: config.soundClipIds,
     tauntClips: config.tauntClips || [],
     frameCount: config.frameCount || 1,
     frameDuration: config.frameDuration || 100,
   };
 }
+
+function getToteSoundManifest() {
+  return (typeof globalThis !== 'undefined' && globalThis.TOTE_SOUND_MANIFEST && Array.isArray(globalThis.TOTE_SOUND_MANIFEST.clips))
+    ? globalThis.TOTE_SOUND_MANIFEST
+    : { clips: [] };
+}
+
+function buildToteSoundClipGroup() {
+  const manifest = getToteSoundManifest();
+  const clips = manifest.clips.map(clip => ({
+    id: clip.id,
+    label: clip.label,
+    type: clip.type || 'wav',
+    url: clip.url,
+    rootNote: clip.rootNote,
+    rangeMin: clip.rangeMin,
+    rangeMax: clip.rangeMax,
+    minPitchShiftSemitones: clip.minPitchShiftSemitones,
+    maxPitchShiftSemitones: clip.maxPitchShiftSemitones,
+    tuneSemitones: clip.tuneSemitones,
+    volumeScale: typeof clip.volumeScale === 'number' ? clip.volumeScale : 1.5,
+    loopStart: clip.loopStart,
+    loopEnd: clip.loopEnd,
+  }));
+  return clips.length ? { label: 'Tote Instrument', clips } : null;
+}
+
+function buildToteSoundClipIds() {
+  const manifest = getToteSoundManifest();
+  const ids = manifest.clips.map(clip => clip.id);
+  const clipIds = ids.length ? ids : ['mushy-up'];
+  return {
+    idle: clipIds,
+    up: clipIds,
+    left: clipIds,
+    right: clipIds,
+    down: clipIds,
+  };
+}
+
+function buildMushySoundClipIds() {
+  const clipIds = Array.from({ length: 19 }, (_, index) => `mushy-voice-${19 - index}`);
+  return {
+    idle: clipIds,
+    up: clipIds,
+    left: clipIds,
+    right: clipIds,
+    down: clipIds,
+  };
+}
+
+function buildMartinSoundClipIds() {
+  const clipIds = Array.from({ length: 19 }, (_, index) => `martin-voice-${19 - index}`);
+  return {
+    idle: clipIds,
+    up: clipIds,
+    left: clipIds,
+    right: clipIds,
+    down: clipIds,
+  };
+}
+
+function buildRecorderSoundClipIds() {
+  const clipIds = Array.from({ length: 19 }, (_, index) => `recorder-voice-${19 - index}`);
+  return {
+    idle: clipIds,
+    up: clipIds,
+    left: clipIds,
+    right: clipIds,
+    down: clipIds,
+  };
+}
+
+const DEFAULT_MISS_SOUND_IDS = ['miss-1', 'miss-2', 'miss-3', 'miss-4'];
 
 // ─── CHARACTER DEFINITIONS ──────────────────────────────────────────────────
 const CHARACTERS = [
@@ -2809,7 +3285,12 @@ const CHARACTERS = [
       right: createSpriteSheetConfig(null),
       down: createSpriteSheetConfig(null),
     },
-    voiceClips: [],
+    soundClipIds: {
+      up: null,
+      left: null,
+      right: null,
+      down: null,
+    },
   }),
   createCharacterConfig({
     id: 'mushy',
@@ -2822,11 +3303,9 @@ const CHARACTERS = [
       right: createSpriteSheetConfig('Art/Mushy/SS-MushySingerRight.png', 2, 1, 1.0, 2),
       down: createSpriteSheetConfig('Art/Mushy/SS-MushySingerDown.png', 2, 1, 1.0, 2),
     },
-    voiceClipBankId:[],// 'sf-mushy-draft',
-    voiceClips: [
-       { id: 'martin-blip', label: 'Martin Blip', type: 'mp3', url: 'SoundClip/Mushy/DialogueBlip.wav', rootNote: 60 }
-    ],
+    soundClipIds: buildMushySoundClipIds(),
     tauntClips: ['mushy-purchase', 'mushy-shake', 'mushy-eating'],
+    missSoundIds: DEFAULT_MISS_SOUND_IDS.slice(),
     frameCount: 8,
     frameDuration: 60,
   }),
@@ -2840,10 +3319,41 @@ const CHARACTERS = [
       right: createSpriteSheetConfig('Art/Mushy/SS-MushySingerRight.png', 2, 1, 1.0, 2),
       down: createSpriteSheetConfig('Art/Mushy/SS-MushySingerDown.png', 2, 1, 1.0, 2),
     },
-    voiceClips: [
-      { id: 'martin-blip', label: 'Martin Blip', type: 'mp3', url: 'SoundClip/Mushy/DialogueBlip.wav', rootNote: 60 }
-    ],
+    soundClipIds: buildMartinSoundClipIds(),
     tauntClips: ['mushy-purchase', 'mushy-shake', 'mushy-eating'],
+    missSoundIds: DEFAULT_MISS_SOUND_IDS.slice(),
+    frameCount: 8,
+    frameDuration: 60,
+  }),
+  createCharacterConfig({
+    id: 'recorder',
+    label: 'Recorder',
+    spriteSheets: {
+      idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
+      up: createSpriteSheetConfig('Art/Mushy/SS-MushySingerUP.png', 2, 1, 1.0, 2),
+      left: createSpriteSheetConfig('Art/Mushy/SS-MushySingerLeft.png', 2, 1, 1.0, 2),
+      right: createSpriteSheetConfig('Art/Mushy/SS-MushySingerRight.png', 2, 1, 1.0, 2),
+      down: createSpriteSheetConfig('Art/Mushy/SS-MushySingerDown.png', 2, 1, 1.0, 2),
+    },
+    soundClipIds: buildRecorderSoundClipIds(),
+    tauntClips: ['mushy-purchase', 'mushy-shake', 'mushy-eating'],
+    missSoundIds: DEFAULT_MISS_SOUND_IDS.slice(),
+    frameCount: 8,
+    frameDuration: 60,
+  }),
+  createCharacterConfig({
+    id: 'tote',
+    label: 'Tote',
+    spriteSheets: {
+      idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
+      up: createSpriteSheetConfig('Art/Mushy/SS-MushySingerUP.png', 2, 1, 1.0, 2),
+      left: createSpriteSheetConfig('Art/Mushy/SS-MushySingerLeft.png', 2, 1, 1.0, 2),
+      right: createSpriteSheetConfig('Art/Mushy/SS-MushySingerRight.png', 2, 1, 1.0, 2),
+      down: createSpriteSheetConfig('Art/Mushy/SS-MushySingerDown.png', 2, 1, 1.0, 2),
+    },
+    soundClipIds: buildToteSoundClipIds(),
+    tauntClips: ['mushy-purchase', 'mushy-shake', 'mushy-eating'],
+    missSoundIds: DEFAULT_MISS_SOUND_IDS.slice(),
     frameCount: 8,
     frameDuration: 60,
   }),
@@ -2886,543 +3396,130 @@ const CHARACTER_FALLBACK_VOCAL = {
   rootNote: 60
 };
 
-// Tote draft instrument: one playable clip that is pitch-shifted from a WAV sample.
-const MUSHY_SOUND_FONT_CLIPS = [{
-  //id: 'mm-tote-sfwav',
-  //label: 'MM-Tote-sfwav',
-  id: 'mushy-blip',
-  label: 'Mushy Blip',
-  type: 'soundfont',
-  sf2File: 'SoundClip/Mushy/DialogueBlip.wav',
-  sample_url: 'SoundClip/Mushy/DialogueBlip.wav',
-  //sf2File: 'SoundClip/Tote/ToteSoundFontDraft-1.sf2',
-  //sample_url: 'SoundClip/Tote/MM - Tote ha.wav',
-  
-  rootNote: 60,
-  preset: 0,
-  attack: 0.008,
-  decay: 0.08,
-  sustain: 0.7,
-  release: 0.18,
-}];
-
-const TOTE_SOUND_FONT_FOLDER = SOUND_FONT_FOLDERS.find(folder => folder.id === 'sf-tote-draft');
-if (TOTE_SOUND_FONT_FOLDER) TOTE_SOUND_FONT_FOLDER.clips = MUSHY_SOUND_FONT_CLIPS;
-
-const SOUND_FONT_CONVERTED_PACKS = new Map();
-const SOUND_FONT_CONVERTED_PACK_PROMISES = new Map();
-const SOUND_FONT_SAMPLE_BUFFERS = new Map();
-const SOUND_FONT_SAMPLE_BUFFER_PROMISES = new Map();
-
-const SOUND_FONT_INLINE_MANIFESTS = {
-  'SoundClip/Tote/ToteSoundFontDraft-1.sf2': {
-    defaultProgram: 0,
-    defaultRootNote: 60,
-    presets: [
-      {
-        program: 0,
-        name: 'MM-Tote-sfwav',
-        rootNote: 60,
-        /* Previous Tote settings for comparison:
-        attack: 0.00,
-        decay: 0.08,
-        sustain: 0.9,
-        release: 0.18,
-        gain: 1,
-        samples: [
-          { url: 'SoundClip/Tote/MM - Tote-sf-Ii-1.wav', rootNote: 79, minNote: 81, maxNote: 127, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-ki-2.wav', rootNote: 77, minNote: 79, maxNote: 80, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-ti-3.wav', rootNote: 75, minNote: 77, maxNote: 78, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-mi-4.wav', rootNote: 73, minNote: 75, maxNote: 76, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-bi-5.wav', rootNote: 71, minNote: 73, maxNote: 74, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-AA-6.wav', rootNote: 69, minNote: 71, maxNote: 72, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-fA-7.wav', rootNote: 67, minNote: 69, maxNote: 70, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-kA-8.wav', rootNote: 65, minNote: 67, maxNote: 68, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-bA-9.wav', rootNote: 64, minNote: 66, maxNote: 67, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-tA-10.wav', rootNote: 62, minNote: 63, maxNote: 64, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-EE-11.wav', rootNote: 60, minNote: 65, maxNote: 66, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-bE-12.wav', rootNote: 58, minNote: 67, maxNote: 68, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-mE-13.wav', rootNote: 56, minNote: 69, maxNote: 70, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-tE-14.wav', rootNote: 54, minNote: 71, maxNote: 72, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-u-15.wav', rootNote: 52, minNote: 73, maxNote: 74, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-ku-16.wav', rootNote: 50, minNote: 51, maxNote: 52, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-bu-17.wav', rootNote: 48, minNote: 49, maxNote: 50, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-tu-18.wav', rootNote: 46, minNote: 79, maxNote: 80, loopStart: 0.45, loopEnd: 0.8 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-o-19.wav', rootNote: 44, minNote: 81, maxNote: 127, loopStart: 0.45, loopEnd: 0.8 },
-        ],
-        */
-        attack: 0.008,
-        decay: 0.08,
-        sustain: 0.7,
-        release: 0.18,
-        gain: 1,
-        samples: [
-          { url: 'SoundClip/Tote/MM - Tote-sf-Ii-1.wav', rootNote: 3, minNote: 0, maxNote: 6, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-ki-2.wav', rootNote: 10, minNote: 7, maxNote: 13, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-ti-3.wav', rootNote: 17, minNote: 14, maxNote: 20, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-mi-4.wav', rootNote: 24, minNote: 21, maxNote: 27, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-bi-5.wav', rootNote: 31, minNote: 28, maxNote: 34, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-AA-6.wav', rootNote: 38, minNote: 35, maxNote: 41, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-fA-7.wav', rootNote: 45, minNote: 42, maxNote: 48, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-kA-8.wav', rootNote: 52, minNote: 49, maxNote: 55, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-bA-9.wav', rootNote: 59, minNote: 56, maxNote: 62, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-tA-10.wav', rootNote: 66, minNote: 63, maxNote: 69, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-EE-11.wav', rootNote: 73, minNote: 70, maxNote: 76, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-bE-12.wav', rootNote: 80, minNote: 77, maxNote: 83, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-mE-13.wav', rootNote: 87, minNote: 84, maxNote: 90, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-tE-14.wav', rootNote: 94, minNote: 91, maxNote: 97, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-u-15.wav', rootNote: 101, minNote: 98, maxNote: 104, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-ku-16.wav', rootNote: 108, minNote: 105, maxNote: 111, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-bu-17.wav', rootNote: 115, minNote: 112, maxNote: 118, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-tu-18.wav', rootNote: 121, minNote: 119, maxNote: 123, loopStart: 0.5, loopEnd: 1.0 },
-          { url: 'SoundClip/Tote/MM - Tote-sf-o-19.wav', rootNote: 125, minNote: 124, maxNote: 127, loopStart: 0.5, loopEnd: 1.0 },
-        ],
-      },
-    ],
-  },
-  
-  'SoundClip/Mushy/DialogueBlip.wav': {
-    defaultProgram: 0,
-    defaultRootNote: 60,
-    presets: [
-      {
-        program: 0,
-        name: 'Mushy Blip',
-        rootNote: 60,
-        attack: 0.005,
-        decay: 0.05,
-        sustain: 0.5,
-        release: 0.1,
-        gain: 1,
-        sample_url: 'SoundClip/Mushy/DialogueBlip.wav',
-      },
-    ],
-  },
-  
-  'SoundClip/Soft Piano 1.sf2': {
-    defaultProgram: 0,
-    defaultRootNote: 60,
-    presets: [
-      {
-        program: 0,
-        name: 'Soft Piano 1',
-        rootNote: 60,
-        attack: 0.008,
-        decay: 0.07,
-        sustain: 0.62,
-        release: 0.16,
-        gain: 1,
-        sample_url: 'SoundClip/PianoG.mp3',
-      },
-      {
-        program: 1,
-        name: 'Soft Keys A',
-        rootNote: 60,
-        attack: 0.012,
-        decay: 0.09,
-        sustain: 0.66,
-        release: 0.2,
-        gain: 1,
-        sample_url: 'SoundClip/PianoG.mp3',
-      },
-      {
-        program: 2,
-        name: 'Soft Keys B',
-        rootNote: 60,
-        attack: 0.005,
-        decay: 0.06,
-        sustain: 0.42,
-        release: 0.12,
-        gain: 1,
-        sample_url: 'SoundClip/PianoG.mp3',
-      },
-    ],
-  },
-  'SoundClip/Sonic Mania Soundfont.sf2': {
-    defaultProgram: 0,
-    defaultRootNote: 60,
-    presets: [
-      { program: 0, name: 'Acoustic Bass', rootNote: 40, attack: 0.01, decay: 0.1, sustain: 0.5, release: 0.2, gain: 1, sample_url: 'SoundClip/AcousticGuitar.mp3' },
-      { program: 1, name: 'Bandoneon', rootNote: 52, attack: 0.02, decay: 0.08, sustain: 0.4, release: 0.15, gain: 1, sample_url: 'SoundClip/MusicBox.mp3' },
-      { program: 2, name: 'Banjo', rootNote: 55, attack: 0.015, decay: 0.12, sustain: 0.3, release: 0.18, gain: 1, sample_url: 'SoundClip/GuitarF.mp3' },
-      { program: 3, name: 'Bass 1', rootNote: 43, attack: 0.008, decay: 0.15, sustain: 0.6, release: 0.25, gain: 1, sample_url: 'SoundClip/PianoG.mp3' },
-      { program: 4, name: 'Bass 2', rootNote: 45, attack: 0.008, decay: 0.12, sustain: 0.55, release: 0.22, gain: 1, sample_url: 'SoundClip/Flute.mp3' },
-      { program: 5, name: 'Bass Fingered', rootNote: 47, attack: 0.01, decay: 0.1, sustain: 0.45, release: 0.2, gain: 1, sample_url: 'SoundClip/GuitarF.mp3' },
-      { program: 6, name: 'Bass Fretless+', rootNote: 48, attack: 0.012, decay: 0.11, sustain: 0.5, release: 0.21, gain: 1, sample_url: 'SoundClip/AcousticGuitar.mp3' },
-      { program: 7, name: 'Bassoon', rootNote: 50, attack: 0.03, decay: 0.12, sustain: 0.55, release: 0.18, gain: 1, sample_url: 'SoundClip/Flute.mp3' },
-      { program: 8, name: 'Bassoon+Strings', rootNote: 52, attack: 0.035, decay: 0.13, sustain: 0.6, release: 0.2, gain: 1, sample_url: 'SoundClip/MusicBox.mp3' },
-    ],
-  },
+const TOTE_SOUND_CLIPS = buildToteSoundClipGroup();
+const MUSHY_VOICE_CLIPS = {
+  label: 'Mushy Vocals',
+  clips: Array.from({ length: 19 }, (_, index) => {
+    const slot = 19 - index;
+    const rootNote = [1, 8, 15, 22, 29, 36, 43, 50, 57, 64, 71, 78, 85, 92, 99, 106, 113, 120, 127][index];
+    const rangeMin = Math.max(0, rootNote - 3);
+    const rangeMax = Math.min(127, rootNote + 3);
+    const brightness = 0.18 + (index / 18) * 0.22;
+    const formant1 = 780 + (index * 28);
+    const formant2 = 1450 + (index * 54);
+    return {
+      id: `mushy-voice-${slot}`,
+      label: `Mushy Voice ${slot}`,
+      type: 'mushyvoice',
+      rootNote,
+      rangeMin,
+      rangeMax,
+      tuneSemitones: 0,
+      minPitchShiftSemitones: -3,
+      maxPitchShiftSemitones: 3,
+      voiceWaveform: 'triangle',
+      harmonicWaveform: 'sine',
+      volumeScale: 2.5,
+      brightness,
+      formant1,
+      formant2,
+      noiseAmount: 0.08 + (index % 4) * 0.01,
+      loopStart: 0.2,
+      loopEnd: 0.8,
+    };
+  }),
+};
+const MARTIN_VOICE_CLIPS = {
+  label: 'Martin Vocals',
+  clips: Array.from({ length: 19 }, (_, index) => {
+    const slot = 19 - index;
+    const rootNote = [1, 8, 15, 22, 29, 36, 43, 50, 57, 64, 71, 78, 85, 92, 99, 106, 113, 120, 127][index];
+    const rangeMin = Math.max(0, rootNote - 3);
+    const rangeMax = Math.min(127, rootNote + 3);
+    const lowfi = 0.25 + (index / 18) * 0.2;
+    return {
+      id: `martin-voice-${slot}`,
+      label: `Martin Voice ${slot}`,
+      type: 'martinvoice',
+      rootNote,
+      rangeMin,
+      rangeMax,
+      tuneSemitones: 0,
+      minPitchShiftSemitones: -3,
+      maxPitchShiftSemitones: 3,
+      // Square leads keep the tone bright and nasal.
+      oscWaveform: 'square',
+      // A sine body keeps the lower layer smooth so the square wave does not overload.
+      bodyWaveform: 'sine',
+      // Triangle air adds a soft top end instead of harsh fizz.
+      airWaveform: 'triangle',
+      // Body formant is the low-mid resonance that gives Martin his chest tone.
+      bodyFormant: 420 + (index * 18),
+      // Air formant shapes the higher nasal edge.
+      airFormant: 360 + (index * 28),
+      // Tiny grit keeps the voice alive without turning it into distortion.
+      gritAmount: 0.01 + (index % 3) * 0.01,
+      // Breath amount is the hiss layer riding over the tone.
+      breathAmount: 0.022 + (index % 5) * 0.004,
+      // Detune nudges the harmonics off-center so repeated notes feel less static.
+      detuneCents: -14 + (index % 4) * 3,
+      // Lowpass trims the brittle top end that makes the sound crunchy.
+      lowpassHz: 1200 + (index * 26),
+      lowfi,
+      // Attack controls how quickly the note opens.
+      attack: 0.006 + (index % 3) * 0.002,
+      // Decay pulls the voice down from the attack peak.
+      decay: 0.07 + (index / 18) * 0.018,
+      // Sustain sets the held level after the initial hit.
+      sustain: 0.38 + (index / 18) * 0.14,
+      // Release controls how long the note rings after stop.
+      release: 0.1 + (index / 18) * 0.05,
+      volumeScale: 0.26,
+      loopStart: 0.2,
+      loopEnd: 0.8,
+    };
+  }),
 };
 
-function getConvertedSoundFontManifestUrl(sf2File) {
-  if (!sf2File || typeof sf2File !== 'string') return null;
-  return sf2File.replace(/\.sf2$/i, '.manifest.json');
-}
-
-function normalizeSoundFontSampleEntry(entry, fallbackProgram, fallbackRootNote) {
-  if (!entry || typeof entry !== 'object') return null;
-  const sampleUrl = entry.url || entry.sample_url || entry.sampleUrl || null;
-  if (!sampleUrl) return null;
-  return {
-    program: finiteOr(entry.program, finiteOr(entry.preset, fallbackProgram)),
-    name: entry.name || entry.label || '',
-    url: sampleUrl,
-    rootNote: finiteOr(entry.rootNote, finiteOr(entry.root_note, fallbackRootNote)),
-    note: finiteOr(entry.note, null),
-    minNote: finiteOr(entry.minNote, finiteOr(entry.lowNote, finiteOr(entry.low_note, null))),
-    maxNote: finiteOr(entry.maxNote, finiteOr(entry.highNote, finiteOr(entry.high_note, null))),
-    attack: finiteOr(entry.attack, null),
-    decay: finiteOr(entry.decay, null),
-    sustain: finiteOr(entry.sustain, null),
-    release: finiteOr(entry.release, null),
-    gain: finiteOr(entry.gain, null),
-    loopStart: finiteOr(entry.loopStart, finiteOr(entry.loop_start, null)),
-    loopEnd: finiteOr(entry.loopEnd, finiteOr(entry.loop_end, null)),
-  };
-}
-
-function normalizeSoundFontPresetEntry(entry, fallbackProgram, fallbackRootNote) {
-  if (!entry || typeof entry !== 'object') return null;
-  const program = finiteOr(entry.program, finiteOr(entry.preset, fallbackProgram));
-  const rootNote = finiteOr(entry.rootNote, finiteOr(entry.root_note, fallbackRootNote));
-  const preset = {
-    program,
-    name: entry.name || entry.label || '',
-    rootNote,
-    attack: finiteOr(entry.attack, null),
-    decay: finiteOr(entry.decay, null),
-    sustain: finiteOr(entry.sustain, null),
-    release: finiteOr(entry.release, null),
-    gain: finiteOr(entry.gain, null),
-    samples: [],
-  };
-
-  const addSample = sampleEntry => {
-    const normalized = normalizeSoundFontSampleEntry(sampleEntry, program, rootNote);
-    if (normalized) preset.samples.push(normalized);
-  };
-
-  if (Array.isArray(entry.samples)) entry.samples.forEach(addSample);
-  if (Array.isArray(entry.zones)) entry.zones.forEach(addSample);
-  if (entry.sample_url || entry.url) addSample(entry);
-  if (entry.sampleMap && typeof entry.sampleMap === 'object') {
-    for (const [noteKey, value] of Object.entries(entry.sampleMap)) {
-      if (!value) continue;
-      if (typeof value === 'string') {
-        addSample({ url: value, note: parseInt(noteKey, 10) });
-      } else if (typeof value === 'object') {
-        addSample({ ...value, note: finiteOr(value.note, parseInt(noteKey, 10)) });
-      }
-    }
-  }
-
-  return preset.samples.length ? preset : null;
-}
-
-function normalizeConvertedSoundFontPack(manifest, folder) {
-  if (!manifest || typeof manifest !== 'object' || !folder) return null;
-  const defaultRootNote = finiteOr(manifest.rootNote, finiteOr(manifest.defaultRootNote, 60));
-  const pack = {
-    id: folder.id,
-    label: folder.label,
-    sf2File: folder.sf2File,
-    manifestUrl: getConvertedSoundFontManifestUrl(folder.sf2File),
-    defaultProgram: finiteOr(manifest.defaultProgram, finiteOr(manifest.program, 0)),
-    defaultRootNote,
-    presets: new Map(),
-  };
-
-  const addPreset = presetEntry => {
-    const normalized = normalizeSoundFontPresetEntry(presetEntry, pack.defaultProgram, defaultRootNote);
-    if (!normalized) return;
-    pack.presets.set(String(normalized.program), normalized);
-  };
-
-  if (Array.isArray(manifest.presets)) {
-    manifest.presets.forEach(addPreset);
-  } else if (manifest.presets && typeof manifest.presets === 'object') {
-    for (const [programKey, presetValue] of Object.entries(manifest.presets)) {
-      if (!presetValue) continue;
-      addPreset({ ...presetValue, program: finiteOr(presetValue.program, parseInt(programKey, 10)) });
-    }
-  } else if (manifest.samples || manifest.zones || manifest.sample_url || manifest.url || manifest.sampleMap) {
-    addPreset({
-      program: pack.defaultProgram,
-      name: manifest.name || manifest.label || folder.label,
-      rootNote: defaultRootNote,
-      attack: manifest.attack,
-      decay: manifest.decay,
-      sustain: manifest.sustain,
-      release: manifest.release,
-      gain: manifest.gain,
-      samples: manifest.samples,
-      zones: manifest.zones,
-      sample_url: manifest.sample_url,
-      url: manifest.url,
-      sampleMap: manifest.sampleMap,
-    });
-  }
-
-  return pack.presets.size ? pack : null;
-}
-
-async function loadSoundFontSampleBuffer(url) {
-  if (!url) return null;
-  if (SOUND_FONT_SAMPLE_BUFFERS.has(url)) return SOUND_FONT_SAMPLE_BUFFERS.get(url);
-  if (SOUND_FONT_SAMPLE_BUFFER_PROMISES.has(url)) return SOUND_FONT_SAMPLE_BUFFER_PROMISES.get(url);
-
-  const promise = (async () => {
-    try {
-      const response = await fetch(url, { cache: 'force-cache' });
-      if (!response.ok) return null;
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = await getAudioCtx().decodeAudioData(arrayBuffer.slice(0));
-      SOUND_FONT_SAMPLE_BUFFERS.set(url, buffer);
-      return buffer;
-    } catch (err) {
-      console.warn('[soundfont] Failed to load sample buffer', url, err);
-      return null;
-    } finally {
-      SOUND_FONT_SAMPLE_BUFFER_PROMISES.delete(url);
-    }
-  })();
-
-  SOUND_FONT_SAMPLE_BUFFER_PROMISES.set(url, promise);
-  return promise;
-}
-
-async function loadConvertedSoundFontPack(folder) {
-  if (!folder || !folder.sf2File) return null;
-  const manifestUrl = getConvertedSoundFontManifestUrl(folder.sf2File);
-  if (!manifestUrl) return null;
-  if (SOUND_FONT_CONVERTED_PACKS.has(folder.id)) return SOUND_FONT_CONVERTED_PACKS.get(folder.id);
-  if (SOUND_FONT_CONVERTED_PACK_PROMISES.has(folder.id)) return SOUND_FONT_CONVERTED_PACK_PROMISES.get(folder.id);
-
-  const promise = (async () => {
-    try {
-      let manifest = SOUND_FONT_INLINE_MANIFESTS[folder.sf2File] || null;
-      if (!manifest) {
-        const response = await fetch(manifestUrl, { cache: 'force-cache' });
-        if (!response.ok) return null;
-        manifest = await response.json();
-      }
-      const pack = normalizeConvertedSoundFontPack(manifest, folder);
-      if (!pack) return null;
-      SOUND_FONT_CONVERTED_PACKS.set(folder.id, pack);
-      for (const preset of pack.presets.values()) {
-        for (const sample of preset.samples) {
-          void loadSoundFontSampleBuffer(sample.url).catch(() => {});
-        }
-      }
-      return pack;
-    } catch (err) {
-      console.warn('[soundfont] Failed to load converted pack', folder.id, err);
-      return null;
-    } finally {
-      SOUND_FONT_CONVERTED_PACK_PROMISES.delete(folder.id);
-    }
-  })();
-
-  SOUND_FONT_CONVERTED_PACK_PROMISES.set(folder.id, promise);
-  return promise;
-}
-
-async function preloadConvertedSoundFontPacks() {
-  await Promise.all(SOUND_FONT_FOLDERS.map(folder => loadConvertedSoundFontPack(folder).catch(() => null)));
-}
-
-async function preloadConvertedSoundFontSamples() {
-  await preloadConvertedSoundFontPacks();
-  const pending = Array.from(SOUND_FONT_SAMPLE_BUFFER_PROMISES.values());
-  if (pending.length) {
-    await Promise.allSettled(pending);
-  }
-}
-
-function getConvertedSoundFontPreset(clip) {
-  if (!clip || !clip.sf2File) return null;
-  const folder = SOUND_FONT_FOLDERS.find(item => item.sf2File === clip.sf2File || item.id === clip.folderId);
-  if (!folder) return null;
-  const pack = SOUND_FONT_CONVERTED_PACKS.get(folder.id);
-  if (!pack) return null;
-  const programKey = String(finiteOr(clip.preset, pack.defaultProgram));
-  return pack.presets.get(programKey) || pack.presets.get(String(pack.defaultProgram)) || null;
-}
-
-function pickConvertedSoundFontSample(preset, note) {
-  if (!preset || !Array.isArray(preset.samples) || preset.samples.length === 0) return null;
-  const safeNote = finiteOr(note, preset.rootNote || 60);
-  const matchingRanges = preset.samples.filter(sample => {
-    const hasMin = Number.isFinite(sample.minNote);
-    const hasMax = Number.isFinite(sample.maxNote);
-    if (!hasMin && !hasMax) return false;
-    if (hasMin && safeNote < sample.minNote) return false;
-    if (hasMax && safeNote > sample.maxNote) return false;
-    return true;
-  });
-  const pool = matchingRanges.length ? matchingRanges : preset.samples;
-  let best = pool[0];
-  let bestDistance = Infinity;
-  for (const sample of pool) {
-    const baseNote = Number.isFinite(sample.rootNote) ? sample.rootNote : (Number.isFinite(sample.note) ? sample.note : (preset.rootNote || 60));
-    const distance = Math.abs(safeNote - baseNote);
-    if (distance < bestDistance) {
-      best = sample;
-      bestDistance = distance;
-    }
-  }
-  return best;
-}
-
-function createConvertedSoundFontVoice({ clip, clipId, preset, note, velocity, volume, startTime, duration = null, lane = null, exactDuration = false, cutPreviousSameClip = true }) {
-  const ctx = getAudioCtx();
-  const sample = pickConvertedSoundFontSample(preset, note);
-  if (!sample) return null;
-
-  const safeVolume = finiteOr(volume, 0.8);
-  const safeVelocity = finiteOr(velocity, 100);
-  const safeStartTime = finiteOr(startTime, ctx.currentTime);
-  const safeDuration = finiteOr(duration, null);
-  const safeNote = finiteOr(note, preset.rootNote || 60);
-  const peak = (safeVelocity / 127) * safeVolume * finiteOr(sample.gain, finiteOr(preset.gain, 1));
-  const attack = finiteOr(sample.attack, finiteOr(preset.attack, 0.01));
-  const decay = finiteOr(sample.decay, finiteOr(preset.decay, 0.08));
-  const sustain = finiteOr(sample.sustain, finiteOr(preset.sustain, 0.6));
-  const release = finiteOr(sample.release, finiteOr(preset.release, 0.16));
-  const baseNote = Number.isFinite(sample.rootNote) ? sample.rootNote : (Number.isFinite(sample.note) ? sample.note : (preset.rootNote || 60));
-  const playbackRate = Math.pow(2, (safeNote - baseNote) / 12);
-  let buffer = SOUND_FONT_SAMPLE_BUFFERS.get(sample.url);
-  if (!buffer) {
-    // Buffer not yet loaded; check if it's being loaded asynchronously
-    const bufferPromise = SOUND_FONT_SAMPLE_BUFFER_PROMISES.get(sample.url);
-    if (bufferPromise) {
-      // Wait for the buffer to load, then play
-      bufferPromise.then(loadedBuffer => {
-        if (loadedBuffer) {
-          playConvertedSoundFontVoiceWithBuffer(loadedBuffer, {
-            ctx, sample, preset, safeVolume, safeVelocity, safeStartTime, safeDuration, safeNote, peak,
-            attack, decay, sustain, release, baseNote, playbackRate, clipId, clip, note, velocity, volume,
-            startTime, duration, lane, exactDuration, cutPreviousSameClip
-          });
-        }
-      }).catch(() => {});
-      return { stop: () => {} }; // Return a dummy voice that does nothing
-    }
-    return null;
-  }
-
-  // Buffer is loaded, play immediately
-  return playConvertedSoundFontVoiceWithBuffer(buffer, {
-    ctx, sample, preset, safeVolume, safeVelocity, safeStartTime, safeDuration, safeNote, peak,
-    attack, decay, sustain, release, baseNote, playbackRate, clipId, clip, note, velocity, volume,
-    startTime, duration, lane, exactDuration, cutPreviousSameClip
-  });
-}
-
-// Helper function to play a converted soundfont voice when the buffer is ready
-function playConvertedSoundFontVoiceWithBuffer(buffer, params) {
-  const { ctx, sample, preset, safeVolume, safeVelocity, safeStartTime, safeDuration, safeNote, peak,
-    attack, decay, sustain, release, baseNote, playbackRate, clipId, clip, note, velocity, volume,
-    startTime, duration, lane, exactDuration, cutPreviousSameClip } = params;
-
-  if (cutPreviousSameClip && clipId) {
-    try {
-      const prior = activeClipVoicesById[clipId];
-      if (prior && prior.stop) prior.stop();
-    } catch (_) {}
-  }
-
-  const source = ctx.createBufferSource();
-  const gainNode = ctx.createGain();
-  source.buffer = buffer;
-  source.playbackRate.setValueAtTime(playbackRate, safeStartTime);
-  source.connect(gainNode);
-  gainNode.connect(ctx.destination);
-  gainNode.gain.setValueAtTime(0.001, safeStartTime);
-  gainNode.gain.linearRampToValueAtTime(Math.max(peak, 0.001), safeStartTime + attack);
-  gainNode.gain.linearRampToValueAtTime(Math.max(Math.max(peak, 0.001) * sustain, 0.001), safeStartTime + attack + decay);
-
-  let stopped = false;
-  function stop(stopTime = ctx.currentTime) {
-    if (stopped) return;
-    stopped = true;
-    try {
-      gainNode.gain.cancelScheduledValues(stopTime);
-      gainNode.gain.setValueAtTime(Math.max(gainNode.gain.value, 0.001), stopTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, stopTime + release);
-      source.stop(stopTime + release + 0.03);
-    } catch (_) {}
-    try {
-      if (clipId && activeClipVoicesById[clipId] && activeClipVoicesById[clipId].stop === stop) {
-        delete activeClipVoicesById[clipId];
-      }
-    } catch (_) {}
-  }
-
-  try {
-    const hasLoopPoints = Number.isFinite(sample.loopStart) && Number.isFinite(sample.loopEnd);
-    const bufferDurationSec = buffer.duration / (playbackRate || 1);
-    const shouldLoop = hasLoopPoints && safeDuration && (safeDuration / 1000) > bufferDurationSec;
-    if ((exactDuration && safeDuration && safeDuration > 0) || shouldLoop) {
-      source.loop = true;
-      if (Number.isFinite(sample.loopStart)) source.loopStart = Math.max(0, sample.loopStart * buffer.duration);
-      if (Number.isFinite(sample.loopEnd)) source.loopEnd = Math.max(source.loopStart, sample.loopEnd * buffer.duration);
-    }
-    source.start(safeStartTime);
-  } catch (err) {
-    console.warn('[soundfont] Failed to start converted sample voice', err);
-    return null;
-  }
-
-  const minDurationMs = exactDuration ? 0 : (CFG.minNoteLengthMs || 100);
-  let stopDurationMs = safeDuration && safeDuration > 0 ? safeDuration : 800;
-  stopDurationMs = Math.max(stopDurationMs, minDurationMs);
-  const stopTime = safeStartTime + (stopDurationMs / 1000);
-  const delayMs = Math.max(0, (stopTime - ctx.currentTime) * 1000);
-  setTimeout(() => stop(stopTime), delayMs);
-
-  const voice = { source, gain: gainNode, stop };
-  try { if (cutPreviousSameClip && clipId) activeClipVoicesById[clipId] = voice; } catch (_) {}
-  return voice;
-}
+const RECORDER_VOICE_CLIPS = {
+  label: 'Recorder Vocals',
+  clips: Array.from({ length: 19 }, (_, index) => {
+    const slot = 19 - index;
+    const rootNote = [1, 8, 15, 22, 29, 36, 43, 50, 57, 64, 71, 78, 85, 92, 99, 106, 113, 120, 127][index];
+    const rangeMin = Math.max(0, rootNote - 3);
+    const rangeMax = Math.min(127, rootNote + 3);
+    return {
+      id: `recorder-voice-${slot}`,
+      label: `Recorder Voice ${slot}`,
+      type: 'recordervoice',
+      rootNote,
+      rangeMin,
+      rangeMax,
+      tuneSemitones: 0,
+      minPitchShiftSemitones: -3,
+      maxPitchShiftSemitones: 3,
+      filterType: 'lowpass',
+      filterCutoff: 1600 + (index * 42),
+      filterQ: 2.2 + (index % 4) * 0.18,
+      crunchMix: 0.15 + (index / 18) * 0.12,
+      volumeScale: 1.8,
+      loopStart: 0.18,
+      loopEnd: 0.82,
+    };
+  }),
+};
 
 // Add character sound clips to the BASE_SOUND_CLIP_GROUPS
 const CHARACTER_SOUND_CLIPS = {
   label: 'Character Vocals',
   clips: [
-    { id: 'tote-ii', label: 'Tote - II', type: 'mp3', url: 'SoundClip/Tote/Tote-II-1.mp3', rootNote: 60 },
-    { id: 'tote-ki', label: 'Tote - KI', type: 'mp3', url: 'SoundClip/Tote/Tote-ki-2.mp3', rootNote: 60 },
-    { id: 'tote-mi', label: 'Tote - MI', type: 'mp3', url: 'SoundClip/Tote/Tote-mi-3.mp3', rootNote: 60 },
-    { id: 'tote-ti', label: 'Tote - TI', type: 'mp3', url: 'SoundClip/Tote/Tote-ti-4.mp3', rootNote: 60 },
-    { id: 'tote-bi', label: 'Tote - BI', type: 'mp3', url: 'SoundClip/Tote/Tote-bi-5.mp3', rootNote: 60 },
-    { id: 'tote-AA', label: 'Tote - AA', type: 'mp3', url: 'SoundClip/Tote/Tote-AA-6.mp3', rootNote: 60 },
-    { id: 'tote-fa', label: 'Tote - FA', type: 'mp3', url: 'SoundClip/Tote/Tote-fa-7.mp3', rootNote: 60 },
-    { id: 'tote-ka', label: 'Tote - KA', type: 'mp3', url: 'SoundClip/Tote/Tote-ka-8.mp3', rootNote: 60 },
-    { id: 'tote-ba', label: 'Tote - BA', type: 'mp3', url: 'SoundClip/Tote/Tote-ba-9.mp3', rootNote: 60 },
-    { id: 'tote-ta', label: 'Tote - TA', type: 'mp3', url: 'SoundClip/Tote/Tote-ta-10.mp3', rootNote: 60 },
-    { id: 'tote-EE', label: 'Tote - EE', type: 'mp3', url: 'SoundClip/Tote/Tote-EE-11.mp3', rootNote: 60 },
-    { id: 'tote-be', label: 'Tote - BE', type: 'mp3', url: 'SoundClip/Tote/Tote-be-12.mp3', rootNote: 60 },
-    { id: 'tote-me', label: 'Tote - ME', type: 'mp3', url: 'SoundClip/Tote/Tote-me-13.mp3', rootNote: 60 },
-    { id: 'tote-te', label: 'Tote - TE', type: 'mp3', url: 'SoundClip/Tote/Tote-te-14.mp3', rootNote: 60 },
-    { id: 'tote-oo', label: 'Tote - OO', type: 'mp3', url: 'SoundClip/Tote/Tote-oo-15.mp3', rootNote: 60 },
-    { id: 'tote-go', label: 'Tote - GO', type: 'mp3', url: 'SoundClip/Tote/Tote-go-16.mp3', rootNote: 60 },
-    { id: 'tote-bu', label: 'Tote - BU', type: 'mp3', url: 'SoundClip/Tote/Tote-bu-17.mp3', rootNote: 60 },
-    { id: 'tote-du', label: 'Tote - DU', type: 'mp3', url: 'SoundClip/Tote/Tote-du-18.mp3', rootNote: 60 },
-    { id: 'tote-oo1', label: 'Tote - OO1', type: 'mp3', url: 'SoundClip/Tote/Tote-oo-19.mp3', rootNote: 60 },
-
-    { id: 'tote-ha', label: 'Tote - HA', type: 'wav', url: 'SoundClip/Tote/MM - Tote ha.wav', rootNote: 60 },
-    { id: 'tote-chop', label: 'Tote - CHOP', type: 'wav', url: 'SoundClip/Tote/MM - Tote CHOP.wav', rootNote: 60 },
-    { id: 'tote-CHOP-best', label: 'Tote - CHOP best', type: 'mp3', url: 'SoundClip/Tote/MM-CHOP_best.mp3', rootNote: 60 },
-
-    { id: 'mushy-blip', label: 'Mushy Blip', type: 'wav', url: 'SoundClip/Mushy/DialogueBlip.wav', rootNote: 60 },
-
-    { id: 'mushy-left', label: 'Mushy Left', type: 'wav', url: 'SoundClip/Mushy/DialogueBlip.wav', rootNote: 60 },
-    { id: 'mushy-right', label: 'Mushy Right', type: 'wav', url: 'SoundClip/Mushy/DialogueBlip.wav', rootNote: 60 },
-    { id: 'mushy-down', label: 'Mushy Down', type: 'wav', url: 'SoundClip/Mushy/DialogueBlip.wav', rootNote: 60 },
     { id: 'mushy-purchase', label: 'Mushy Purchase', type: 'mp3', url: 'SoundClip/Mushy/Purchase.mp3', rootNote: 60 },
     { id: 'mushy-shake', label: 'Mushy Shake', type: 'wav', url: 'SoundClip/Mushy/ShakeWake.wav', rootNote: 60 },
     { id: 'mushy-eating', label: 'Mushy Eating', type: 'wav', url: 'SoundClip/Mushy/Eating.wav', rootNote: 60 },
+    { id: 'miss-1', label: 'Miss 1', type: 'mp3', url: 'SoundClip/Mistake1.mp3', rootNote: 60 },
+    { id: 'miss-2', label: 'Miss 2', type: 'mp3', url: 'SoundClip/Mistake2.mp3', rootNote: 60 },
+    { id: 'miss-3', label: 'Miss 3', type: 'mp3', url: 'SoundClip/Mistake3.mp3', rootNote: 60 },
+    { id: 'miss-4', label: 'Miss 4', type: 'mp3', url: 'SoundClip/Mistake4.mp3', rootNote: 60 },
 
   ],
 };
@@ -3430,15 +3527,13 @@ const CHARACTER_SOUND_CLIPS = {
 // Rebuild SOUND_CLIP_GROUPS to include character vocals
 function rebuildSoundClipGroupsWithCharacters() {
   const groups = buildSoundClipGroups();
-  // Insert character vocals near the top
-  return [CHARACTER_SOUND_CLIPS, ...groups];
-}
-
-// Rebuild SOUND_CLIP_GROUPS to include character vocals
-function rebuildSoundClipGroupsWithCharacters() {
-  const groups = buildSoundClipGroups();
-  // Insert character vocals near the top
-  return [CHARACTER_SOUND_CLIPS, ...groups];
+  const specialGroups = [];
+  if (RECORDER_VOICE_CLIPS) specialGroups.push(RECORDER_VOICE_CLIPS);
+  if (MUSHY_VOICE_CLIPS) specialGroups.push(MUSHY_VOICE_CLIPS);
+  if (MARTIN_VOICE_CLIPS) specialGroups.push(MARTIN_VOICE_CLIPS);
+  if (TOTE_SOUND_CLIPS) specialGroups.push(TOTE_SOUND_CLIPS);
+  specialGroups.push(CHARACTER_SOUND_CLIPS);
+  return [...specialGroups, ...groups];
 }
 
 SOUND_CLIP_GROUPS = rebuildSoundClipGroupsWithCharacters();
@@ -3467,12 +3562,7 @@ function finiteOr(value, fallback) {
 
 function getClipById(clipId) {
   if (clipId === '__blank__') return { id: '__blank__', label: 'Blank (silent)', type: 'blank' };
-  const found = SOUND_CLIPS.find(clip => clip.id === clipId);
-  if (!found) {
-    console.warn('[getClipById] Clip id not found:', clipId, ' — falling back to first clip');
-    return SOUND_CLIPS[0];
-  }
-  return found;
+  return SOUND_CLIPS.find(clip => clip.id === clipId) || SOUND_CLIPS[0];
 }
 
 function resolveClipLabel(trackIdx, clipId) {
@@ -3497,94 +3587,105 @@ function getTrackConfig(trackIdx) {
 
 function clipUsesPitchShiftAndExactDuration(clipId) {
   const clip = getClipById(clipId);
-  return !!clip && ((clip.type === 'mp3' && typeof clip.rootNote === 'number') || clip.type === 'soundfont');
+  return !!clip && (clip.type === 'mp3' || clip.type === 'wav' || clip.type === 'mushyvoice' || clip.type === 'martinvoice' || clip.type === 'recordervoice') && typeof clip.rootNote === 'number';
 }
 
-const clipSelectionMemory = {};
+function getTrackCharacterId(trackIdx, sourceRole = 'player') {
+  const trackConfig = getTrackConfig(trackIdx);
+  if (!trackConfig || trackConfig.clipId !== '__character__') return null;
+  return sourceRole === 'reference' ? currentRivalCharacterId : currentPlayerCharacterId;
+}
+
+function getCharacterMissSoundIds(characterId, sourceRole = 'player') {
+  const overrideId = sourceRole === 'reference' ? currentRivalMissSoundId : currentPlayerMissSoundId;
+  if (overrideId && overrideId !== 'default') return [overrideId];
+  const character = getCharacterById(characterId);
+  const missSoundIds = Array.isArray(character?.missSoundIds) && character.missSoundIds.length
+    ? character.missSoundIds
+    : DEFAULT_MISS_SOUND_IDS;
+  return missSoundIds;
+}
+
+function playCharacterMissSound(characterId, sourceRole = 'player') {
+  const missIds = getCharacterMissSoundIds(characterId, sourceRole);
+  if (!missIds.length) return;
+  const chosenId = missIds[Math.floor(Math.random() * missIds.length)];
+  const clip = getClipById(chosenId);
+  try {
+    if (clip && clip.id && clip.id !== '__blank__') {
+      createClipVoice({ clipId: clip.id, note: 60, velocity: 100, volume: 1.0, startTime: getAudioCtx().currentTime, duration: 220, exactDuration: true });
+    } else {
+      playFailedSound();
+    }
+  } catch (_) {
+    playFailedSound();
+  }
+}
 
 // Select a clip from an array of clip IDs based on MIDI note value.
-// Uses weighted scoring so nearby notes tend to choose nearby clips, with a
-// small continuity bias from the previous selection for smoother transitions.
-function selectClipFromClipArray(clipArray, midiNote = 60, selectionKey = 'default') {
+// Finds the clip with the rootNote closest to the requested MIDI note.
+function selectClipFromClipArray(clipArray, midiNote = 60) {
   if (!Array.isArray(clipArray) || clipArray.length === 0) return null;
   if (clipArray.length === 1) return clipArray[0];
 
-  const key = selectionKey || 'default';
-  const memory = clipSelectionMemory[key] || {};
-  const clipCount = clipArray.length;
-  const maxIndex = clipCount - 1;
-  const targetIndex = maxIndex === 0 ? 0 : ((127 - midiNote) / 127) * maxIndex;
-  const pitchSigma = Math.max(0.65, clipCount / 6);
-  const continuitySigma = Math.max(0.75, clipCount / 5);
+  // Prefer explicit per-clip note ranges when provided.
+  let rangeMatch = null;
+  let rangeMatchDistance = Infinity;
 
-  let bestIndex = 0;
-  let bestScore = -Infinity;
-
-  for (let i = 0; i < clipCount; i++) {
-    const pitchDelta = i - targetIndex;
-    const pitchScore = Math.exp(-(pitchDelta * pitchDelta) / (2 * pitchSigma * pitchSigma));
-
-    let continuityScore = 0;
-    if (Number.isFinite(memory.index)) {
-      const prevDelta = i - memory.index;
-      continuityScore += Math.exp(-(prevDelta * prevDelta) / (2 * continuitySigma * continuitySigma)) * 0.7;
-    }
-    if (Number.isFinite(memory.note)) {
-      const noteDelta = midiNote - memory.note;
-      continuityScore += Math.exp(-(noteDelta * noteDelta) / (2 * 14 * 14)) * 0.3;
-    }
-
-    const score = (pitchScore * 0.82) + (continuityScore * 0.18);
-    if (score > bestScore) {
-      bestScore = score;
-      bestIndex = i;
+  for (const clipId of clipArray) {
+    const clip = getClipById(clipId);
+    if (!clip) continue;
+    if (typeof clip.rangeMin === 'number' && typeof clip.rangeMax === 'number') {
+      if (midiNote >= clip.rangeMin && midiNote <= clip.rangeMax) {
+        const center = (clip.rangeMin + clip.rangeMax) / 2;
+        const centerDistance = Math.abs(midiNote - center);
+        if (centerDistance < rangeMatchDistance) {
+          rangeMatchDistance = centerDistance;
+          rangeMatch = clipId;
+        }
+      }
     }
   }
 
-  clipSelectionMemory[key] = { index: bestIndex, note: midiNote, clipId: clipArray[bestIndex] };
-  return clipArray[bestIndex];
-}
+  if (rangeMatch) return rangeMatch;
 
-// Determine which lane (up/left/right/down) a sound index maps to
-function getLaneFromSoundIndex(soundIndex, totalSounds) {
-  const soundsPerLane = totalSounds / 4;
-  const laneIndex = Math.floor(soundIndex / soundsPerLane);
-  const lanes = ['up', 'left', 'right', 'down'];
-  return lanes[Math.min(laneIndex, 3)];
-}
+  // Fallback: find clip with closest rootNote, defaulting to first clip if no rootNotes defined
+  let closestClip = clipArray[0];
+  let closestDistance = Infinity;
 
-// Get the sound clip and lane for character voice playback
-function getCharacterVoiceClipAndLane(characterId, sourceRole, midiNote = 60) {
-  const charId = (sourceRole === 'reference') ? currentRivalCharacterId : currentPlayerCharacterId;
-  const character = getCharacterById(charId);
-  if (!character || character.id === 'blank') {
-    return { clipId: '__blank__', lane: 'idle' };
+  for (const clipId of clipArray) {
+    const clip = getClipById(clipId);
+    if (clip && typeof clip.rootNote === 'number') {
+      const distance = Math.abs(clip.rootNote - midiNote);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestClip = clipId;
+      }
+    }
   }
 
-  if (character.voiceClipBankId) {
-    return { clipId: resolveCharacterVoiceClipId(character, sourceRole, midiNote), lane: 'idle' };
-  }
-
-  if (character.voiceClipId) {
-    return { clipId: character.voiceClipId, lane: 'idle' };
-  }
-
-  const voiceClips = character.voiceClips;
-  const selectedClip = selectClipFromClipArray(voiceClips, midiNote, `character:${charId}:${sourceRole}`);
-  const soundIndex = voiceClips.indexOf(selectedClip);
-  const lane = getLaneFromSoundIndex(soundIndex, voiceClips.length);
-  
-  return { clipId: selectedClip, lane };
+  return closestClip;
 }
 
 // Resolve a character clip id when the special '__character__' selection is used.
 function resolveCharacterClipForPlayback(sourceRole, lane, midiNote = 60) {
-  // sourceRole: 'reference' or 'play'
+  // sourceRole: 'player' or 'reference'
+  const dir = lane || 'idle';
   const charId = (sourceRole === 'reference') ? currentRivalCharacterId : currentPlayerCharacterId;
   const character = getCharacterById(charId);
   if (!character || character.id === 'blank') return '__blank__';
-
-  return resolveCharacterVoiceClipId(character, sourceRole, midiNote);
+  
+  // Get clip array for this direction
+  const clipOrArray = character.soundClipIds[dir] || character.soundClipIds['idle'];
+  if (!clipOrArray) return '__blank__';
+  
+  // If it's an array, select from it based on MIDI note
+  if (Array.isArray(clipOrArray)) {
+    return selectClipFromClipArray(clipOrArray, midiNote) || '__blank__';
+  }
+  
+  // Backward compat: if it's a single string (old format), return it
+  return clipOrArray;
 }
 
 function populateTrackClipSelect(pickerEl, trackIdx) {
@@ -3725,12 +3826,13 @@ function populateTrackClipSelect(pickerEl, trackIdx) {
 
 // Apply DEFAULTS to UI inputs on DOM ready and restore project list state.
 document.addEventListener('DOMContentLoaded', async () => {
+  setSetupMenuMode('play', false);
   applyProjectSettingsToUI(DEFAULTS);
   applyCharacterSettingsToUI({ playerCharacterId: 'blank', rivalCharacterId: 'blank' });
   populateCharacterDropdowns();
-  void preloadConvertedSoundFontPacks();
 
   document.getElementById('btn-add-song-project').addEventListener('click', () => openProjectEditor());
+  document.getElementById('btn-editor-add-song-project')?.addEventListener('click', () => openProjectEditor());
   document.getElementById('btn-save-project').addEventListener('click', async () => {
     try {
       await saveCurrentProject();
@@ -3762,8 +3864,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const mp3Input = document.getElementById('mp3-file-input');
+  const recorderInput = document.getElementById('recorder-file-input');
   const mp4DropZone = document.getElementById('mp4-drop-zone');
+  const recorderDropZone = document.getElementById('recorder-drop-zone');
   const btnClearMp4 = document.getElementById('btn-clear-mp4');
+  const btnClearRecorder = document.getElementById('btn-clear-recorder');
   const mp3Preview = document.getElementById('mp3-preview');
   const mp3Slider = document.getElementById('mp3-offset-slider');
   const mp3Label = document.getElementById('mp3-offset-label');
@@ -3807,6 +3912,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadMp3ProjectBlob(f, f.name, true);
     drawWaveforms();
   });
+
+  if (recorderDropZone && recorderInput) {
+    recorderDropZone.addEventListener('click', (e) => {
+      if (e.target === recorderInput) return;
+      recorderInput.click();
+    });
+    recorderDropZone.addEventListener('dragover', e => { e.preventDefault(); recorderDropZone.classList.add('drag-over'); });
+    recorderDropZone.addEventListener('dragleave', () => recorderDropZone.classList.remove('drag-over'));
+    recorderDropZone.addEventListener('drop', async e => {
+      e.preventDefault();
+      recorderDropZone.classList.remove('drag-over');
+      const f = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files[0] : null;
+      if (!f) return;
+      await loadRecorderVoiceBlob(f, f.name, true);
+    });
+  }
+
+  recorderInput?.addEventListener('change', async () => {
+    const f = recorderInput.files && recorderInput.files[0];
+    if (!f) return;
+    await loadRecorderVoiceBlob(f, f.name, true);
+  });
+
+  if (btnClearRecorder) {
+    btnClearRecorder.addEventListener('click', () => {
+      if (!currentRecorderVoiceBlob) return;
+      if (!confirm('Clear Recorder vocal? This cannot be undone unless you reload it.')) return;
+      clearRecorderVoiceBlob(true);
+    });
+  }
 
   mp3Preview.addEventListener('click', () => {
     if (!songAudio) return alert('Load an MP4 or MP3 first');
@@ -3900,6 +4035,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     project.manualMapEnabled = true;
     project.midiBuffer       = currentMidiArrayBuffer ? currentMidiArrayBuffer.slice(0) : project.midiBuffer || null;
     project.mp3Blob          = currentMp3Blob || project.mp3Blob || null;
+    project.recorderVoiceBlob = currentRecorderVoiceBlob || project.recorderVoiceBlob || null;
     project.updatedAt        = Date.now();
     await persistProjectToStorage(project);
 
@@ -3945,16 +4081,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const playerCharacterSelect = document.getElementById('var-player-character');
   const rivalCharacterSelect = document.getElementById('var-rival-character');
+  function updateRecorderUIVisibility() {
+    const showRecorder = currentPlayerCharacterId === 'recorder' || currentRivalCharacterId === 'recorder';
+    const dropZone = document.getElementById('recorder-drop-zone');
+    const clearBtn = document.getElementById('btn-clear-recorder');
+    if (dropZone) dropZone.classList.toggle('visible', showRecorder);
+    if (clearBtn) clearBtn.classList.toggle('visible', showRecorder);
+  }
   if (playerCharacterSelect) {
     playerCharacterSelect.addEventListener('change', () => {
       currentPlayerCharacterId = playerCharacterSelect.value || 'blank';
+      updateRecorderUIVisibility();
+      if (currentProjectId) syncProjectSettingsToDraft();
     });
   }
   if (rivalCharacterSelect) {
     rivalCharacterSelect.addEventListener('change', () => {
       currentRivalCharacterId = rivalCharacterSelect.value || 'blank';
+      updateRecorderUIVisibility();
+      if (currentProjectId) syncProjectSettingsToDraft();
     });
   }
+  // attach editor dirty detection for title and artist
+  const titleInput = document.getElementById('project-title-input');
+  const artistInput = document.getElementById('project-artist-input');
+  if (titleInput) titleInput.addEventListener('input', () => { currentProjectDirty = true; });
+  if (artistInput) artistInput.addEventListener('input', () => { currentProjectDirty = true; });
 
   await refreshProjectListFromStorage();
   if (selectedProjectId) {
@@ -3969,7 +4121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   showMainMenu();
 });
 
-function createClipVoice({ clipId, note, velocity, volume, startTime, duration = null, lane = null, exactDuration = false, cutPreviousSameClip = true }) {
+function createClipVoice({ clipId, note, velocity, volume, startTime, duration = null, lane = null, exactDuration = false }) {
   const ctx = getAudioCtx();
   const clip = getClipById(clipId);
   const safeNote = finiteOr(note, 60);
@@ -3981,29 +4133,32 @@ function createClipVoice({ clipId, note, velocity, volume, startTime, duration =
   const decay = finiteOr(clip.decay, 0.08);
   const sustain = finiteOr(clip.sustain, 0.6);
   const release = finiteOr(clip.release, 0.16);
-  const peak = (safeVelocity / 127) * safeVolume;
-
-  if (cutPreviousSameClip && clipId && (clip.type === 'mp3' || (clip.type === 'soundfont' && clip.sample_url))) {
-    try {
-      const prior = activeClipVoicesById[clipId];
-      if (prior && prior.stop) prior.stop();
-    } catch (_) {}
-  }
+  const peak = (safeVelocity / 127) * safeVolume * finiteOr(clip.volumeScale, 1);
 
   if (clip.type === 'blank') {
     return { stop: () => {} };
   }
 
-  // Handle MP3 clips
-  if (clip.type === 'mp3' && clip.url) {
-    const voice = createMp3Voice({ clip, clipId, volume: peak, startTime, duration, note, lane, exactDuration, cutPreviousSameClip });
-    try { activeClipVoicesById[clipId] = voice; } catch (_) {}
-    return voice;
+  // Handle streamed sample clips
+  if ((clip.type === 'mp3' || clip.type === 'wav') && clip.url) {
+    return createMp3Voice({ clip, clipId, volume: peak, startTime, duration, note, lane, exactDuration });
   }
 
   // Handle SoundFont clips (currently synth fallback unless sample_url is provided)
   if (clip.type === 'soundfont') {
-    return createSoundfontVoice({ clip, clipId, note, velocity, volume, startTime, duration, lane, exactDuration, cutPreviousSameClip });
+    return createSoundfontVoice({ clip, clipId, note, velocity, volume, startTime, duration, lane, exactDuration });
+  }
+
+  if (clip.type === 'mushyvoice') {
+    return createMushyVoice({ clip, clipId, note, velocity, volume, startTime, duration, exactDuration });
+  }
+
+  if (clip.type === 'martinvoice') {
+    return createMartinVoice({ clip, clipId, note, velocity, volume, startTime, duration, exactDuration });
+  }
+
+  if (clip.type === 'recordervoice') {
+    return createRecorderVoice({ clip, clipId, note, velocity, volume, startTime, duration, lane, exactDuration });
   }
 
   // Handle synthesis clips
@@ -4013,10 +4168,7 @@ function createClipVoice({ clipId, note, velocity, volume, startTime, duration =
   osc.connect(gain);
   gain.connect(ctx.destination);
 
-  // Validate oscillator waveform (avoid undefined warnings)
-  const VALID_WAVEFORMS = ['sine','square','sawtooth','triangle','custom'];
-  const wf = (typeof clip.waveform === 'string' && VALID_WAVEFORMS.includes(clip.waveform)) ? clip.waveform : (clip.fallbackWaveform || 'sine');
-  osc.type = wf;
+  osc.type = clip.waveform;
   osc.frequency.setValueAtTime(freq, safeStartTime);
   gain.gain.setValueAtTime(0.001, safeStartTime);
   gain.gain.linearRampToValueAtTime(Math.max(peak, 0.001), safeStartTime + attack);
@@ -4049,13 +4201,241 @@ function createClipVoice({ clipId, note, velocity, volume, startTime, duration =
   return { osc, gain, stop };
 }
 
-function createSoundfontVoice({ clip, clipId, note, velocity, volume, startTime, duration = null, lane = null, exactDuration = false, cutPreviousSameClip = true }) {
-  const convertedPreset = getConvertedSoundFontPreset(clip);
-  if (convertedPreset) {
-    const convertedVoice = createConvertedSoundFontVoice({ clip, clipId, preset: convertedPreset, note, velocity, volume, startTime, duration, lane, exactDuration, cutPreviousSameClip });
-    if (convertedVoice) return convertedVoice;
+function createRecorderVoice({ clip, clipId, note, velocity, volume, startTime, duration = null, lane = null, exactDuration = false }) {
+  // Don't play individual notes if Recorder background vocal is active
+  if (recorderBackingNode) return { stop: () => {} };
+  const sourceUrl = getRecorderVoiceSourceUrl();
+  if (!sourceUrl) return { stop: () => {} };
+  if (isRecorderMuted(lane != null ? lane : null)) return { stop: () => {} };
+
+  return createSampleBufferVoice({
+    clip,
+    clipId,
+    volume,
+    startTime,
+    duration,
+    note,
+    lane,
+    exactDuration,
+    sourceUrlOverride: sourceUrl,
+    filterConfig: {
+      type: clip.filterType || 'lowpass',
+      cutoff: finiteOr(clip.filterCutoff, 1800),
+      q: finiteOr(clip.filterQ, 2.2),
+      crunchMix: finiteOr(clip.crunchMix, 0.18),
+    },
+  });
+}
+
+function startRecorderBackingVocal(startTime) {
+  if (!currentRecorderVoiceBlob) return;
+  const ctx = getAudioCtx();
+  const sourceUrl = getRecorderVoiceSourceUrl();
+  if (!sourceUrl) return;
+  
+  recorderBackingGain = ctx.createGain();
+  recorderBackingGain.gain.setValueAtTime(0.8, startTime);
+  recorderBackingGain.connect(ctx.destination);
+  
+  getSampleBuffer(sourceUrl).then(buffer => {
+    if (!buffer || !recorderBackingGain) return;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(recorderBackingGain);
+    src.start(startTime);
+    recorderBackingNode = src;
+  }).catch(() => {
+    recorderBackingGain = null;
+    recorderBackingNode = null;
+  });
+}
+
+function muteRecorderBackingVocal() {
+  if (!recorderBackingGain || recorderBackingMuted) return;
+  recorderBackingMuted = true;
+  const ctx = getAudioCtx();
+  recorderBackingGain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+}
+
+function unmuteRecorderBackingVocal() {
+  if (!recorderBackingGain || !recorderBackingMuted) return;
+  recorderBackingMuted = false;
+  const ctx = getAudioCtx();
+  recorderBackingGain.gain.linearRampToValueAtTime(0.8, ctx.currentTime + 0.2);
+}
+
+function stopRecorderBackingVocal() {
+  try {
+    if (recorderBackingNode && recorderBackingNode.stop) {
+      recorderBackingNode.stop();
+    }
+    if (recorderBackingGain) {
+      recorderBackingGain.disconnect();
+    }
+  } catch(_) {}
+  recorderBackingNode = null;
+  recorderBackingGain = null;
+  recorderBackingMuted = false;
+}
+
+function createSampleBufferVoice({ clip, clipId, volume, startTime, duration = null, note = 60, lane = null, exactDuration = false, sourceUrlOverride = null, filterConfig = null }) {
+  const ctx = getAudioCtx();
+  const safeVolume = finiteOr(volume, 0.8);
+  const safeStartTime = finiteOr(startTime, ctx.currentTime);
+  const safeDuration = finiteOr(duration, null);
+  const safeNote = finiteOr(note, 60);
+  const peak = Math.max(0.001, safeVolume * finiteOr(clip.volumeScale, 1));
+  const fullLaneSet = ['left', 'up', 'down', 'right'].every(dir => clip[`url_${dir}`]);
+  const baseUrl = sourceUrlOverride || (fullLaneSet && lane ? getClipUrlForLane(clipId, lane) : clip.url);
+  const fallbackUrl = (clipId !== 'character-fallback') ? CHARACTER_FALLBACK_VOCAL.url : null;
+
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0.0001, safeStartTime);
+
+  let inputNode = master;
+  if (filterConfig) {
+    const filter = ctx.createBiquadFilter();
+    filter.type = filterConfig.type || 'lowpass';
+    filter.frequency.setValueAtTime(finiteOr(filterConfig.cutoff, 1800), safeStartTime);
+    filter.Q.setValueAtTime(finiteOr(filterConfig.q, 2.2), safeStartTime);
+    filter.connect(master);
+    inputNode = filter;
   }
 
+  master.connect(ctx.destination);
+
+  const applyPitchShift = (aud, c, n) => {
+    if (typeof c.rootNote === 'number') {
+      const baselineNote = c.rootNote + finiteOr(c.tuneSemitones, 0);
+      const minShift = finiteOr(c.minPitchShiftSemitones, -12);
+      const maxShift = finiteOr(c.maxPitchShiftSemitones, 12);
+      let semitoneDiff = n - baselineNote;
+      semitoneDiff = Math.max(minShift, Math.min(maxShift, semitoneDiff));
+      const playbackRate = Math.pow(2, semitoneDiff / 12);
+      aud.playbackRate = Math.max(0.5, Math.min(2, playbackRate));
+    } else {
+      aud.playbackRate = 1.0;
+    }
+  };
+
+  const playbackRateState = { playbackRate: 1.0 };
+  applyPitchShift(playbackRateState, clip, safeNote);
+  const playbackRate = Math.max(0.5, Math.min(2, playbackRateState.playbackRate || 1));
+
+  let started = false;
+  let stopped = false;
+  let sourceNodes = [];
+  let stopTimer = null;
+  let loadingPromise = null;
+
+  function stop(stopTime = ctx.currentTime, disconnectAtEnd = true) {
+    if (stopped) return;
+    stopped = true;
+    if (stopTimer) clearTimeout(stopTimer);
+    try {
+      master.gain.cancelScheduledValues(stopTime);
+      master.gain.setValueAtTime(Math.max(master.gain.value, 0.001), stopTime);
+      master.gain.exponentialRampToValueAtTime(0.001, stopTime + 0.12);
+      for (const src of sourceNodes) {
+        try { src.stop(stopTime + 0.03); } catch (_) {}
+      }
+      if (disconnectAtEnd) {
+        setTimeout(() => {
+          try { master.disconnect(); } catch (_) {}
+        }, Math.max(0, Math.ceil((stopTime + 0.16 - ctx.currentTime) * 1000)));
+      }
+    } catch (_) {}
+  }
+
+  function startWithBuffer(buffer) {
+    if (started || stopped) return;
+    started = true;
+
+    const playStartTime = Math.max(safeStartTime, ctx.currentTime + 0.001);
+    const startDriftSec = Math.max(0, playStartTime - safeStartTime);
+    const startOffset = startDriftSec * playbackRate;
+
+    const createSource = ({ when, offset = 0, loop = false, loopStart = 0, loopEnd = 0, stopAt = null }) => {
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.playbackRate.setValueAtTime(playbackRate, when);
+      src.loop = !!loop;
+      if (loop) {
+        src.loopStart = Math.max(0, loopStart);
+        src.loopEnd = Math.max(src.loopStart + 0.001, loopEnd);
+      }
+      src.connect(inputNode);
+      src.start(when, Math.max(0, offset));
+      if (typeof stopAt === 'number' && Number.isFinite(stopAt) && stopAt > when) {
+        src.stop(stopAt);
+      }
+      sourceNodes.push(src);
+      return src;
+    };
+
+    const baseGain = Math.max(0.001, peak);
+    master.gain.setValueAtTime(0.0001, playStartTime);
+    master.gain.linearRampToValueAtTime(baseGain, playStartTime + 0.005);
+
+    const hasLoopPoints = typeof clip.loopStart === 'number' && typeof clip.loopEnd === 'number';
+    const loopStartSec = hasLoopPoints ? Math.max(0, clip.loopStart * buffer.duration) : 0;
+    const loopEndSec = hasLoopPoints ? Math.min(buffer.duration, clip.loopEnd * buffer.duration) : 0;
+    const loopValid = hasLoopPoints && loopEndSec > loopStartSec + 0.001;
+
+    try {
+      if (isRecorderMuted(lane != null ? lane : null)) {
+        master.gain.setValueAtTime(0.0001, playStartTime);
+      } else {
+        if (filterConfig && Number.isFinite(filterConfig.crunchMix)) {
+          master.gain.linearRampToValueAtTime(Math.max(baseGain * Math.max(0.35, 1 - filterConfig.crunchMix), 0.001), playStartTime + 0.04);
+        }
+      }
+
+      if (exactDuration && safeDuration && safeDuration > 0) {
+        const stopTime = playStartTime + (safeDuration / 1000);
+        if (loopValid) {
+          createSource({ when: playStartTime, offset: startOffset, loop: true, loopStart: loopStartSec, loopEnd: loopEndSec, stopAt: stopTime });
+
+          const tailOffset = loopEndSec;
+          const tailDuration = Math.max(0, buffer.duration - tailOffset);
+          const tailPlaySec = tailDuration / playbackRate;
+          if (tailDuration > 0.002) {
+            createSource({ when: stopTime, offset: tailOffset, loop: false });
+            stopTimer = setTimeout(() => stop(stopTime + tailPlaySec + 0.03), Math.max(0, Math.ceil((stopTime + tailPlaySec - ctx.currentTime) * 1000)));
+          } else {
+            stopTimer = setTimeout(() => stop(stopTime + 0.03), Math.max(0, Math.ceil((stopTime - ctx.currentTime) * 1000)));
+          }
+        } else {
+          createSource({ when: playStartTime, offset: startOffset, loop: false, stopAt: stopTime });
+          stopTimer = setTimeout(() => stop(stopTime + 0.03), Math.max(0, Math.ceil((stopTime - ctx.currentTime) * 1000)));
+        }
+      } else {
+        const minDurationMs = exactDuration ? 0 : (CFG.minNoteLengthMs || 100);
+        let stopDurationMs = safeDuration && safeDuration > 0 ? safeDuration : 800;
+        stopDurationMs = Math.max(stopDurationMs, minDurationMs);
+        const stopTime = playStartTime + (stopDurationMs / 1000);
+        createSource({ when: playStartTime, offset: startOffset, loop: false, stopAt: stopTime });
+        stopTimer = setTimeout(() => stop(stopTime + 0.03), Math.max(0, Math.ceil((stopTime - ctx.currentTime) * 1000)));
+      }
+    } catch (_) {}
+  }
+
+  const tryUrls = [baseUrl, fallbackUrl].filter(Boolean);
+  loadingPromise = (async () => {
+    for (const u of tryUrls) {
+      try {
+        const buffer = await getSampleBuffer(u);
+        if (!stopped) startWithBuffer(buffer);
+        return;
+      } catch (_) {}
+    }
+    stop(ctx.currentTime, true);
+  })();
+
+  return { stop, ready: loadingPromise };
+}
+
+function createSoundfontVoice({ clip, clipId, note, velocity, volume, startTime, duration = null, lane = null, exactDuration = false }) {
   // If a sample URL is provided for this preset, reuse the MP3 voice path.
   if (clip.sample_url) {
     const mp3LikeClip = {
@@ -4063,7 +4443,7 @@ function createSoundfontVoice({ clip, clipId, note, velocity, volume, startTime,
       type: 'mp3',
       url: clip.sample_url,
     };
-    return createMp3Voice({ clip: mp3LikeClip, clipId, volume: (finiteOr(velocity, 100) / 127) * finiteOr(volume, 0.8), startTime, duration, note, lane, exactDuration, cutPreviousSameClip });
+    return createMp3Voice({ clip: mp3LikeClip, clipId, volume: (finiteOr(velocity, 100) / 127) * finiteOr(volume, 0.8), startTime, duration, note, lane, exactDuration });
   }
 
   // Fallback: synth profile per preset so SoundFont entries are immediately usable.
@@ -4098,10 +4478,7 @@ function createSynthLikeVoice({ clip, note, velocity, volume, startTime, duratio
   osc.connect(gain);
   gain.connect(ctx.destination);
 
-  // Validate waveform and provide fallback
-  const VALID_WAVEFORMS = ['sine','square','sawtooth','triangle','custom'];
-  const wf = (typeof clip.waveform === 'string' && VALID_WAVEFORMS.includes(clip.waveform)) ? clip.waveform : (clip.fallbackWaveform || 'sine');
-  osc.type = wf;
+  osc.type = clip.waveform;
   osc.frequency.setValueAtTime(freq, safeStartTime);
   gain.gain.setValueAtTime(0.001, safeStartTime);
   gain.gain.linearRampToValueAtTime(Math.max(peak, 0.001), safeStartTime + attack);
@@ -4131,153 +4508,234 @@ function createSynthLikeVoice({ clip, note, velocity, volume, startTime, duratio
   return { osc, gain, stop };
 }
 
-function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note = 60, lane = null, exactDuration = false, loopSegmentStartPct = 0, loopSegmentEndPct = 1, cutPreviousSameClip = true, playbackStartTrimMs = NOTE_EDGE_TRIM_MS, playbackEndTrimMs = NOTE_EDGE_TRIM_MS }) {
+function createMushyVoice({ clip, clipId, note, velocity, volume, startTime, duration = null, exactDuration = false }) {
   const ctx = getAudioCtx();
+  const safeNote = finiteOr(note, 60);
+  const safeVelocity = finiteOr(velocity, 100);
   const safeVolume = finiteOr(volume, 0.8);
   const safeStartTime = finiteOr(startTime, ctx.currentTime);
   const safeDuration = finiteOr(duration, null);
-  const safeNote = finiteOr(note, 60);
-  const fullLaneSet = ['left', 'up', 'down', 'right'].every(dir => clip[`url_${dir}`]);
-  let url = fullLaneSet && lane ? getClipUrlForLane(clipId, lane) : clip.url;
-  if (clip.type === 'blank') {
-    // silent stub voice
-    let stopped = false;
-    function stop() { stopped = true; }
-    return { stop };
+  const peak = (safeVelocity / 127) * safeVolume;
+  const freq = midiToFreq(safeNote + finiteOr(clip.tuneSemitones, 0));
+  const brightness = finiteOr(clip.brightness, 0.25);
+  const bodyFormant = finiteOr(clip.formant1, 900);
+  const airFormant = finiteOr(clip.formant2, 1600);
+  const noiseAmount = finiteOr(clip.noiseAmount, 0.08);
+  const voiceWaveform = clip.voiceWaveform || 'triangle';
+  const harmonicWaveform = clip.harmonicWaveform || 'sine';
+
+  const output = ctx.createGain();
+  const body = ctx.createBiquadFilter();
+  const air = ctx.createBiquadFilter();
+  const high = ctx.createBiquadFilter();
+  const voiceOsc = ctx.createOscillator();
+  const harmonicOsc = ctx.createOscillator();
+  const noiseSource = ctx.createBufferSource();
+  const noiseGain = ctx.createGain();
+  const voiceGain = ctx.createGain();
+  const harmonicGain = ctx.createGain();
+
+  const noiseBuffer = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * 0.2)), ctx.sampleRate);
+  const noiseData = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < noiseData.length; i++) {
+    noiseData[i] = (Math.random() * 2 - 1) * 0.5;
   }
+  noiseSource.buffer = noiseBuffer;
+  noiseSource.loop = true;
 
-  if (cutPreviousSameClip && clipId) {
-    try {
-      const prior = activeClipVoicesById[clipId];
-      if (prior && prior.stop) prior.stop();
-    } catch (_) {}
-  }
+  body.type = 'bandpass';
+  body.frequency.setValueAtTime(bodyFormant, safeStartTime);
+  body.Q.setValueAtTime(8 + brightness * 12, safeStartTime);
+  air.type = 'bandpass';
+  air.frequency.setValueAtTime(airFormant, safeStartTime);
+  air.Q.setValueAtTime(4 + brightness * 5, safeStartTime);
+  high.type = 'highpass';
+  high.frequency.setValueAtTime(120 + brightness * 220, safeStartTime);
 
-  const audio = new Audio(url);
-  audio.preload = 'auto';
-  audio.volume = Math.max(0, Math.min(1, safeVolume));
+  voiceOsc.type = voiceWaveform;
+  voiceOsc.frequency.setValueAtTime(freq, safeStartTime);
+  voiceOsc.detune.setValueAtTime(-4 + brightness * 8, safeStartTime);
+  harmonicOsc.type = harmonicWaveform;
+  harmonicOsc.frequency.setValueAtTime(freq * 2, safeStartTime);
+  harmonicOsc.detune.setValueAtTime(6 + brightness * 10, safeStartTime);
 
-  // Pitch-shifting: apply before play() so it affects the audio from the start
-  const applyPitchShift = (aud, c, n) => {
-    if (typeof c.rootNote === 'number') {
-      const baselineNote = c.rootNote;
-      const semitoneDiff = n - baselineNote;
-      const playbackRate = Math.pow(2, semitoneDiff / 12);
-      aud.playbackRate = playbackRate;
-      console.debug(`[createMp3Voice] Applied pitch-shift: baseline=${baselineNote}, note=${n}, rate=${aud.playbackRate.toFixed(2)}`);
-    } else {
-      aud.playbackRate = 1.0;
-    }
-  };
-  applyPitchShift(audio, clip, safeNote);
+  voiceGain.gain.setValueAtTime(0.0001, safeStartTime);
+  harmonicGain.gain.setValueAtTime(0.0001, safeStartTime);
+  noiseGain.gain.setValueAtTime(0.0001, safeStartTime);
+  output.gain.setValueAtTime(0.0001, safeStartTime);
 
-  let started = false;
+  voiceOsc.connect(body);
+  body.connect(output);
+  harmonicOsc.connect(air);
+  air.connect(output);
+  noiseSource.connect(high);
+  high.connect(noiseGain);
+  noiseGain.connect(output);
+  output.connect(ctx.destination);
+
+  output.gain.linearRampToValueAtTime(Math.max(peak, 0.001), safeStartTime + 0.008);
+  output.gain.linearRampToValueAtTime(Math.max(peak * 0.72, 0.001), safeStartTime + 0.04);
+  noiseGain.gain.linearRampToValueAtTime(Math.max(noiseAmount, 0.001), safeStartTime + 0.003);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, safeStartTime + 0.055);
+
   let stopped = false;
-  let startTimer = null;
-  let loadError = false;
-  let segmentStart = null;
-  let segmentEnd = null;
-  let onTimeUpdate = null;
-  let onLoadedMetadata = null;
-
-  // Error handler: on load error, try fallback clip
-  audio.onerror = () => {
-    console.warn(`[createMp3Voice] Failed to load ${url}, attempting fallback`);
-    loadError = true;
-    if (clipId !== 'character-fallback') {
-      // Try the fallback vocal clip
-      try {
-        audio.src = CHARACTER_FALLBACK_VOCAL.url;
-        applyPitchShift(audio, CHARACTER_FALLBACK_VOCAL, safeNote);
-        audio.load();
-        audio.play().catch(() => {});
-      } catch(e) {
-        console.error('[createMp3Voice] Fallback clip also failed:', e);
-      }
-    }
-  };
-
-  function start() {
-    if (started || stopped) return;
-    started = true;
-    // Configure looping or segment-looping
-    try {
-      if (loopSegmentStartPct > 0 || loopSegmentEndPct < 1) {
-        // We'll handle segment looping manually via timeupdate
-        audio.loop = false;
-        onTimeUpdate = () => {
-          try {
-            if (segmentEnd != null && audio.currentTime >= segmentEnd) {
-              audio.currentTime = segmentStart || 0;
-            }
-          } catch(_){}
-        };
-        audio.addEventListener('timeupdate', onTimeUpdate);
-        onLoadedMetadata = () => {
-          try {
-            const dur = isFinite(audio.duration) ? audio.duration : 0;
-            segmentStart = dur * Math.max(0, Math.min(1, loopSegmentStartPct));
-            segmentEnd = dur * Math.max(0, Math.min(1, loopSegmentEndPct));
-            audio.currentTime = segmentStart || 0;
-          } catch(_){}
-        };
-        audio.addEventListener('loadedmetadata', onLoadedMetadata);
-      } else if (exactDuration && safeDuration && safeDuration > 0) {
-        audio.loop = true;
-      } else {
-        audio.loop = false;
-      }
-    } catch(_) {}
-
-    if (!(loopSegmentStartPct > 0 || loopSegmentEndPct < 1)) {
-      try {
-        const trimStartSec = Math.max(0, finiteOr(playbackStartTrimMs, 0)) / 1000;
-        if (trimStartSec > 0) audio.currentTime = trimStartSec;
-      } catch(_) {}
-    }
-    audio.play().catch(() => {});
-    audio.onended = () => stop();
-  }
-
-  const waitMs = Math.max(0, (safeStartTime - ctx.currentTime) * 1000);
-  startTimer = setTimeout(start, waitMs);
-
-  if (exactDuration && safeDuration && safeDuration > 0) {
-    const effectiveDurationMs = Math.max(0, safeDuration - Math.max(0, finiteOr(playbackEndTrimMs, 0)));
-    const stopTime = safeStartTime + (effectiveDurationMs / 1000);
-    const delayMs = Math.max(0, (stopTime - ctx.currentTime) * 1000);
-    setTimeout(() => stop(), delayMs);
-  }
-
-  function stop() {
+  function stop(stopTime = ctx.currentTime) {
     if (stopped) return;
     stopped = true;
-    if (startTimer) clearTimeout(startTimer);
     try {
-      audio.loop = false;
-      if (onTimeUpdate) audio.removeEventListener('timeupdate', onTimeUpdate);
-      if (onLoadedMetadata) audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-      audio.pause();
-      audio.currentTime = 0;
-      audio.onended = null;
-    } catch (_) {}
-    try {
-      if (clipId && activeClipVoicesById[clipId] && activeClipVoicesById[clipId].stop === stop) {
-        delete activeClipVoicesById[clipId];
-      }
+      output.gain.cancelScheduledValues(stopTime);
+      output.gain.setValueAtTime(Math.max(output.gain.value, 0.001), stopTime);
+      output.gain.exponentialRampToValueAtTime(0.001, stopTime + 0.12);
+      voiceOsc.stop(stopTime + 0.14);
+      harmonicOsc.stop(stopTime + 0.14);
+      noiseSource.stop(stopTime + 0.14);
     } catch (_) {}
   }
 
-  const voice = { audio, stop };
-  try { if (cutPreviousSameClip && clipId) activeClipVoicesById[clipId] = voice; } catch (_) {}
-  return voice;
+  voiceOsc.start(safeStartTime);
+  harmonicOsc.start(safeStartTime);
+  noiseSource.start(safeStartTime);
+
+  const minDurationMs = exactDuration ? 0 : (CFG.minNoteLengthMs || 100);
+  let stopDurationMs = safeDuration && safeDuration > 0 ? safeDuration : 800;
+  stopDurationMs = Math.max(stopDurationMs, minDurationMs);
+  const stopTime = safeStartTime + (stopDurationMs / 1000);
+  const delayMs = Math.max(0, (stopTime - ctx.currentTime) * 1000);
+  setTimeout(() => stop(stopTime), delayMs);
+
+  return { osc: voiceOsc, gain: output, stop };
+}
+
+function createMartinVoice({ clip, clipId, note, velocity, volume, startTime, duration = null, exactDuration = false }) {
+  const ctx = getAudioCtx();
+  const safeNote = finiteOr(note, 60);
+  const safeVelocity = finiteOr(velocity, 100);
+  const safeVolume = finiteOr(volume, 0.8);
+  const safeStartTime = finiteOr(startTime, ctx.currentTime);
+  const safeDuration = finiteOr(duration, null);
+  const peak = (safeVelocity / 127) * safeVolume * finiteOr(clip.volumeScale, 1);
+  const pitchShift = finiteOr(clip.tuneSemitones, 0);
+  const freq = midiToFreq(safeNote - 12 + pitchShift);
+  const oscWaveform = clip.oscWaveform || 'square';
+  const bodyWaveform = clip.bodyWaveform || 'triangle';
+  const airWaveform = clip.airWaveform || 'sine';
+  const bodyFormant = finiteOr(clip.bodyFormant, 680);
+  const airFormant = finiteOr(clip.airFormant, 1320);
+  const gritAmount = finiteOr(clip.gritAmount, 0.08);
+  const breathAmount = finiteOr(clip.breathAmount, 0.04);
+  const detuneCents = finiteOr(clip.detuneCents, 0);
+  const lowpassHz = finiteOr(clip.lowpassHz, 2200);
+  const lowfi = finiteOr(clip.lowfi, 0.25);
+  const attack = finiteOr(clip.attack, 0.005);
+  const decay = finiteOr(clip.decay, 0.06);
+  const sustain = finiteOr(clip.sustain, 0.5);
+  const release = finiteOr(clip.release, 0.12);
+
+  const master = ctx.createGain();
+  const body = ctx.createBiquadFilter();
+  const air = ctx.createBiquadFilter();
+  const lowpass = ctx.createBiquadFilter();
+  const voiceOsc = ctx.createOscillator();
+  const bodyOsc = ctx.createOscillator();
+  const breathOsc = ctx.createOscillator();
+  const noiseSource = ctx.createBufferSource();
+  const voiceGain = ctx.createGain();
+  const bodyGain = ctx.createGain();
+  const breathGain = ctx.createGain();
+  const noiseGain = ctx.createGain();
+
+  const noiseBuffer = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * 0.18)), ctx.sampleRate);
+  const noiseData = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < noiseData.length; i++) {
+    noiseData[i] = ((Math.random() * 2) - 1) * 0.45;
+  }
+  noiseSource.buffer = noiseBuffer;
+  noiseSource.loop = true;
+
+  body.type = 'bandpass';
+  body.frequency.setValueAtTime(bodyFormant, safeStartTime);
+  body.Q.setValueAtTime(6 + (1 - lowfi) * 8, safeStartTime);
+  air.type = 'bandpass';
+  air.frequency.setValueAtTime(airFormant, safeStartTime);
+  air.Q.setValueAtTime(2.5 + (1 - lowfi) * 3.5, safeStartTime);
+  lowpass.type = 'lowpass';
+  lowpass.frequency.setValueAtTime(lowpassHz, safeStartTime);
+  lowpass.Q.setValueAtTime(0.6, safeStartTime);
+
+  voiceOsc.type = oscWaveform;
+  voiceOsc.frequency.setValueAtTime(freq, safeStartTime);
+  voiceOsc.detune.setValueAtTime(detuneCents - 8, safeStartTime);
+  bodyOsc.type = bodyWaveform;
+  bodyOsc.frequency.setValueAtTime(freq * 0.5, safeStartTime);
+  bodyOsc.detune.setValueAtTime(detuneCents * 0.5, safeStartTime);
+  breathOsc.type = airWaveform;
+  breathOsc.frequency.setValueAtTime(freq * 2, safeStartTime);
+  breathOsc.detune.setValueAtTime(-detuneCents * 0.25, safeStartTime);
+
+  voiceGain.gain.setValueAtTime(0.0001, safeStartTime);
+  bodyGain.gain.setValueAtTime(0.0001, safeStartTime);
+  breathGain.gain.setValueAtTime(0.0001, safeStartTime);
+  noiseGain.gain.setValueAtTime(0.0001, safeStartTime);
+  master.gain.setValueAtTime(0.0001, safeStartTime);
+
+  voiceOsc.connect(lowpass);
+  bodyOsc.connect(body);
+  body.connect(lowpass);
+  breathOsc.connect(air);
+  air.connect(lowpass);
+  noiseSource.connect(noiseGain);
+  lowpass.connect(master);
+  noiseGain.connect(master);
+  master.connect(ctx.destination);
+
+  const baseGain = Math.max(peak, 0.001);
+  master.gain.linearRampToValueAtTime(baseGain, safeStartTime + attack);
+  master.gain.linearRampToValueAtTime(Math.max(baseGain * sustain, 0.001), safeStartTime + attack + decay);
+  noiseGain.gain.linearRampToValueAtTime(Math.max(gritAmount, 0.001), safeStartTime + 0.004);
+  breathGain.gain.linearRampToValueAtTime(Math.max(breathAmount, 0.001), safeStartTime + 0.01);
+
+  let stopped = false;
+  function stop(stopTime = ctx.currentTime) {
+    if (stopped) return;
+    stopped = true;
+    try {
+      master.gain.cancelScheduledValues(stopTime);
+      master.gain.setValueAtTime(Math.max(master.gain.value, 0.001), stopTime);
+      master.gain.exponentialRampToValueAtTime(0.001, stopTime + release);
+      voiceOsc.stop(stopTime + release + 0.03);
+      bodyOsc.stop(stopTime + release + 0.03);
+      breathOsc.stop(stopTime + release + 0.03);
+      noiseSource.stop(stopTime + release + 0.03);
+    } catch (_) {}
+  }
+
+  voiceOsc.start(safeStartTime);
+  bodyOsc.start(safeStartTime);
+  breathOsc.start(safeStartTime);
+  noiseSource.start(safeStartTime);
+
+  const minDurationMs = exactDuration ? 0 : (CFG.minNoteLengthMs || 100);
+  let stopDurationMs = safeDuration && safeDuration > 0 ? safeDuration : 800;
+  stopDurationMs = Math.max(stopDurationMs, minDurationMs);
+  const stopTime = safeStartTime + (stopDurationMs / 1000);
+  const delayMs = Math.max(0, (stopTime - ctx.currentTime) * 1000);
+  setTimeout(() => stop(stopTime), delayMs);
+
+  return { osc: voiceOsc, gain: master, stop };
+}
+
+function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note = 60, lane = null, exactDuration = false }) {
+  if (clip.type === 'blank') {
+    return { stop: () => {} };
+  }
+  return createSampleBufferVoice({ clip, clipId, volume, startTime, duration, note, lane, exactDuration });
 }
 
 // Play multiple pitches at once (for combined simultaneous notes)
 function playPitches(clipId, pitches, velocity, volume, startTime, duration = null, lane = null, exactDuration = false) {
   const voices = [];
   for (const p of pitches) {
-    const v = createClipVoice({ clipId, note: finiteOr(p.note, 60), velocity: finiteOr(p.velocity, velocity), volume, startTime, duration, lane, exactDuration, cutPreviousSameClip: false });
+    const v = createClipVoice({ clipId, note: finiteOr(p.note, 60), velocity: finiteOr(p.velocity, velocity), volume, startTime, duration, lane, exactDuration });
     voices.push(v);
   }
   return {
@@ -4294,19 +4752,6 @@ function playTrackNote(clipId, note, velocity, volume, duration = null, lane = n
   const ctx = getAudioCtx();
   const voice = createClipVoice({ clipId, note, velocity, volume, startTime: ctx.currentTime, duration, lane, exactDuration });
   return voice;
-}
-
-const NOTE_EDGE_TRIM_MS = 8;
-
-function getTrimmedNotePlayDuration(note, fallbackMs = 300, exactDuration = false) {
-  const baseDuration = getNotePlayDuration(note, fallbackMs, exactDuration);
-  return Math.max(0, baseDuration - (NOTE_EDGE_TRIM_MS * 2));
-}
-
-function getScheduledNoteStartTime(note, elapsedMs = performance.now() - gameStartTime) {
-  const ctx = getAudioCtx();
-  const noteOffsetMs = finiteOr(note?.time, elapsedMs) - finiteOr(elapsedMs, 0);
-  return ctx.currentTime + Math.max(0, noteOffsetMs / 1000);
 }
 
 function getNotePlayDuration(note, fallbackMs = 300, exactDuration = false) {
@@ -4484,10 +4929,13 @@ let trackCollapsed = [];
 let currentMidiArrayBuffer = null;
 let currentMp3Blob = null;
 let currentMp3ObjectUrl = '';
+let currentRecorderVoiceBlob = null;
+let currentRecorderVoiceObjectUrl = '';
 let currentMidiDurationMs = 0;
 let currentProjectId = null;
 let editingProjectId = null;
 let selectedProjectId = null;
+let currentProjectDirty = false;
 let songProjects = [];
 let currentProjectHasMp3 = false;
 // MP3/song alignment state
@@ -4515,23 +4963,27 @@ let currentManualBeatmap = [];
 // Character-related state
 let currentPlayerCharacterId = 'blank';
 let currentRivalCharacterId = 'blank';
-// Character positions as viewport percentages (0-100)
-let playerCharacterPositionX = 75;  // 75% from left
-let playerCharacterPositionY = 50;  // 50% from top (vertically centered)
-let rivalCharacterPositionX = 25;   // 25% from left
-let rivalCharacterPositionY = 50;   // 50% from top (vertically centered)
+let currentPlayerMissSoundId = 'default';
+let currentRivalMissSoundId = 'default';
+
+let recorderMutedTrackIds = new Set();
+// Character positions as fixed percentages of viewport (0.0 to 1.0)
+let playerCharacterPositionXPercent = 0.75; // Position from left (0.0 to 1.0)
+let playerCharacterPositionYPercent = 0.5;  // Position from top (0.0 to 1.0)
+let rivalCharacterPositionXPercent = 0.25;  // Position from left (0.0 to 1.0)
+let rivalCharacterPositionYPercent = 0.5;   // Position from top (0.0 to 1.0)
 
 function updateCharacterContainerPositions() {
   const playerContainer = document.getElementById('character-container-player');
   const rivalContainer = document.getElementById('character-container-rival');
   if (playerContainer) {
-    playerContainer.style.left = playerCharacterPositionX + '%';
-    playerContainer.style.top = playerCharacterPositionY + '%';
+    playerContainer.style.left = (playerCharacterPositionXPercent * 100) + '%';
+    playerContainer.style.top = (playerCharacterPositionYPercent * 100) + '%';
     playerContainer.style.transform = 'translate(-50%, -50%)';
   }
   if (rivalContainer) {
-    rivalContainer.style.left = rivalCharacterPositionX + '%';
-    rivalContainer.style.top = rivalCharacterPositionY + '%';
+    rivalContainer.style.left = (rivalCharacterPositionXPercent * 100) + '%';
+    rivalContainer.style.top = (rivalCharacterPositionYPercent * 100) + '%';
     rivalContainer.style.transform = 'translate(-50%, -50%)';
   }
 }
@@ -4542,19 +4994,14 @@ let rivalCharacterAnimationTimer = 0;
 let lastPlayerInputLane = null;  // Track last input direction for character animation
 let playerCharacterDirection = 'idle';  // Current animation direction (idle/up/down/left/right)
 let playerCharacterIsReversing = false;  // Whether currently playing reverse animation
-// Track active character voice notes for long notes
-// Structure: { [noteId]: { clipId, note, velocity, characterId, voice, startTime, clipDuration } }
-let activeCharacterVoiceNotes = {};
 let playerCharacterReverseTimer = 0;  // Timer for holding before reverse
 let playerCharacterPrevDirection = 'idle';  // Track previous direction to detect changes
 let rivalCharacterDirection = 'idle';
 let rivalCharacterIsReversing = false;
 let rivalCharacterReverseTimer = 0;
 let rivalCharacterPrevDirection = 'idle';
-const CHARACTER_SETTINGS = {
-  releaseHoldMs: 300,
-  holdFirstMs: 100,
-};
+const CHARACTER_RELEASE_HOLD_MS = 300;
+const CHARACTER_HOLD_FIRST_MS = 100;
 let playerCharacterHoldFirstTimer = 0;
 let rivalCharacterHoldFirstTimer = 0;
 let lastRivalInputLane = null;  // Track rival auto inputs for animation
@@ -4746,8 +5193,6 @@ let playerCharacterScale = 2.0;
 let rivalCharacterScale = 2.0;
 // Active voices per track to support same-track cutoff behavior
 let activeTrackVoices = {}; // trackIdx -> voice wrapper with stop()
-// Active voices per clip id to prevent retrigger stacking on short notes
-let activeClipVoicesById = {}; // clipId -> voice wrapper with stop()
 const FAILED_SOUND_POOL = [
   'SoundClip/Mistake1.mp3',
   'SoundClip/Mistake2.mp3',
@@ -4776,6 +5221,9 @@ let beatmap       = [];
 let referenceBeatmap = [];
 let referenceNotes   = [];
 let backingNodes  = [];
+let recorderBackingNode = null;
+let recorderBackingGain = null;
+let recorderBackingMuted = false;
 let difficulty    = 'normal'; // 'easy' | 'normal'
 
 // ─── Config variables (can be tuned) ────────────────────────────────────────
@@ -4810,10 +5258,10 @@ let backgroundSceneState = {
 
 const LAYOUT = {
   // Use viewport-relative widths so tracks scale consistently across devices
-  playTrackWidth: '23vw',
-  referenceTrackWidth: '23vw',
-  playTrackX: '1vw',
-  referenceTrackX: '1vw',
+  playTrackWidth: '38vw',
+  referenceTrackWidth: '38vw',
+  playTrackX: '4vw',
+  referenceTrackX: '4vw',
   noteSize: '44px',
   holdNoteWidth: '34px',
   laneGap: '1vw',
@@ -4849,7 +5297,7 @@ function showMainMenu() {
   if (setupScreen) setupScreen.style.display = 'none';
   if (gameScreen) gameScreen.style.display = 'none';
   if (resultsScreen) resultsScreen.classList.remove('visible');
-  setEditorVisibility(false);
+  setSetupMenuMode('play', false);
   if (mainMenu) mainMenu.classList.add('visible');
 }
 
@@ -4862,7 +5310,7 @@ function showSetupScreen(showEditor = false) {
   if (gameScreen) gameScreen.style.display = 'none';
   if (resultsScreen) resultsScreen.classList.remove('visible');
   if (setupScreen) setupScreen.style.display = 'flex';
-  setEditorVisibility(!!showEditor);
+  setSetupMenuMode(showEditor ? 'editor' : 'play', false);
 }
 
 function showGameplayScreen() {
@@ -4873,7 +5321,7 @@ function showGameplayScreen() {
   if (mainMenu) mainMenu.classList.remove('visible');
   if (setupScreen) setupScreen.style.display = 'none';
   if (resultsScreen) resultsScreen.classList.remove('visible');
-  setEditorVisibility(false);
+  setSetupMenuMode('play', false);
   if (gameScreen) gameScreen.style.display = 'flex';
 }
 
@@ -5011,7 +5459,6 @@ function runMainMenuAction(region) {
     return;
   }
   if (region.action === 'editor') {
-    showSetupScreen(true);
     openProjectEditor(selectedProjectId || currentProjectId || null);
     return;
   }
@@ -5123,12 +5570,8 @@ function loadFile(file) {
   reader.readAsArrayBuffer(file);
 }
 
-function setLoadingOverlayVisible(visible, message = null) {
+function setLoadingOverlayVisible(visible) {
   const overlay = document.getElementById('loading-overlay');
-  const overlayText = document.getElementById('loading-overlay-text');
-  if (overlayText && typeof message === 'string' && message.trim()) {
-    overlayText.textContent = message;
-  }
   if (overlay) overlay.style.display = visible ? 'flex' : 'none';
 }
 
@@ -5454,19 +5897,6 @@ function getCharacterById(characterId) {
   return CHARACTERS.find(c => c.id === characterId) || CHARACTERS[0]; // Default to 'blank'
 }
 
-function resolveCharacterVoiceClipId(character, sourceRole, midiNote = 60) {
-  if (!character || character.id === 'blank') return '__blank__';
-  if (character.voiceClipBankId) {
-    const bankFolder = SOUND_FONT_FOLDERS.find(folder => folder.id === character.voiceClipBankId);
-    if (bankFolder && bankFolder.clips && bankFolder.clips.length) {
-      return bankFolder.clips[0].id;
-    }
-  }
-  if (character.voiceClipId) return character.voiceClipId;
-  if (!character.voiceClips || character.voiceClips.length === 0) return '__blank__';
-  return selectClipFromClipArray(character.voiceClips, midiNote, `character:${character.id}:${sourceRole}`) || '__blank__';
-}
-
 let characterSprites = {
   player: {},
   rival: {}
@@ -5474,7 +5904,6 @@ let characterSprites = {
 
 function loadCharacterSprites(characterId, side) {
   const character = getCharacterById(characterId);
-  console.debug('[loadCharacterSprites] loading', characterId, 'for side', side, 'character.id=', character && character.id);
   characterSprites[side] = {};
   
   if (character.id === 'blank') return; // No sprites for blank character
@@ -5486,16 +5915,8 @@ function loadCharacterSprites(characterId, side) {
     if (spritePath) {
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      // Attach load handler to trigger initial render once available
-      img.onload = () => {
-        characterSprites[side][direction] = img;
-        try {
-          const canvasId = (side === 'player') ? 'character-canvas-player' : 'character-canvas-rival';
-          renderCharacterSpriteSheet(canvasId, side, direction);
-        } catch (e) { console.debug('[loadCharacterSprites] render failed', e); }
-      };
-      img.onerror = (e) => { console.warn('[loadCharacterSprites] failed to load', spritePath, e); };
       img.src = spritePath;
+      characterSprites[side][direction] = img;
     }
   }
 }
@@ -5602,7 +6023,7 @@ function updateCharacterAnimation(side, deltaMs, direction = 'idle') {
       frame = Math.max(0, dirFrameCount - 1);
       timer = 0;
       isReversing = true;
-      reverseTimer = CHARACTER_SETTINGS.releaseHoldMs;
+      reverseTimer = CHARACTER_RELEASE_HOLD_MS;
     }
     prevDirection = 'idle';
   }
@@ -5626,7 +6047,7 @@ function updateCharacterAnimation(side, deltaMs, direction = 'idle') {
           isReversing = false;
           frame = 0;
           timer = 0;
-          holdFirst = CHARACTER_SETTINGS.holdFirstMs;
+          holdFirst = CHARACTER_HOLD_FIRST_MS;
         }
       }
     }
@@ -5752,30 +6173,22 @@ function triggerPlayerTaunt() {
 
 function playCharacterNote(characterId, direction, note, velocity, duration, pitchShift = 1) {
   const character = getCharacterById(characterId);
-  if (!character || character.id === 'blank') return null;
-
-  const clipId = resolveCharacterVoiceClipId(character, 'manual', note);
-  if (!clipId) return null;
+  if (!character || character.id === 'blank') return;
   
-  // Play the clip
-  const voice = createClipVoice({
-    clipId: clipId,
-    note: note,
-    velocity: velocity,
-    volume: 1.0,
-    startTime: getAudioCtx().currentTime,
-    duration: duration,
-    lane: direction,
-    exactDuration: false,
-  });
+  const soundClipId = character.soundClipIds[direction];
+  if (!soundClipId) return;
   
-  return voice;
+  // Find the clip by ID
+  const clip = SOUND_CLIPS.find(c => c.id === soundClipId);
+  if (!clip) return;
+  
+  // Play the clip with pitch shifting
+  playTrackNote(soundClipId, note, velocity, 1.0, duration, direction, false);
 }
 
 function initializeCharactersForGame(projectData) {
   currentPlayerCharacterId = projectData.playerCharacterId || 'blank';
   currentRivalCharacterId = projectData.rivalCharacterId || 'blank';
-  console.debug('[initializeCharactersForGame] player=', currentPlayerCharacterId, 'rival=', currentRivalCharacterId);
   // Offsets are code-level variables and are not taken from project data
   
   // Reset animation state
@@ -5814,7 +6227,18 @@ function initializeCharactersForGame(projectData) {
     }
   }
   
-  // Position character containers using percentage-based variables
+  // Position character containers
+  const playerContainer = document.getElementById('character-container-player');
+  const rivalContainer = document.getElementById('character-container-rival');
+  
+  if (playerContainer) {
+    playerContainer.style.display = 'block';
+  }
+  if (rivalContainer) {
+    rivalContainer.style.display = 'block';
+  }
+  
+  // Update positions using percentage-based positioning
   updateCharacterContainerPositions();
 }
 
@@ -5882,6 +6306,7 @@ function applyCharacterSettingsToUI(settings = {}) {
 function startGame() {
   stopProjectSelectionPreview();
   console.debug('startGame called — midiData?', !!midiData, 'mp3?', !!currentMp3Blob, 'trackRoles=', trackRoles);
+  clearRecorderMute();
 
   const recordingManual = manualMappingMode;
   const manualEnabled   = !!document.getElementById('manual-map-enable-song')?.checked;
@@ -5920,8 +6345,7 @@ function startGame() {
   const currentProject = songProjects.find(p => p.id === currentProjectId);
   showGameplayScreen();
   activeGameplayProject = currentProject || createEmptyProject();
-  // Initialize characters for gameplay (loads sprites, sets IDs)
-  try { initializeCharactersForGame(activeGameplayProject); } catch (e) { console.warn('[startGame] initializeCharactersForGame failed', e); }
+  initializeCharactersForGame(activeGameplayProject);
   resetGameBackgroundScene();
   updateGameBackgroundScene(0);
   
@@ -6023,6 +6447,11 @@ function startGame() {
           backingNodes.push(...nodes);
         }
       });
+      
+      // Start Recorder background vocal if player character is Recorder
+      if (currentPlayerCharacterId === 'recorder' && currentRecorderVoiceBlob) {
+        startRecorderBackingVocal(startSec + preRollSec);
+      }
       try {
         if (songAudio) {
           try { songAudio.pause(); } catch(_){}
@@ -6106,6 +6535,8 @@ function stopGame() {
   gameRunning = false;
   gameStartQueued = false;
   manualMappingActive = false;
+  clearRecorderMute();
+  stopRecorderBackingVocal();
   manualMappingHeld = {};
   activeGameplayProject = null;
   resetGameBackgroundScene();
@@ -6299,6 +6730,7 @@ function gameLoop(now) {
   updateCharacterAnimation('player', deltaTime, playerDirection);
   const rivalDirection = lastRivalInputLane || 'idle';
   updateCharacterAnimation('rival', deltaTime, rivalDirection);
+  updateCharacterContainerPositions();
 
   // Taunt timer update
   if (playerTauntActive) {
@@ -6404,7 +6836,6 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
       }
       if (note.hold) {
         updateHoldSegmentVisual(note, elapsed);
-        updateCharacterVoiceLoop(note, elapsed);
         emitHoldParticlesIfNeeded(note, elapsed, true);
       }
       if (note.hold && note.started && !note.completed && elapsed >= note.endTime) {
@@ -6472,7 +6903,6 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
 
     if (note.hold && note.started && !note.completed) {
       updateHoldSegmentVisual(note, elapsed);
-      updateCharacterVoiceLoop(note, elapsed);
       emitHoldParticlesIfNeeded(note, elapsed, false);
       if (elapsed >= note.endTime) {
         finalizeHoldNote(note);
@@ -6501,6 +6931,15 @@ function spawnNote(note, fieldH, laneMap, isReference = false) {
     const holdPixels = Math.max(0, (note.endTime - note.time) * CFG.noteSpeed * 60 / 1000);
     el.style.height = (Math.max(1, parseFloat(LAYOUT.noteSize) || 46) + holdPixels) + 'px';
     el.style.clipPath = 'inset(0% 0 0 0)';
+  } else {
+    // Add sprite class for single notes if character uses directional sprites
+    const charId = isReference ? currentRivalCharacterId : currentPlayerCharacterId;
+    if (charId === 'mushy' && note.trackIdx !== undefined) {
+      const trackCharId = getTrackCharacterId(note.trackIdx, isReference ? 'reference' : 'player');
+      if (trackCharId === 'mushy') {
+        el.classList.add('sprite');
+      }
+    }
   }
   lane.appendChild(el);
   console.debug('spawnNote appended element — lane children now=', lane.children.length);
@@ -6512,30 +6951,23 @@ function autoPlayReferenceNote(note) {
   if (note.holdStartedAt == null) note.holdStartedAt = note.time;
   const trackConfig = getTrackConfig(note.trackIdx);
   const useExactDuration = trackClipIds[note.trackIdx] === '__original__';
-  const noteStartTime = getScheduledNoteStartTime(note);
-  const noteDuration = getTrimmedNotePlayDuration(note, 300, useExactDuration);
   
   // Resolve character clip if needed (reference uses rival vocals)
   const resolvedClipId = (trackConfig.clipId === '__character__') ? resolveCharacterClipForPlayback('reference', note.lane, note.note) : trackConfig.clipId;
   // Play the note normally (no muting, full volume)
   if (note.pitches && Array.isArray(note.pitches)) {
-    note.voice = playPitches(resolvedClipId, note.pitches, note.velocity, trackConfig.volume, noteStartTime, noteDuration, note.lane, useExactDuration);
+    note.voice = playPitches(resolvedClipId, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, getNotePlayDuration(note, 300, useExactDuration), note.lane, useExactDuration);
   } else {
     note.voice = createClipVoice({
       clipId: resolvedClipId,
       note: note.note,
       velocity: note.velocity,
       volume: trackConfig.volume,
-      startTime: noteStartTime,
-      duration: noteDuration,
+      startTime: getAudioCtx().currentTime,
+      duration: getNotePlayDuration(note, 300, useExactDuration),
       lane: note.lane,
       exactDuration: useExactDuration,
     });
-  }
-  
-  // Track voice start time for character voice looping
-  if (note.hold) {
-    note.voiceStartTime = getAudioCtx().currentTime;
   }
 
   if (!note.hold) {
@@ -6564,52 +6996,6 @@ function completeReferenceTap(note) {
   // clear rival press state for this lane
   try { setRivalTargetSpriteState(note.lane, false); } catch(_){ }
   lastRivalInputLane = null;
-}
-
-function updateCharacterVoiceLoop(note, elapsed) {
-  // For hold notes with character voices, loop the voice clip
-  if (!note || !note.hold || !note.started || note.completed || !note.voice) return;
-  
-  // Check if voice is using a character clip
-  const trackConfig = getTrackConfig(note.trackIdx);
-  if (trackConfig.clipId !== '__character__') return;
-  
-  // Get the clip being used for this note
-  const clipId = resolveCharacterClipForPlayback('play', note.lane, note.note);
-  if (!clipId || clipId === '__blank__') return;
-  
-  const clip = getClipById(clipId);
-  if (!clip) return;
-  
-  // Check if clip has ended
-  const voiceStartTime = note.voiceStartTime || getAudioCtx().currentTime;
-  const elapsedInVoice = getAudioCtx().currentTime - voiceStartTime;
-  const clipDuration = (clip.duration || 0) * 1000; // Convert to ms
-  
-  if (clipDuration > 0 && elapsedInVoice >= clipDuration) {
-    // Restart the voice
-    try {
-      if (note.voice && note.voice.stop) note.voice.stop();
-    } catch(_) {}
-    
-    const trackConfig = getTrackConfig(note.trackIdx);
-    const useExactDuration = trackClipIds[note.trackIdx] === '__original__';
-    const noteDuration = note.endTime - elapsed;
-    
-    note.voice = createClipVoice({
-      clipId: clipId,
-      note: note.note,
-      velocity: note.velocity,
-      volume: trackConfig.volume,
-      startTime: getAudioCtx().currentTime,
-      duration: noteDuration,
-      lane: note.lane,
-      exactDuration: useExactDuration,
-      loopSegmentStartPct: 0.4,
-      loopSegmentEndPct: 0.6,
-    });
-    note.voiceStartTime = getAudioCtx().currentTime;
-  }
 }
 
 function updateHoldSegmentVisual(note, elapsed) {
@@ -6729,7 +7115,7 @@ function handleInput(lane) {
     updateHUD();
     showJudgment(lane, 'miss');
     flashTarget(lane);
-    try { if (songAudio && !songAudio.paused) playFailedSound(); } catch(_){}
+    try { playCharacterMissSound(currentPlayerCharacterId, 'player'); } catch(_){}
     return;
   }
 
@@ -6742,17 +7128,16 @@ function handleInput(lane) {
     const trackConfig = getTrackConfig(best.trackIdx);
     const resolvedBestClip = (trackConfig.clipId === '__character__') ? resolveCharacterClipForPlayback('player', lane, best.note) : trackConfig.clipId;
     const useExactDuration = trackClipIds[best.trackIdx] === '__original__' || clipUsesPitchShiftAndExactDuration(resolvedBestClip);
-    const noteDuration = getTrimmedNotePlayDuration(best, 300, useExactDuration);
-    const noteStartTime = getScheduledNoteStartTime(best, elapsed);
+    const noteDuration = getNotePlayDuration(best, 300, useExactDuration);
     if (best.pitches && Array.isArray(best.pitches)) {
-      best.voice = playPitches(resolvedBestClip, best.pitches, best.velocity, trackConfig.volume, noteStartTime, noteDuration, lane, useExactDuration);
+      best.voice = playPitches(resolvedBestClip, best.pitches, best.velocity, trackConfig.volume, getAudioCtx().currentTime, noteDuration, lane, useExactDuration);
     } else {
       best.voice = createClipVoice({
         clipId: resolvedBestClip,
         note: best.note,
         velocity: best.velocity,
         volume: trackConfig.volume,
-        startTime: noteStartTime,
+        startTime: getAudioCtx().currentTime,
         duration: noteDuration,
         lane: lane,
         exactDuration: useExactDuration,
@@ -6774,15 +7159,24 @@ function registerMiss(note) {
   stats.miss++;
   combo = 0;
   updateHUD();
-  // Only duck/play failed sound if a song is playing AND the missed note would have produced audible audio
+  
+  // Mute Recorder background vocal on miss
+  if (currentPlayerCharacterId === 'recorder' && recorderBackingGain) {
+    muteRecorderBackingVocal();
+  }
+  
   try {
-    if (songAudio && !songAudio.paused && note && typeof note.trackIdx !== 'undefined') {
+    if (note && typeof note.trackIdx !== 'undefined') {
       const cfg = getTrackConfig(note.trackIdx);
-      const clip = getClipById(cfg.clipId);
-      if (cfg.clipId !== '__blank__' && clip && clip.type !== 'blank') {
-        // lower persistent base volume and play failed sound with a temporary duck
-        try { adjustSongBaseVolume(-SONG_VOL_DOWN_STEP); } catch(_){}
-        playFailedSound();
+      const resolvedClipId = (cfg.clipId === '__character__')
+        ? resolveCharacterClipForPlayback('player', note.lane, note.note)
+        : cfg.clipId;
+      const clip = getClipById(resolvedClipId);
+      if (resolvedClipId !== '__blank__' && clip && clip.type !== 'blank') {
+        if (clip.type === 'recordervoice') setRecorderMute(note.lane);
+        try { if (songAudio && !songAudio.paused) adjustSongBaseVolume(-SONG_VOL_DOWN_STEP); } catch(_){}
+        const characterId = getTrackCharacterId(note.trackIdx, 'player') || currentPlayerCharacterId;
+        playCharacterMissSound(characterId, 'player');
       }
     }
   } catch(_){}
@@ -6816,19 +7210,29 @@ function completeTapNote(note, lane, dist) {
   // Increase persistent song volume slightly on correct hits (cap at 1.0)
   try { adjustSongBaseVolume(SONG_VOL_UP_STEP); } catch(_) {}
 
+  // For Recorder character, unmute the background vocal on correct hit
+  if (currentPlayerCharacterId === 'recorder' && recorderBackingGain) {
+    unmuteRecorderBackingVocal();
+  }
+
   // Play the note on input (perfect, good, or bad timing)
   const trackConfig = getTrackConfig(note.trackIdx);
   const useExactDuration = trackClipIds[note.trackIdx] === '__original__';
   const noteDuration = getNotePlayDuration(note, 300, useExactDuration);
 
+  // Decide which clip to play: only use original for perfect/good if '__original__' is explicitly assigned; character vocals play their own clip
+  const isOriginalTrack = trackClipIds[note.trackIdx] === '__original__';
+  const originalClipId = (window.trackOriginalClipIds && window.trackOriginalClipIds[note.trackIdx]) || trackConfig.clipId;
   const assignedIsBlank = trackConfig.clipId === '__blank__' || (getClipById(trackConfig.clipId)?.type === 'blank');
-  const clipToPlay = assignedIsBlank ? trackConfig.clipId : trackConfig.clipId;
+  const clipToPlay = assignedIsBlank
+    ? trackConfig.clipId
+    : (((judgment === 'perfect' || judgment === 'good') && isOriginalTrack) ? originalClipId : trackConfig.clipId);
 
   // If the clip is the special character placeholder, resolve to player vocal clip
   const clipToPlayResolved = (clipToPlay === '__character__') ? resolveCharacterClipForPlayback('player', lane, note.note) : clipToPlay;
-  const noteStartTime = getScheduledNoteStartTime(note, elapsed);
+  if (getClipById(clipToPlayResolved)?.type === 'recordervoice') clearRecorderMute(lane);
   if (note.pitches && Array.isArray(note.pitches)) {
-    const wrapper = playPitches(clipToPlayResolved, note.pitches, note.velocity, trackConfig.volume, noteStartTime, noteDuration, lane, useExactDuration);
+    const wrapper = playPitches(clipToPlayResolved, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, noteDuration, lane, useExactDuration);
     // Cut any previous voice on this track
     try { if (activeTrackVoices[note.trackIdx]) { activeTrackVoices[note.trackIdx].stop(); } } catch(_){}
     note.voice = wrapper;
@@ -6841,18 +7245,13 @@ function completeTapNote(note, lane, dist) {
       note: note.note,
       velocity: note.velocity,
       volume: trackConfig.volume,
-      startTime: noteStartTime,
+      startTime: getAudioCtx().currentTime,
       duration: noteDuration,
       lane: lane,
       exactDuration: useExactDuration,
     });
     note.voice = v;
     try { activeTrackVoices[note.trackIdx] = v; } catch(_){}
-  }
-  
-  // Track voice start time for character voice looping
-  if (note.hold) {
-    note.voiceStartTime = getAudioCtx().currentTime;
   }
 }
 
@@ -6877,13 +7276,12 @@ function autoCompleteTapNote(note, lane) {
   // Play the note automatically (no input needed, just like reference)
   const trackConfig = getTrackConfig(note.trackIdx);
   const resolvedAutoClip = (trackConfig.clipId === '__character__') ? resolveCharacterClipForPlayback('reference', note.lane, note.note) : trackConfig.clipId;
+  if (getClipById(resolvedAutoClip)?.type === 'recordervoice') clearRecorderMute(note.lane);
   const useExactDuration = trackClipIds[note.trackIdx] === '__original__' || clipUsesPitchShiftAndExactDuration(resolvedAutoClip);
-  const noteStartTime = getScheduledNoteStartTime(note);
-  const noteDuration = getTrimmedNotePlayDuration(note, 300, useExactDuration);
   if (note.pitches && Array.isArray(note.pitches)) {
     // Cut any previous voice on this track
     try { if (activeTrackVoices[note.trackIdx]) { activeTrackVoices[note.trackIdx].stop(); } } catch(_){}
-    const wrapper = playPitches(resolvedAutoClip, note.pitches, note.velocity, trackConfig.volume, noteStartTime, noteDuration, note.lane, useExactDuration);
+    const wrapper = playPitches(resolvedAutoClip, note.pitches, note.velocity, trackConfig.volume, getAudioCtx().currentTime, getNotePlayDuration(note, 300, useExactDuration), note.lane, useExactDuration);
     note.voice = wrapper;
     try { activeTrackVoices[note.trackIdx] = wrapper; } catch(_){}
   } else {
@@ -6893,18 +7291,13 @@ function autoCompleteTapNote(note, lane) {
       note: note.note,
       velocity: note.velocity,
       volume: trackConfig.volume,
-      startTime: noteStartTime,
-      duration: noteDuration,
+      startTime: getAudioCtx().currentTime,
+      duration: getNotePlayDuration(note, 300, useExactDuration),
       lane: note.lane,
       exactDuration: useExactDuration,
     });
     note.voice = v;
     try { activeTrackVoices[note.trackIdx] = v; } catch(_){}
-  }
-  
-  // Track voice start time for character voice looping
-  if (note.hold) {
-    note.voiceStartTime = getAudioCtx().currentTime;
   }
 }
 
@@ -7028,6 +7421,35 @@ function showResults() {
       updateSelectedProjectSummary();
     }
   }
+}
+</script>
+<!-- Confirmation modal (simple styled modal used by editor unsaved-change flow) -->
+<div id="confirm-modal" style="display:none; position:fixed; inset:0; z-index:99999; align-items:center; justify-content:center;">
+  <div id="confirm-modal-backdrop" style="position:absolute; inset:0; background:rgba(0,0,0,0.6);"></div>
+  <div id="confirm-modal-card" style="position:relative; min-width:320px; max-width:720px; background:linear-gradient(180deg,#0b0b1a,#0e0e24); border:1px solid rgba(255,255,255,0.04); padding:16px; border-radius:8px; box-shadow:0 8px 40px rgba(0,0,0,0.8);">
+    <div id="confirm-modal-message" style="color:#dfe6ff; font-family: 'Share Tech Mono', monospace; font-size:14px; margin-bottom:12px;"></div>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button id="confirm-modal-cancel" class="btn-secondary" style="min-width:84px;">Cancel</button>
+      <button id="confirm-modal-ok" class="btn-primary" style="min-width:84px; background:#ffb400;">Discard</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function showConfirmModal(message, onOk, onCancel) {
+  const modal = document.getElementById('confirm-modal');
+  const msg = document.getElementById('confirm-modal-message');
+  const ok = document.getElementById('confirm-modal-ok');
+  const cancel = document.getElementById('confirm-modal-cancel');
+  if (!modal || !msg || !ok || !cancel) {
+    if (confirm(message)) { if (onOk) onOk(); } else { if (onCancel) onCancel(); }
+    return;
+  }
+  msg.textContent = message;
+  modal.style.display = 'flex';
+  const cleanup = () => { modal.style.display = 'none'; ok.onclick = null; cancel.onclick = null; };
+  ok.onclick = () => { cleanup(); if (onOk) onOk(); };
+  cancel.onclick = () => { cleanup(); if (onCancel) onCancel(); };
 }
 </script>
 </body>

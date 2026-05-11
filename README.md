@@ -39,6 +39,7 @@ Make Rougelike mode (which grabs a random midi file from a midi archive if I can
 Add more characters (Could use Mushroom soldier from Mushrum and the Husks from Vampire Heartattack)
 
 
+<<<<<<< HEAD
 Fix Player visual positioning
 
 ## SoundFont workflow
@@ -73,3 +74,6 @@ Current bugs
 - Create something with variety of ways to interact to keep user's interested.
 - 
 
+=======
+Fix Player visual positioning
+>>>>>>> parent of ab06adf (Made a more working version of character voices, but then it kind of broke.)
