@@ -624,6 +624,35 @@
   .lane-right .note { background: radial-gradient(circle, rgba(170,255,0,0.9), rgba(100,150,0,0.5)); box-shadow: 0 0 12px rgba(170,255,0,0.7); }
   .lane-down  .note { background: radial-gradient(circle, rgba(255,102,0,0.9), rgba(150,50,0,0.5));  box-shadow: 0 0 12px rgba(255,102,0,0.7);  }
 
+  .lane-piano .target-zone {
+    background-image: none;
+    border-radius: 8px;
+    border: 1px solid var(--lane-color, rgba(255,255,255,0.35));
+    background-color: var(--lane-color, #ffffff);
+    opacity: 0.18;
+    box-shadow: 0 0 18px var(--lane-color, rgba(255,255,255,0.35));
+  }
+  .lane-piano .target-zone.pressed {
+    opacity: 0.32;
+  }
+  .lane-piano .target-zone.hit {
+    filter: brightness(1.5);
+  }
+  .lane-piano .note {
+    background: radial-gradient(circle, var(--lane-color, #ffffff), rgba(0,0,0,0.42));
+    box-shadow: 0 0 12px var(--lane-color, rgba(255,255,255,0.5));
+  }
+  .lane-piano .note.hold {
+    background-image:
+      repeating-linear-gradient(to bottom, rgba(255,255,255,var(--hold-seg-alpha)) 0 7px, rgba(255,255,255,0.12) 7px 11px),
+      linear-gradient(to bottom, var(--lane-color, #ffffff), rgba(0,0,0,0.35));
+  }
+  .lane-piano .lane-label {
+    opacity: 0.7;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+  }
+
   #reference-field .lane-up    .note { background: radial-gradient(circle, rgba(55,255,242,0.78), rgba(10,85,170,0.42)); box-shadow: 0 0 10px rgba(55,255,242,0.45); }
   #reference-field .lane-left  .note { background: radial-gradient(circle, rgba(205,110,255,0.78), rgba(100,40,180,0.42)); box-shadow: 0 0 10px rgba(205,110,255,0.45); }
   #reference-field .lane-right .note { background: radial-gradient(circle, rgba(170,255,120,0.78), rgba(70,120,25,0.42)); box-shadow: 0 0 10px rgba(170,255,120,0.45); }
@@ -905,7 +934,13 @@
   .project-toolbar-meta { display:flex; flex-direction:column; gap:4px; min-width:220px; }
   .project-selected-title { font-family:'Orbitron', sans-serif; letter-spacing:0.12em; font-size:14px; color:#fff; }
   .project-selected-score { color:#7777aa; font-size:12px; }
-  .project-toolbar-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+  .project-toolbar-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; align-items:center; }
+  #difficulty-selector { padding:8px 12px; border-radius:4px; border:1px solid #2a2a4a; background:#1a1a2e; color:#eee; font-family:'Share Tech Mono', monospace; font-size:13px; cursor:pointer; transition:border-color 0.2s; }
+  #difficulty-selector:hover { border-color: #4444aa; }
+  #difficulty-selector:focus { outline:none; border-color: var(--up); }
+  .project-card.difficulty-easy { border-color: #44aa44; }
+  .project-card.difficulty-normal { border-color: #aaaa44; }
+  .project-card.difficulty-hard { border-color: #aa4444; }
   .project-list { display:flex; flex-direction:column; gap:10px; }
   .project-card { text-align:left; background:#08081a; border:1px solid #24244a; border-radius:4px; color:var(--text); padding:16px 18px; cursor:pointer; transition:all .15s; }
   .project-card:hover { border-color: var(--up); transform: translateY(-1px); }
@@ -1054,6 +1089,11 @@
           <div id="selected-project-score" class="project-selected-score">Saved score: 0</div>
         </div>
         <div class="project-toolbar-actions">
+          <select id="difficulty-selector">
+            <option value="easy">Easy</option>
+            <option value="normal" selected>Normal</option>
+            <option value="hard">Hard</option>
+          </select>
           <button class="btn-primary" id="btn-main-menu" style="padding:10px 14px; width:auto; background:#2f2f55; color:#fff;">MAIN MENU</button>
           <button class="btn-primary" id="btn-add-song-project" style="padding:10px 14px; width:auto;">Add Song Project</button>
           <button class="btn-primary" id="btn-start" disabled style="padding:10px 14px; width:auto;">PLAY PROJECT</button>
@@ -1136,14 +1176,14 @@
                 <label>Player Character</label>
                 <select id="var-player-character" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
                   <option value="blank">None</option>
-                  <option value="Mushy">Tote Singer</option>
+                  <!-- <option value="Mushy">Tote Singer</option> -->
                 </select>
               </div>
               <div class="var-item">
                 <label>Rival Character</label>
                 <select id="var-rival-character" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
                   <option value="blank">None</option>
-                  <option value="Mushy">Tote Singer</option>
+                  <!-- <option value="Mushy">Tote Singer</option> -->
                 </select>
               </div>
             </div>
@@ -1176,11 +1216,20 @@
                 <select id="var-background-scene" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
                   <option value="dark">Dark</option>
                   <option value="city-night">City - Night</option>
+                  <option value="dam-view">Dam - View</option>
                 </select>
               </div>
               <div class="var-item">
                 <label>Scene Tempo BPM</label>
                 <input type="number" id="var-background-tempo" value="0" min="0" max="400" title="0 uses the MIDI tempo when available, otherwise 120 BPM">
+              </div>
+              <div class="var-item">
+                <label>Background Width (%)</label>
+                <input type="number" id="var-background-width" value="100" min="10" max="400" title="Scale sprite width as percentage">
+              </div>
+              <div class="var-item">
+                <label>Background Height (%)</label>
+                <input type="number" id="var-background-height" value="100" min="10" max="400" title="Scale sprite height as percentage">
               </div>
             </div>
 
@@ -1191,18 +1240,6 @@
                 <input type="number" id="var-speed" value="5" min="1" max="20">
               </div>
               <div class="var-item">
-                <label>Hit Window — Perfect (ms)</label>
-                <input type="number" id="var-perfect" value="50" min="10" max="200">
-              </div>
-              <div class="var-item">
-                <label>Hit Window — Good (ms)</label>
-                <input type="number" id="var-good" value="120" min="30" max="400">
-              </div>
-              <div class="var-item">
-                <label>Hit Window — Bad (ms)</label>
-                <input type="number" id="var-bad" value="220" min="50" max="600">
-              </div>
-              <div class="var-item">
                 <label>Pitch Range % (top/bottom)</label>
                 <input type="number" id="var-pitch-range" value="100" min="10" max="100" title="Use top X% of pitch range for lane assignment">
               </div>
@@ -1210,21 +1247,14 @@
                 <label>Min Velocity (0-127)</label>
                 <input type="number" id="var-min-vel" value="30" min="0" max="127" title="Notes below this velocity are ignored">
               </div>
+              <!-- Merge/Hit windows moved to difficulty settings on Play Menu -->
               <div class="var-item">
-                <label>Merge Window (ms)</label>
-                <input type="number" id="var-merge-ms" value="120" min="0" max="1000" title="Notes within this gap become a hold note">
-              </div>
-              <div class="var-item">
-                <label>Long Note Threshold (ms)</label>
-                <input type="number" id="var-long-note-threshold" value="180" min="0" max="5000" title="Notes longer than this become long/hold notes">
-              </div>
-              <div class="var-item">
-                <label>Difficulty</label>
-                <select id="var-difficulty" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
-                  <option value="normal">Normal</option>
-                  <option value="easy">Easy (Auto-play quiet notes)</option>
-                  <option value="hard">Hard (No reference, player plays full track)</option>
-                  <option value="auto">Auto (Full auto-play)</option>
+                <label>Game Mode</label>
+                <select id="var-mode" style="padding:6px;border-radius:4px;border:1px solid #555;background:#1a1a2e;color:#eee;font-family:monospace;">
+                  <option value="battle">Battle</option>
+                  <option value="solo">Solo</option>
+                  <option value="piano">Piano</option>
+                  <option value="auto">Auto</option>
                 </select>
               </div>
             </div>
@@ -1418,9 +1448,9 @@ function buildBeatmaps(midi, gameTrackIdx, pitchRangePercent, minVelocity) {
   if (raw.length === 0) return { referenceBeatmap: [], playBeatmap: [], autoPlayBeatmap: [] };
 
   const split = splitNotesIntoReferenceAndPlay(raw);
-  const referenceBeatmap = assignLanes(split.reference, gameTrackIdx, pitchRangePercent);
-  let playBeatmap = assignLanes(split.play, gameTrackIdx, pitchRangePercent);
-  const autoPlayBeatmap = assignLanes(split.autoPlay, gameTrackIdx, pitchRangePercent);
+  const referenceBeatmap = assignLanes(split.reference, gameTrackIdx, pitchRangePercent, BATTLE_LANE_ORDER);
+  let playBeatmap = assignLanes(split.play, gameTrackIdx, pitchRangePercent, BATTLE_LANE_ORDER);
+  const autoPlayBeatmap = assignLanes(split.autoPlay, gameTrackIdx, pitchRangePercent, BATTLE_LANE_ORDER);
   
   // If player character is Recorder, mute all play notes so only background vocal plays
   if (currentPlayerCharacterId === 'recorder') {
@@ -1437,6 +1467,32 @@ function buildBeatmaps(midi, gameTrackIdx, pitchRangePercent, minVelocity) {
     playBeatmap: addPreRoll(markLongNotes(playBeatmap, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs), preRollMs),
     autoPlayBeatmap: addPreRoll(markLongNotes(autoPlayBeatmap, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs), preRollMs),
   };
+}
+
+function buildPianoBeatmap(midi, gameTrackIdx, minVelocity) {
+  const resolve = ticksToMs(midi);
+  const raw = extractTrackNotes(midi, gameTrackIdx, minVelocity, resolve);
+  if (raw.length === 0) return [];
+
+  const pitches = raw.map(note => note.note).sort((a, b) => a - b);
+  const minPitch = pitches[0];
+  const maxPitch = pitches[pitches.length - 1];
+  const pitchSpan = Math.max(1, maxPitch - minPitch);
+  const laneCount = PIANO_LANE_ORDER.length;
+
+  const mapped = raw.map(note => {
+    const normalized = (note.note - minPitch) / pitchSpan;
+    const laneIdx = Math.max(0, Math.min(laneCount - 1, Math.floor(normalized * laneCount)));
+    return {
+      ...note,
+      lane: PIANO_LANE_ORDER[laneIdx],
+      auto: false,
+      playerMuted: false,
+      sourceRole: 'play',
+    };
+  });
+
+  return markLongNotes(mapped, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs);
 }
 
 function buildBeatmap(midi, gameTrackIdx, pitchRangePercent, minVelocity) {
@@ -1697,15 +1753,16 @@ function splitNotesIntoReferenceAndPlay(notes) {
   };
 }
 
-function assignLanes(notes, gameTrackIdx, pitchRangePercent) {
+function assignLanes(notes, gameTrackIdx, pitchRangePercent, laneOrder = BATTLE_LANE_ORDER) {
   if (!notes.length) return [];
   const pitches = notes.map(note => note.note).sort((a, b) => a - b);
   const cut = (1 - pitchRangePercent / 100) / 2;
   const lo = pitches[Math.floor(pitches.length * cut)] ?? pitches[0];
   const hi = pitches[Math.floor(pitches.length * (1 - cut)) - 1] ?? pitches[pitches.length - 1];
   const span = hi - lo || 1;
-  const quarter = span / 4;
-  const lanes = ['up', 'left', 'down', 'right'];
+  const laneCount = laneOrder.length || 1;
+  const laneSpan = span / laneCount;
+  const lanes = laneOrder;
 
   const holdThreshold = Math.max(0, CFG.longNoteThresholdMs ?? DEFAULTS.longNoteThresholdMs);
   const recentWindowMs = 1300;
@@ -1742,7 +1799,7 @@ function assignLanes(notes, gameTrackIdx, pitchRangePercent) {
 
   for (const note of notes) {
     const relative = Math.max(0, Math.min(span, note.note - lo));
-    const baseLane = Math.min(3, Math.floor((span - relative) / quarter));
+    const baseLane = Math.min(lanes.length - 1, Math.floor((span - relative) / Math.max(1, laneSpan)));
     let laneIdx = baseLane;
     const duration = Math.max(0, (note.endTime ?? note.time) - note.time);
     const isLong = duration >= holdThreshold;
@@ -1962,14 +2019,16 @@ function updateSelectedProjectSummary() {
     return;
   }
   if (titleEl) titleEl.textContent = project.title || 'Untitled Project';
-  if (scoreEl) scoreEl.textContent = `Saved score: ${project.savedScore || 0}`;
+  const savedScores = project.savedScores || { easy: 0, normal: 0, hard: 0 };
+  const scoreForDifficulty = savedScores[currentDifficulty] || 0;
+  if (scoreEl) scoreEl.textContent = `Saved score (${currentDifficulty}): ${scoreForDifficulty}`;
 }
 
 function createEmptyProject() {
   return {
     id: makeProjectId(),
     title: 'New Song Project',
-    savedScore: 0,
+    savedScores: { easy: 0, normal: 0, hard: 0 },
     midiName: '',
     mp3Name: '',
     midiDurationMs: 0,
@@ -1993,18 +2052,25 @@ function createEmptyProject() {
   };
 }
 
+// Helper to migrate old savedScore format to new savedScores format
+function ensureProjectScoresFormat(project) {
+  if (!project.savedScores) {
+    const oldScore = project.savedScore || 0;
+    project.savedScores = { easy: 0, normal: oldScore, hard: 0 };
+    delete project.savedScore; // clean up old field
+  }
+  return project;
+}
+
 function readProjectSettingsFromUI() {
   const sceneTempoValue = parseFloat(document.getElementById('var-background-tempo').value);
   return {
     noteSpeed: parseFloat(document.getElementById('var-speed').value) || DEFAULTS.noteSpeed,
-    perfectMs: parseFloat(document.getElementById('var-perfect').value) || DEFAULTS.perfectMs,
-    goodMs: parseFloat(document.getElementById('var-good').value) || DEFAULTS.goodMs,
-    badMs: parseFloat(document.getElementById('var-bad').value) || DEFAULTS.badMs,
     pitchRange: parseFloat(document.getElementById('var-pitch-range').value) || DEFAULTS.pitchRange,
     minVelocity: parseFloat(document.getElementById('var-min-vel').value) || DEFAULTS.minVelocity,
-    mergeMs: parseFloat(document.getElementById('var-merge-ms').value) || DEFAULTS.mergeMs,
-    longNoteThresholdMs: parseFloat(document.getElementById('var-long-note-threshold').value) || DEFAULTS.longNoteThresholdMs,
-    difficulty: document.getElementById('var-difficulty').value || DEFAULTS.difficulty,
+    backgroundWidth: parseFloat(document.getElementById('var-background-width')?.value) || DEFAULTS.backgroundWidth,
+    backgroundHeight: parseFloat(document.getElementById('var-background-height')?.value) || DEFAULTS.backgroundHeight,
+    mode: document.getElementById('var-mode')?.value || DEFAULTS.mode,
     backgroundScene: document.getElementById('var-background-scene').value || DEFAULTS.backgroundScene,
     backgroundTempoBpm: Number.isFinite(sceneTempoValue) ? sceneTempoValue : DEFAULTS.backgroundTempoBpm,
     artist: (document.getElementById('project-artist-input')?.value || '').trim(),
@@ -2014,14 +2080,12 @@ function readProjectSettingsFromUI() {
 function applyProjectSettingsToUI(settings = {}) {
   const merged = { ...DEFAULTS, ...settings };
   document.getElementById('var-speed').value = merged.noteSpeed;
-  document.getElementById('var-perfect').value = merged.perfectMs;
-  document.getElementById('var-good').value = merged.goodMs;
-  document.getElementById('var-bad').value = merged.badMs;
   document.getElementById('var-pitch-range').value = merged.pitchRange;
   document.getElementById('var-min-vel').value = merged.minVelocity;
-  document.getElementById('var-merge-ms').value = merged.mergeMs;
-  document.getElementById('var-long-note-threshold').value = merged.longNoteThresholdMs;
-  document.getElementById('var-difficulty').value = merged.difficulty;
+  const bgW = document.getElementById('var-background-width'); if (bgW) bgW.value = merged.backgroundWidth;
+  const bgH = document.getElementById('var-background-height'); if (bgH) bgH.value = merged.backgroundHeight;
+  const modeSelect = document.getElementById('var-mode');
+  if (modeSelect) modeSelect.value = merged.mode || DEFAULTS.mode;
   const sceneSelect = document.getElementById('var-background-scene');
   if (sceneSelect) {
     const sceneId = getBackgroundSceneConfig(merged.backgroundScene).id;
@@ -2377,15 +2441,17 @@ function renderProjectList() {
   }
 
   for (const project of songProjects) {
+    ensureProjectScoresFormat(project);
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'project-card' + (project.id === selectedProjectId ? ' selected' : '');
+    let cardClass = 'project-card' + (project.id === selectedProjectId ? ' selected' : '') + ` difficulty-${currentDifficulty}`;
+    card.className = cardClass;
     const recorderMeta = project.recorderVoiceName ? ` · Recorder: ${project.recorderVoiceName}` : '';
-    const difficulty = (project.settings && project.settings.difficulty) ? project.settings.difficulty : (project.difficulty || 'normal');
     const artist = project.artist || (project.settings && project.settings.artist) || '';
+    const scoreForDifficulty = (project.savedScores && project.savedScores[currentDifficulty]) || 0;
     card.innerHTML = `
       <div class="project-card-title">${project.title || 'Untitled Project'}</div>
-      <div class="project-card-meta">Difficulty: ${difficulty} · Highscore: ${project.savedScore || 0}</div>
+      <div class="project-card-meta">Difficulty: ${currentDifficulty} · Highscore: ${scoreForDifficulty}</div>
       <div class="project-card-submeta">${artist ? `By: ${artist}` : ''} ${project.midiName ? `· ${project.midiName}` : ''}${recorderMeta}</div>
     `;
     card.addEventListener('click', () => setSelectedProjectId(project.id));
@@ -2412,14 +2478,16 @@ function renderProjectListInto(containerId, opts = {}) {
     return;
   }
   for (const project of songProjects) {
+    ensureProjectScoresFormat(project);
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'project-card' + (project.id === selectedProjectId ? ' selected' : '');
-    const difficulty = (project.settings && project.settings.difficulty) ? project.settings.difficulty : (project.difficulty || 'normal');
+    let cardClass = 'project-card' + (project.id === selectedProjectId ? ' selected' : '') + ` difficulty-${currentDifficulty}`;
+    card.className = cardClass;
     const artist = project.artist || (project.settings && project.settings.artist) || '';
+    const scoreForDifficulty = (project.savedScores && project.savedScores[currentDifficulty]) || 0;
     card.innerHTML = `
       <div class="project-card-title">${project.title || 'Untitled Project'}</div>
-      <div class="project-card-meta">Difficulty: ${difficulty} · Highscore: ${project.savedScore || 0}</div>
+      <div class="project-card-meta">Difficulty: ${currentDifficulty} · Highscore: ${scoreForDifficulty}</div>
       <div class="project-card-submeta">${artist ? `By: ${artist}` : ''}</div>
     `;
     card.addEventListener('click', () => {
@@ -2439,7 +2507,7 @@ function attachEditorDirtyHandlers() {
   try {
     const inputs = [
       'project-title-input','project-artist-input','mp3-file-input','recorder-file-input',
-      'var-speed','var-perfect','var-good','var-bad','var-pitch-range','var-min-vel','var-merge-ms','var-long-note-threshold','var-difficulty','var-background-scene','var-background-tempo','manual-map-enable-song'
+      'var-speed','var-pitch-range','var-min-vel','var-merge-ms','var-long-note-threshold','var-mode','var-background-scene','var-background-tempo','var-background-width','var-background-height','manual-map-enable-song'
     ];
     for (const id of inputs) {
       const el = document.getElementById(id);
@@ -2481,14 +2549,18 @@ async function onEditorProjectCardClick(projectId) {
 }
 
 async function saveProjectIndexAndSelection() {
-  const summaries = songProjects.map(project => ({
-    id: project.id,
-    title: project.title,
-    savedScore: project.savedScore || 0,
-    midiName: project.midiName || '',
-    mp3Name: project.mp3Name || '',
-    updatedAt: project.updatedAt || Date.now(),
-  }));
+  const summaries = songProjects.map(project => {
+    ensureProjectScoresFormat(project);
+    return {
+      id: project.id,
+      title: project.title,
+      savedScores: project.savedScores,
+      savedScore: project.savedScores.normal || 0, // legacy field for compatibility
+      midiName: project.midiName || '',
+      mp3Name: project.mp3Name || '',
+      updatedAt: project.updatedAt || Date.now(),
+    };
+  });
   saveProjectIndex(summaries);
   if (selectedProjectId) localStorage.setItem(PROJECT_SELECTED_KEY, selectedProjectId);
   else localStorage.removeItem(PROJECT_SELECTED_KEY);
@@ -2505,22 +2577,27 @@ async function persistProjectToStorage(project) {
 
 async function refreshProjectListFromStorage() {
   const summaries = loadProjectIndex();
-  songProjects = summaries.map(summary => ({
-    id: summary.id,
-    title: summary.title,
-    savedScore: summary.savedScore || 0,
-    midiName: summary.midiName || '',
-    mp3Name: summary.mp3Name || '',
-    updatedAt: summary.updatedAt || Date.now(),
-    settings: { ...DEFAULTS },
-    trackRoles: [],
-    trackVolumes: [],
-    trackClipIds: [],
-    trackCollapsed: [],
-    mp3OffsetMs: 0,
-    midiDurationMs: 0,
-    mp3DurationMs: 0,
-  }));
+  songProjects = summaries.map(summary => {
+    const project = {
+      id: summary.id,
+      title: summary.title,
+      savedScores: summary.savedScores || { easy: 0, normal: summary.savedScore || 0, hard: 0 },
+      midiName: summary.midiName || '',
+      mp3Name: summary.mp3Name || '',
+      updatedAt: summary.updatedAt || Date.now(),
+      settings: { ...DEFAULTS },
+      trackRoles: [],
+      trackVolumes: [],
+      trackClipIds: [],
+      trackCollapsed: [],
+      mp3OffsetMs: 0,
+      midiDurationMs: 0,
+      mp3DurationMs: 0,
+    };
+    // Ensure format is correct
+    ensureProjectScoresFormat(project);
+    return project;
+  });
   const storedSelected = localStorage.getItem(PROJECT_SELECTED_KEY);
   selectedProjectId = storedSelected || (songProjects[0] && songProjects[0].id) || null;
   const startButton = document.getElementById('btn-start');
@@ -2610,7 +2687,7 @@ function recordManualNoteStart(lane) {
     time: elapsed,
     endTime: elapsed,
     lane,
-    laneIdx: LANE_ORDER.indexOf(lane),
+    laneIdx: getActiveLaneOrder().indexOf(lane),
     note: manualLanePitch(lane),
     velocity: 100,
     trackIdx: 0,
@@ -3077,6 +3154,9 @@ async function useProjectForPlayback(projectId) {
   trackCollapsed = (project.trackCollapsed && project.trackCollapsed.length) ? project.trackCollapsed.slice() : trackCollapsed;
   if (midiData) buildTrackSelector({ preserveCurrent: true });
   readConfig();
+  // Load game mode from project settings
+  gameMode = (project.settings && project.settings.mode) || DEFAULTS.mode || 'battle';
+  isAutoMode = gameMode === 'auto';
   return true;
 }
 
@@ -3377,6 +3457,19 @@ const BACKGROUND_SCENES = [
       'Art/Mushy/World/MM-CityScene-Night2.png',
       'Art/Mushy/World/MM-CityScene-Night3.png',
       'Art/Mushy/World/MM-CityScene-Night2.png',
+    ],
+    beatOrder: [0, 1, 2, 3],
+    backgroundPosition: 'center center',
+  },
+  {
+    id: 'dam-view',
+    label: 'Dam - View',
+    backgroundColor: '#050510',
+    images: [
+      'Art/Mushy/World/MM-DamScene1.png',
+      'Art/Mushy/World/MM-DamScene2.png',
+      'Art/Mushy/World/MM-DamScene3.png',
+      'Art/Mushy/World/MM-DamScene2.png',
     ],
     beatOrder: [0, 1, 2, 3],
     backgroundPosition: 'center center',
@@ -3833,6 +3926,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('btn-add-song-project').addEventListener('click', () => openProjectEditor());
   document.getElementById('btn-editor-add-song-project')?.addEventListener('click', () => openProjectEditor());
+  document.getElementById('difficulty-selector').addEventListener('change', (e) => {
+    currentDifficulty = e.target.value;
+    renderProjectList();
+    updateSelectedProjectSummary();
+  });
   document.getElementById('btn-save-project').addEventListener('click', async () => {
     try {
       await saveCurrentProject();
@@ -4935,6 +5033,7 @@ let currentMidiDurationMs = 0;
 let currentProjectId = null;
 let editingProjectId = null;
 let selectedProjectId = null;
+let currentDifficulty = 'normal'; // 'easy' | 'normal' | 'hard'
 let currentProjectDirty = false;
 let songProjects = [];
 let currentProjectHasMp3 = false;
@@ -4968,10 +5067,10 @@ let currentRivalMissSoundId = 'default';
 
 let recorderMutedTrackIds = new Set();
 // Character positions as fixed percentages of viewport (0.0 to 1.0)
-let playerCharacterPositionXPercent = 0.75; // Position from left (0.0 to 1.0)
-let playerCharacterPositionYPercent = 0.5;  // Position from top (0.0 to 1.0)
-let rivalCharacterPositionXPercent = 0.25;  // Position from left (0.0 to 1.0)
-let rivalCharacterPositionYPercent = 0.5;   // Position from top (0.0 to 1.0)
+let playerCharacterPositionXPercent = 0.70; // Position from left (0.0 to 1.0)
+let playerCharacterPositionYPercent = 0.6;  // Position from top (0.0 to 1.0)
+let rivalCharacterPositionXPercent = 0.30;  // Position from left (0.0 to 1.0)
+let rivalCharacterPositionYPercent = 0.6;   // Position from top (0.0 to 1.0)
 
 function updateCharacterContainerPositions() {
   const playerContainer = document.getElementById('character-container-player');
@@ -5200,6 +5299,52 @@ const FAILED_SOUND_POOL = [
   'SoundClip/Mistake4.mp3',
 ];
 
+// ─── Difficulty Settings ────────────────────────────────────────────────────
+const EASY_PERFECT_WINDOW   = 100;   // ms
+const EASY_GOOD_WINDOW      = 200;   // ms
+const EASY_BAD_WINDOW       = 300;   // ms
+const EASY_MERGE_THRESHOLD  = 600;   // ms - merge consecutive notes
+const EASY_SCORE_MULTIPLIER = 0.5;
+const EASY_MISS_PENALTY     = 0;     // no penalty for missing notes
+
+const NORMAL_PERFECT_WINDOW   = 60;   // ms
+const NORMAL_GOOD_WINDOW      = 100;  // ms
+const NORMAL_BAD_WINDOW       = 150;  // ms
+const NORMAL_COMBINE_THRESHOLD = 400;  // ms - combine rapid consecutive notes
+const NORMAL_SCORE_MULTIPLIER = 1.0;
+const NORMAL_MISS_PENALTY     = 50;   // standard penalty
+
+const HARD_PERFECT_WINDOW   = 40;    // ms
+const HARD_GOOD_WINDOW      = 70;    // ms
+const HARD_BAD_WINDOW       = 100;   // ms
+const HARD_SCORE_MULTIPLIER = 2.0;
+const HARD_MISS_PENALTY     = 100;   // strict penalty
+
+// ─── Game Mode Settings ─────────────────────────────────────────────────────
+// Modes: auto, battle, solo, piano
+const PIANO_KEY_MAP = {
+  'a': { key: 'a', minNote: 1, maxNote: 12 },     // lowest 12 notes
+  's': { key: 's', minNote: 13, maxNote: 24 },
+  'd': { key: 'd', minNote: 25, maxNote: 36 },
+  'f': { key: 'f', minNote: 37, maxNote: 48 },
+  'g': { key: 'g', minNote: 49, maxNote: 60 },    // middle
+  'h': { key: 'h', minNote: 61, maxNote: 72 },
+  'j': { key: 'j', minNote: 73, maxNote: 84 },
+  'k': { key: 'k', minNote: 85, maxNote: 96 },
+  'l': { key: 'l', minNote: 97, maxNote: 108 },
+  ';': { key: ';', minNote: 109, maxNote: 127 }   // highest 19 notes
+};
+
+// Solo mode positioning (player character on left, track on right)
+const SOLO_PLAYER_CHAR_X_PERCENT = 0.35;   // 35% from left
+const SOLO_PLAYER_CHAR_Y_PERCENT = 0.6;    // 60% from top (center)
+const SOLO_PLAYER_CHAR_SCALE = 2.0;        // same as normal battle
+
+// Piano mode positioning (player character centered above track)
+const PIANO_PLAYER_CHAR_X_PERCENT = 0.5;   // 50% from left (center)
+const PIANO_PLAYER_CHAR_Y_PERCENT = 0.25;  // 25% from top
+const PIANO_PLAYER_CHAR_SCALE = 0.8;       // slightly smaller
+
 // ---------- Defaults (consolidated) ----------
 const DEFAULTS = {
   noteSpeed: 5,
@@ -5214,8 +5359,11 @@ const DEFAULTS = {
   segmentDurationMs: 5000,
   easyModeVelocityThreshold: 70,
   difficulty: 'normal',
+  mode: 'battle',
   backgroundScene: 'dark',
   backgroundTempoBpm: 0,
+  backgroundWidth: 100,
+  backgroundHeight: 100,
 };
 let beatmap       = [];
 let referenceBeatmap = [];
@@ -5248,6 +5396,8 @@ let laneEls       = {};  // lane key → DOM element
 let autoTimers    = [];  // timeouts for auto mode
 let countdownTimers = [];
 let gameStartQueued = false;
+let gameMode = 'battle';  // 'auto' | 'battle' | 'solo' | 'piano'
+let isAutoMode = false;   // flag to prevent score counting in auto mode
 let activeGameplayProject = null;
 let backgroundSceneState = {
   sceneId: 'dark',
@@ -5508,21 +5658,73 @@ async function initMainMenuScreen() {
   }
 }
 
-const LANE_KEYS = {
+const BATTLE_LANE_KEYS = {
   up:    ['ArrowUp',   'w', 'W'],
   left:  ['ArrowLeft', 'a', 'A'],
   right: ['ArrowRight','d', 'D'],
   down:  ['ArrowDown', 's', 'S'],
 };
 
-const LANE_META = {
+const BATTLE_LANE_META = {
   up:    { color: 'var(--up)',    label: '↑ / W', cls: 'lane-up' },
   left:  { color: 'var(--left)', label: '← / A', cls: 'lane-left' },
   right: { color: 'var(--right)',label: '→ / D', cls: 'lane-right' },
   down:  { color: 'var(--down)', label: '↓ / S', cls: 'lane-down' },
 };
 
-const LANE_ORDER = ['left', 'up', 'down', 'right'];
+const BATTLE_LANE_ORDER = ['left', 'up', 'down', 'right'];
+
+const PIANO_LANE_ORDER = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';'];
+const PIANO_LANE_KEYS = {
+  a: ['a', 'A'],
+  s: ['s', 'S'],
+  d: ['d', 'D'],
+  f: ['f', 'F'],
+  g: ['g', 'G'],
+  h: ['h', 'H'],
+  j: ['j', 'J'],
+  k: ['k', 'K'],
+  l: ['l', 'L'],
+  ';': [';'],
+};
+
+const PIANO_LANE_META = {
+  a: { color: '#ff5f6d', label: 'A', cls: 'lane-piano-a' },
+  s: { color: '#ff8c42', label: 'S', cls: 'lane-piano-s' },
+  d: { color: '#ffd166', label: 'D', cls: 'lane-piano-d' },
+  f: { color: '#c0df85', label: 'F', cls: 'lane-piano-f' },
+  g: { color: '#7bd389', label: 'G', cls: 'lane-piano-g' },
+  h: { color: '#4ecdc4', label: 'H', cls: 'lane-piano-h' },
+  j: { color: '#5fa8d3', label: 'J', cls: 'lane-piano-j' },
+  k: { color: '#4f86c6', label: 'K', cls: 'lane-piano-k' },
+  l: { color: '#9b5de5', label: 'L', cls: 'lane-piano-l' },
+  ';': { color: '#f15bb5', label: ';', cls: 'lane-piano-semi' },
+};
+
+let currentLaneOrder = BATTLE_LANE_ORDER.slice();
+let currentLaneKeys = BATTLE_LANE_KEYS;
+let currentLaneMeta = BATTLE_LANE_META;
+
+function getLaneLayoutForMode(mode = gameMode) {
+  if (mode === 'piano') {
+    return { order: PIANO_LANE_ORDER, keys: PIANO_LANE_KEYS, meta: PIANO_LANE_META, direction: 'down', isPiano: true };
+  }
+  return { order: BATTLE_LANE_ORDER, keys: BATTLE_LANE_KEYS, meta: BATTLE_LANE_META, direction: 'up', isPiano: false };
+}
+
+function applyLaneLayoutForMode(mode = gameMode) {
+  const layout = getLaneLayoutForMode(mode);
+  currentLaneOrder = layout.order.slice();
+  currentLaneKeys = layout.keys;
+  currentLaneMeta = layout.meta;
+  return layout;
+}
+
+function getActiveLaneOrder() {
+  return currentLaneOrder && currentLaneOrder.length ? currentLaneOrder : BATTLE_LANE_ORDER;
+}
+
+const LANE_ORDER = BATTLE_LANE_ORDER;
 
 function setPlayTargetSpriteState(lane, pressed) {
   const el = document.getElementById(`play-target-${lane}`);
@@ -5535,7 +5737,7 @@ function setRivalTargetSpriteState(lane, pressed) {
 }
 
 function clearAllTargetSpriteStates() {
-  for (const lane of LANE_ORDER) {
+  for (const lane of getActiveLaneOrder()) {
     setPlayTargetSpriteState(lane, false);
     setRivalTargetSpriteState(lane, false);
   }
@@ -5795,22 +5997,33 @@ function checkReady() {
 
 // ─── Parameter reading ───────────────────────────────────────────────────────
 function readConfig() {
-  CFG.noteSpeed    = parseFloat(document.getElementById('var-speed').value)    || 5;
-  CFG.perfectMs    = parseFloat(document.getElementById('var-perfect').value)  || 50;
-  CFG.goodMs       = parseFloat(document.getElementById('var-good').value)     || 120;
-  CFG.badMs        = parseFloat(document.getElementById('var-bad').value)      || 220;
-  CFG.pitchRange   = parseFloat(document.getElementById('var-pitch-range').value) || 100;
-  CFG.minVelocity  = parseFloat(document.getElementById('var-min-vel').value)  || 30;
-  CFG.mergeMs      = parseFloat(document.getElementById('var-merge-ms').value) || 0;
-  CFG.longNoteThresholdMs = parseFloat(document.getElementById('var-long-note-threshold').value) || DEFAULTS.longNoteThresholdMs;
-  difficulty       = document.getElementById('var-difficulty').value || 'normal';
-  // Easy mode: widen hit windows instead of autoplaying notes
+  // basic numeric config (use optional chaining when element may be absent)
+  CFG.noteSpeed    = parseFloat(document.getElementById('var-speed')?.value)    || DEFAULTS.noteSpeed;
+  CFG.pitchRange   = parseFloat(document.getElementById('var-pitch-range')?.value) || DEFAULTS.pitchRange;
+  CFG.minVelocity  = parseFloat(document.getElementById('var-min-vel')?.value)  || DEFAULTS.minVelocity;
+  // determine difficulty: prefer play-menu selector, then runtime currentDifficulty, then project-level setting
+  const uiDifficulty = document.getElementById('difficulty-selector')?.value || currentDifficulty || DEFAULTS.difficulty;
+  difficulty = uiDifficulty;
+
+  // set hit windows and merge behaviour from difficulty constants (DOM inputs for these were removed)
   if (difficulty === 'easy') {
-    // Expand windows but keep user-configured minimums
-    CFG.perfectMs = Math.max(CFG.perfectMs, Math.round(CFG.perfectMs * 1.6));
-    CFG.goodMs = Math.max(CFG.goodMs, Math.round(CFG.goodMs * 1.45));
-    CFG.badMs = Math.max(CFG.badMs, Math.round(CFG.badMs * 1.35));
+    CFG.perfectMs = typeof EASY_PERFECT_WINDOW !== 'undefined' ? EASY_PERFECT_WINDOW : DEFAULTS.perfectMs;
+    CFG.goodMs    = typeof EASY_GOOD_WINDOW !== 'undefined' ? EASY_GOOD_WINDOW : DEFAULTS.goodMs;
+    CFG.badMs     = typeof EASY_BAD_WINDOW !== 'undefined' ? EASY_BAD_WINDOW : DEFAULTS.badMs;
+    CFG.mergeMs   = typeof EASY_MERGE_THRESHOLD !== 'undefined' ? EASY_MERGE_THRESHOLD : DEFAULTS.mergeMs;
+  } else if (difficulty === 'hard') {
+    CFG.perfectMs = typeof HARD_PERFECT_WINDOW !== 'undefined' ? HARD_PERFECT_WINDOW : DEFAULTS.perfectMs;
+    CFG.goodMs    = typeof HARD_GOOD_WINDOW !== 'undefined' ? HARD_GOOD_WINDOW : DEFAULTS.goodMs;
+    CFG.badMs     = typeof HARD_BAD_WINDOW !== 'undefined' ? HARD_BAD_WINDOW : DEFAULTS.badMs;
+    CFG.mergeMs   = 0; // hard requires all notes to be played
+  } else {
+    CFG.perfectMs = typeof NORMAL_PERFECT_WINDOW !== 'undefined' ? NORMAL_PERFECT_WINDOW : DEFAULTS.perfectMs;
+    CFG.goodMs    = typeof NORMAL_GOOD_WINDOW !== 'undefined' ? NORMAL_GOOD_WINDOW : DEFAULTS.goodMs;
+    CFG.badMs     = typeof NORMAL_BAD_WINDOW !== 'undefined' ? NORMAL_BAD_WINDOW : DEFAULTS.badMs;
+    CFG.mergeMs   = typeof NORMAL_COMBINE_THRESHOLD !== 'undefined' ? NORMAL_COMBINE_THRESHOLD : DEFAULTS.mergeMs;
   }
+
+  CFG.longNoteThresholdMs = DEFAULTS.longNoteThresholdMs;
 }
 
 function startDemoGame() {
@@ -6303,6 +6516,36 @@ function applyCharacterSettingsToUI(settings = {}) {
   currentRivalCharacterId = rivalChar?.value || 'blank';
 }
 
+// Transform notes for Piano mode: map notes to 10 lanes based on pitch
+function transformToPianoMode(notes) {
+  const pianoKeys = Object.keys(PIANO_KEY_MAP).sort();
+  return notes.map(note => {
+    // Find which piano key this note belongs to
+    let pianoKey = 'a'; // default
+    for (const key of pianoKeys) {
+      const range = PIANO_KEY_MAP[key];
+      if (note.note >= range.minNote && note.note <= range.maxNote) {
+        pianoKey = key;
+        break;
+      }
+    }
+    // Map to lane: a→left, s→up, d→right, f→down, g→..., etc.
+    // Using a simple mapping: a-d are left/up/right/down, then cycling
+    const laneLookup = {
+      'a': 'left', 's': 'up', 'd': 'right', 'f': 'down',
+      'g': 'left', 'h': 'up', 'j': 'right', 'k': 'down',
+      'l': 'left', ';': 'up'
+    };
+    return {
+      ...note,
+      lane: laneLookup[pianoKey] || 'left',
+      pianoKey: pianoKey,
+      auto: false,
+      playerMuted: false
+    };
+  });
+}
+
 function startGame() {
   stopProjectSelectionPreview();
   console.debug('startGame called — midiData?', !!midiData, 'mp3?', !!currentMp3Blob, 'trackRoles=', trackRoles);
@@ -6335,6 +6578,16 @@ function startGame() {
   if (gameStartQueued) return;
   gameStartQueued = true;
 
+  const currentProject = songProjects.find(p => p.id === currentProjectId);
+  gameMode = (currentProject && currentProject.settings && currentProject.settings.mode) || DEFAULTS.mode || 'battle';
+  isAutoMode = gameMode === 'auto';
+  playerCharacterPositionXPercent = 0.85;
+  playerCharacterPositionYPercent = 0.6;
+  rivalCharacterPositionXPercent = 0.25;
+  rivalCharacterPositionYPercent = 0.6;
+  playerCharacterScale = 2.0;
+  rivalCharacterScale = 2.0;
+
   readConfig();
   setLoadingOverlayVisible(false);
   showGameplayScreen();
@@ -6342,12 +6595,46 @@ function startGame() {
   buildPlayFields();
   
   // Initialize characters from current project
-  const currentProject = songProjects.find(p => p.id === currentProjectId);
   showGameplayScreen();
   activeGameplayProject = currentProject || createEmptyProject();
   initializeCharactersForGame(activeGameplayProject);
   resetGameBackgroundScene();
   updateGameBackgroundScene(0);
+  
+  // ── Apply mode-specific character positioning ────────────────────────────
+  const rivalContainer = document.getElementById('character-container-rival');
+  if (gameMode === 'solo') {
+    // Solo: player on left, rival hidden
+    playerCharacterPositionXPercent = SOLO_PLAYER_CHAR_X_PERCENT;
+    playerCharacterPositionYPercent = SOLO_PLAYER_CHAR_Y_PERCENT;
+    playerCharacterScale = SOLO_PLAYER_CHAR_SCALE;
+    if (rivalContainer) rivalContainer.style.display = 'none';
+  } else if (gameMode === 'piano') {
+    // Piano: player centered above track, rival hidden
+    playerCharacterPositionXPercent = PIANO_PLAYER_CHAR_X_PERCENT;
+    playerCharacterPositionYPercent = PIANO_PLAYER_CHAR_Y_PERCENT;
+    playerCharacterScale = PIANO_PLAYER_CHAR_SCALE;
+    if (rivalContainer) rivalContainer.style.display = 'none';
+  } else if (gameMode === 'auto') {
+    // Auto: both visible, both auto-play perfectly
+    playerCharacterPositionXPercent = 0.75;
+    playerCharacterPositionYPercent = 0.5;
+    rivalCharacterPositionXPercent = 0.25;
+    rivalCharacterPositionYPercent = 0.5;
+    playerCharacterScale = 2.0;
+    rivalCharacterScale = 2.0;
+    if (rivalContainer) rivalContainer.style.display = 'block';
+  } else {
+    // Battle: normal positioning, rival visible
+    playerCharacterPositionXPercent = 0.75;
+    playerCharacterPositionYPercent = 0.5;
+    rivalCharacterPositionXPercent = 0.25;
+    rivalCharacterPositionYPercent = 0.5;
+    playerCharacterScale = 2.0;
+    rivalCharacterScale = 2.0;
+    if (rivalContainer) rivalContainer.style.display = 'block';
+  }
+  updateCharacterContainerPositions();
   
   console.debug('after buildPlayFields — laneEls:', Object.keys(laneEls || {}), 'referenceLaneEls:', Object.keys(referenceLaneEls || {}));
 
@@ -6373,11 +6660,32 @@ function startGame() {
 
   } else if (hasMidi) {
     // Cases 1 & 3: MIDI drives the note track (MP3 may or may not also be present)
-    const splitBeatmaps = buildBeatmaps(midiData, gameTrackIdx, CFG.pitchRange, CFG.minVelocity);
-    referenceBeatmap   = splitBeatmaps.referenceBeatmap;
-    beatmap            = splitBeatmaps.playBeatmap;
-    autoPlayBeatmap    = splitBeatmaps.autoPlayBeatmap || [];
     manualMappingActive = false;
+    if (gameMode === 'battle') {
+      const splitBeatmaps = buildBeatmaps(midiData, gameTrackIdx, CFG.pitchRange, CFG.minVelocity);
+      referenceBeatmap = splitBeatmaps.referenceBeatmap;
+      beatmap = splitBeatmaps.playBeatmap;
+      autoPlayBeatmap = splitBeatmaps.autoPlayBeatmap || [];
+    } else if (gameMode === 'auto') {
+      const splitBeatmaps = buildBeatmaps(midiData, gameTrackIdx, CFG.pitchRange, CFG.minVelocity);
+      referenceBeatmap = (splitBeatmaps.referenceBeatmap || []).map(n => ({ ...n, auto: true }));
+      beatmap = (splitBeatmaps.playBeatmap || []).map(n => ({ ...n, auto: true }));
+      autoPlayBeatmap = (splitBeatmaps.autoPlayBeatmap || []).map(n => ({ ...n, auto: true }));
+    } else if (gameMode === 'solo') {
+      const splitBeatmaps = buildBeatmaps(midiData, gameTrackIdx, CFG.pitchRange, CFG.minVelocity);
+      const combinedBeatmap = [
+        ...(splitBeatmaps.playBeatmap || []),
+        ...(splitBeatmaps.referenceBeatmap || []),
+        ...(splitBeatmaps.autoPlayBeatmap || []),
+      ];
+      beatmap = assignLanes(combinedBeatmap, gameTrackIdx, CFG.pitchRange, BATTLE_LANE_ORDER).map(n => ({ ...n, auto: false, playerMuted: false }));
+      referenceBeatmap = [];
+      autoPlayBeatmap = [];
+    } else if (gameMode === 'piano') {
+      beatmap = buildPianoBeatmap(midiData, gameTrackIdx, CFG.minVelocity);
+      referenceBeatmap = [];
+      autoPlayBeatmap = [];
+    }
 
   } else {
     // Shouldn't reach here given the guards above, but fail safe
@@ -6395,7 +6703,7 @@ function startGame() {
   activeNotes = beatmap.map((n, i) => ({ ...n, id: i, hit: false, missed: false, el: null }));
   referenceActiveNotes = referenceBeatmap.map((n, i) => ({ ...n, id: i, hit: false, missed: false, el: null }));
   const autoPlayActiveNotes = autoPlayBeatmap.map((n, i) => ({ ...n, id: i, hit: false, missed: false, el: null }));
-  noteElements = { up: [], left: [], right: [], down: [] };
+  noteElements = Object.fromEntries(getActiveLaneOrder().map(lane => [lane, []]));
   heldNotes = {};
   pressedLanes = new Set();
 
@@ -6581,6 +6889,8 @@ function buildPlayFields() {
   referenceLaneEls = {};
   clearAllTargetSpriteStates();
 
+  applyGameplayModeLayout(gameMode);
+
   buildLaneSet(referenceField, referenceLaneEls, true);
   buildLaneSet(playField, laneEls, false);
   console.debug('buildPlayFields completed — playField children:', playField.children.length, 'referenceField children:', referenceField.children.length);
@@ -6678,11 +6988,13 @@ function drawWaveforms() {
 }
 
 function buildLaneSet(field, store, isReference) {
-  LANE_ORDER.forEach(key => {
-    const meta = LANE_META[key];
+  getActiveLaneOrder().forEach(key => {
+    const meta = currentLaneMeta[key] || currentLaneMeta[BATTLE_LANE_ORDER[0]];
     const lane = document.createElement('div');
     lane.className = `lane ${meta.cls}${isReference ? ' reference-lane' : ''}`;
+    if (gameMode === 'piano') lane.classList.add('lane-piano');
     lane.id = `${isReference ? 'ref' : 'play'}-lane-${key}`;
+    lane.style.setProperty('--lane-color', meta.color);
 
     const bg = document.createElement('div');
     bg.className = 'lane-bg';
@@ -6697,17 +7009,85 @@ function buildLaneSet(field, store, isReference) {
     const target = document.createElement('div');
     target.className = 'target-zone';
     target.id = `${isReference ? 'ref' : 'play'}-target-${key}`;
+    target.style.top = `${currentBoardTargetY}px`;
+    if (gameMode === 'piano') {
+      target.style.backgroundColor = meta.color;
+      target.style.opacity = '0.16';
+    }
     lane.appendChild(target);
 
     const label = document.createElement('div');
     label.className = 'lane-label';
     label.style.color = meta.color;
+    label.style.bottom = gameMode === 'piano' ? '72px' : '64px';
     label.textContent = isReference ? `REF ${meta.label}` : meta.label;
     lane.appendChild(label);
 
     field.appendChild(lane);
     store[key] = lane;
   });
+}
+
+let currentBoardTargetY = 60;
+let currentBoardSpawnY = null;
+let currentBoardNoteSize = null;
+let currentBoardHoldWidth = null;
+
+function applyGameplayModeLayout(mode = gameMode) {
+  const layout = applyLaneLayoutForMode(mode);
+  const referenceField = document.getElementById('reference-field');
+  const playField = document.getElementById('play-field');
+  if (!referenceField || !playField) return layout;
+
+  const isPiano = !!layout.isPiano;
+  const hideReference = mode === 'solo' || mode === 'piano';
+  const laneCount = layout.order.length;
+
+  referenceField.style.display = hideReference ? 'none' : 'grid';
+  
+  if (isPiano) {
+    playField.style.left = '0';
+    playField.style.right = '0';
+    playField.style.width = '100%';
+  } else {
+    playField.style.left = '';
+    playField.style.right = '';
+    playField.style.width = '';
+  }
+  playField.style.gridTemplateColumns = `repeat(${laneCount}, minmax(0, 1fr))`;
+  referenceField.style.gridTemplateColumns = `repeat(${laneCount}, minmax(0, 1fr))`;
+
+  if (isPiano) {
+    const fieldWidth = Math.max(1, playField.clientWidth || playField.getBoundingClientRect().width || 1);
+    const laneWidth = fieldWidth / laneCount;
+    currentBoardNoteSize = Math.max(18, Math.floor(laneWidth * 0.72));
+    currentBoardHoldWidth = Math.max(14, Math.floor(currentBoardNoteSize * 0.78));
+    currentBoardTargetY = Math.max(72, (playField.clientHeight || playField.getBoundingClientRect().height || 0) - Math.max(66, Math.floor(currentBoardNoteSize * 1.7)));
+    currentBoardSpawnY = -currentBoardNoteSize;
+
+    playField.style.setProperty('--note-size', `${currentBoardNoteSize}px`);
+    playField.style.setProperty('--hold-note-width', `${currentBoardHoldWidth}px`);
+    playField.style.setProperty('--target-size', `${Math.max(26, Math.floor(currentBoardNoteSize * 0.92))}px`);
+    referenceField.style.setProperty('--note-size', `${currentBoardNoteSize}px`);
+    referenceField.style.setProperty('--hold-note-width', `${currentBoardHoldWidth}px`);
+    referenceField.style.setProperty('--target-size', `${Math.max(26, Math.floor(currentBoardNoteSize * 0.92))}px`);
+  } else {
+    currentBoardNoteSize = null;
+    currentBoardHoldWidth = null;
+    currentBoardTargetY = TARGET_Y;
+    currentBoardSpawnY = null;
+    playField.style.removeProperty('--note-size');
+    playField.style.removeProperty('--hold-note-width');
+    playField.style.removeProperty('--target-size');
+    playField.style.removeProperty('--play-track-x');
+    playField.style.removeProperty('--play-track-width');
+    referenceField.style.removeProperty('--note-size');
+    referenceField.style.removeProperty('--hold-note-width');
+    referenceField.style.removeProperty('--target-size');
+    referenceField.style.removeProperty('--play-track-x');
+    referenceField.style.removeProperty('--play-track-width');
+  }
+  return layout;
 }
 
 // ─── GAME LOOP ───────────────────────────────────────────────────────────────
@@ -6775,7 +7155,10 @@ function gameLoop(now) {
   // A note should reach target at note.time ms.
   // Travel distance = fieldH - TARGET_Y pixels at CFG.noteSpeed px/frame (60fps assumed)
   // Time to travel = (fieldH - TARGET_Y) / CFG.noteSpeed / 60 * 1000 ms
-  const travelMs = (fieldH - TARGET_Y) / CFG.noteSpeed / 60 * 1000;
+  const travelDistance = gameMode === 'piano'
+    ? Math.max(1, currentBoardTargetY - (currentBoardSpawnY ?? 0))
+    : Math.max(1, fieldH - TARGET_Y);
+  const travelMs = travelDistance / CFG.noteSpeed / 60 * 1000;
   const spawnTime = elapsed + travelMs;
 
   advanceBeatmap(referenceActiveNotes, referenceLaneEls, fieldH, elapsed, spawnTime, true);
@@ -6816,6 +7199,8 @@ function gameLoop(now) {
 }
 
 function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference) {
+  const isPianoBoard = gameMode === 'piano';
+  const targetY = isPianoBoard ? currentBoardTargetY : TARGET_Y;
   for (const note of notes) {
     if (note.hit || note.missed || note.el) continue;
     if (note.time <= spawnTime) {
@@ -6826,7 +7211,9 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
   for (const note of notes) {
     if (note.hit || note.missed || !note.el) continue;
     const remainMs = note.time - elapsed;
-    const y = TARGET_Y + remainMs * CFG.noteSpeed * 60 / 1000;
+    const y = isPianoBoard
+      ? targetY - remainMs * CFG.noteSpeed * 60 / 1000
+      : targetY + remainMs * CFG.noteSpeed * 60 / 1000;
     note.el.style.top = y + 'px';
 
     if (isReference) {
@@ -6885,7 +7272,7 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
     const distToTarget = Math.abs(remainMs);
     const isPerfectWindow = distToTarget <= CFG.perfectMs;
 
-    if (difficulty === 'auto' && !note.started && isPerfectWindow && elapsed >= note.time) {
+    if (isAutoMode && !note.started && isPerfectWindow && elapsed >= note.time) {
       // Auto mode: hit on perfect timing.
       note.started = true;
       autoCompleteTapNote(note, note.lane);
@@ -6926,10 +7313,13 @@ function spawnNote(note, fieldH, laneMap, isReference = false) {
   if (!lane) return;
   const el = document.createElement('div');
   el.className = 'note' + (note.hold ? ' hold' : '') + (isReference ? ' reference-note' : '');
-  el.style.top = fieldH + 'px';
+  const spawnTopValue = gameMode === 'piano' ? (currentBoardSpawnY ?? -(currentBoardNoteSize || 24)) : fieldH;
+  const spawnTop = `${spawnTopValue}px`;
+  el.style.top = spawnTop;
   if (note.hold) {
     const holdPixels = Math.max(0, (note.endTime - note.time) * CFG.noteSpeed * 60 / 1000);
-    el.style.height = (Math.max(1, parseFloat(LAYOUT.noteSize) || 46) + holdPixels) + 'px';
+    const baseNoteSize = currentBoardNoteSize || Math.max(1, parseFloat(LAYOUT.noteSize) || 46);
+    el.style.height = (baseNoteSize + holdPixels) + 'px';
     el.style.clipPath = 'inset(0% 0 0 0)';
   } else {
     // Add sprite class for single notes if character uses directional sprites
@@ -7076,7 +7466,7 @@ document.addEventListener('keyup', e => {
 });
 
 function keyToLane(key) {
-  for (const [lane, keys] of Object.entries(LANE_KEYS)) {
+  for (const [lane, keys] of Object.entries(currentLaneKeys)) {
     if (keys.includes(key)) return lane;
   }
   return null;
@@ -7264,7 +7654,7 @@ function autoCompleteTapNote(note, lane) {
   const pts = { perfect: 300, good: 200, bad: 50 };
   combo++;
   maxCombo = Math.max(maxCombo, combo);
-  score += pts[judgment] * combo;
+  if (!isAutoMode) score += pts[judgment] * combo;
   stats[judgment]++;
 
   showJudgment(lane, judgment);
@@ -7412,10 +7802,22 @@ function showResults() {
   const manualNote = document.getElementById('manual-mapping-note');
   if (confirmBtn) confirmBtn.style.display = manualRecordingAwaitingConfirm ? 'block' : 'none';
   if (manualNote && !manualRecordingAwaitingConfirm) manualNote.remove();
-  if (currentProjectId) {
+  
+  // Display auto mode flag if applicable
+  if (isAutoMode) {
+    const resultNote = document.createElement('div');
+    resultNote.style.cssText = 'color:#ffaa00; font-size:14px; margin-top:12px; text-align:center;';
+    resultNote.textContent = '⚠ AUTO MODE - Score not saved';
+    document.getElementById('results-screen').appendChild(resultNote);
+  }
+  
+  if (currentProjectId && !isAutoMode) {
     const project = songProjects.find(item => item.id === currentProjectId);
     if (project) {
-      project.savedScore = Math.max(project.savedScore || 0, score || 0);
+      ensureProjectScoresFormat(project);
+      const multiplier = currentDifficulty === 'easy' ? EASY_SCORE_MULTIPLIER : (currentDifficulty === 'hard' ? HARD_SCORE_MULTIPLIER : NORMAL_SCORE_MULTIPLIER);
+      const finalScore = Math.floor(score * multiplier);
+      project.savedScores[currentDifficulty] = Math.max(project.savedScores[currentDifficulty] || 0, finalScore);
       project.updatedAt = Date.now();
       persistProjectToStorage(project).catch(err => console.warn('Failed to save project score', err));
       updateSelectedProjectSummary();

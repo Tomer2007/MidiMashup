@@ -60,6 +60,21 @@ Different modes:
 In order to control scope for now I'll scope in on making a polished DDR style game mode, with around 5 characters, and hopefully a rougelike mode.
 For this I'll need to work on adjusting the algorithm that sets up notes to make it more enjoyable to play, then fix the bugs with the character voices, making them use sound fonts which allow a variety of chords from a couple wav files.
 
+Make modes and difficulty different things:
+Modes are set in the song prject settings, while difficulty is set in the play menu.
+Modes:
+Auto - Plays the game for you
+Duel - Standard Game Mode
+Solo - Mode where the player plays everything
+Piano - A more difficult mode where the player uses 9 or more inputs for each song.
+
+Easy - Notes have larger good and perfect windows, rapid notes merge together more, no penalty for getting notes wrong, but only a 0.5x point multiplier.
+Normal - Current version of the game, windows are generous, but rapid note need to be played, but their are fewer of them with each one just containing more notes, 1x point multiplier.
+Hard - Windows are shorter, everynote is playable, and their is a 2x multiplier.
+Master - Perfect windows are only a few frames, and messing up a 3 notes will instantly lose the song
+
+Also add controller at some point maybe.
+
 Current bugs
 - 
 
@@ -74,6 +89,3 @@ Current bugs
 - Create something with variety of ways to interact to keep user's interested.
 - 
 
-=======
-Fix Player visual positioning
->>>>>>> parent of ab06adf (Made a more working version of character voices, but then it kind of broke.)
