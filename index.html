@@ -945,8 +945,12 @@
   .project-card.difficulty-hard { border-color: #aa4444; }
   .project-list { display:flex; flex-direction:column; gap:10px; }
   .project-card { text-align:left; background:#08081a; border:1px solid #24244a; border-radius:4px; color:var(--text); padding:16px 18px; cursor:pointer; transition:all .15s; }
-  .project-card:hover { border-color: var(--up); transform: translateY(-1px); }
-  .project-card.selected { border-color: var(--up); box-shadow: 0 0 0 1px rgba(0,245,255,0.2) inset; }
+  .project-card.built-in-project { border-color: #b96a1b; }
+  .project-card.uploaded-project { border-color: #1f4f8f; }
+  .project-card.built-in-project:hover { border-color: #ff9a3c; transform: translateY(-1px); }
+  .project-card.uploaded-project:hover { border-color: #4da3ff; transform: translateY(-1px); }
+  .project-card.built-in-project.selected { border-color: #ff9a3c; box-shadow: 0 0 0 1px rgba(255,154,60,0.22) inset; }
+  .project-card.uploaded-project.selected { border-color: #4da3ff; box-shadow: 0 0 0 1px rgba(77,163,255,0.22) inset; }
   .project-card-title { font-family:'Orbitron', sans-serif; font-size:15px; letter-spacing:0.08em; color:#fff; }
   .project-card-meta { margin-top:4px; font-size:12px; color:#aaffff; }
   .project-card-submeta { margin-top:4px; font-size:11px; color:#7777aa; }
@@ -2447,7 +2451,8 @@ function renderProjectList() {
     ensureProjectScoresFormat(project);
     const card = document.createElement('button');
     card.type = 'button';
-    let cardClass = 'project-card' + (project.id === selectedProjectId ? ' selected' : '') + ` difficulty-${currentDifficulty}`;
+    const sourceClass = project.isBuiltIn ? ' built-in-project' : ' uploaded-project';
+    let cardClass = 'project-card' + sourceClass + (project.id === selectedProjectId ? ' selected' : '') + ` difficulty-${currentDifficulty}`;
     card.className = cardClass;
     const recorderMeta = project.recorderVoiceName ? ` · Recorder: ${project.recorderVoiceName}` : '';
     const artist = project.artist || (project.settings && project.settings.artist) || '';
@@ -2484,7 +2489,8 @@ function renderProjectListInto(containerId, opts = {}) {
     ensureProjectScoresFormat(project);
     const card = document.createElement('button');
     card.type = 'button';
-    let cardClass = 'project-card' + (project.id === selectedProjectId ? ' selected' : '') + ` difficulty-${currentDifficulty}`;
+    const sourceClass = project.isBuiltIn ? ' built-in-project' : ' uploaded-project';
+    let cardClass = 'project-card' + sourceClass + (project.id === selectedProjectId ? ' selected' : '') + ` difficulty-${currentDifficulty}`;
     card.className = cardClass;
     const artist = project.artist || (project.settings && project.settings.artist) || '';
     const scoreForDifficulty = (project.savedScores && project.savedScores[currentDifficulty]) || 0;
@@ -2637,7 +2643,7 @@ async function loadProjectFromStorage(projectId) {
     if (!window.__builtInSongProjectBuffers) window.__builtInSongProjectBuffers = new Map();
     let midiBuffer = window.__builtInSongProjectBuffers.get(builtIn.id);
     if (!midiBuffer) {
-      const response = await fetch(builtIn.midiUrl);
+      const response = await fetch(encodeURI(builtIn.midiUrl));
       if (!response.ok) throw new Error(`Failed to load built-in MIDI: ${builtIn.midiUrl}`);
       midiBuffer = await response.arrayBuffer();
       window.__builtInSongProjectBuffers.set(builtIn.id, midiBuffer);
@@ -5101,6 +5107,16 @@ const BUILT_IN_SONG_PROJECTS = [
     title: 'Copa70',
     midiName: 'Copa70.mid',
     midiUrl: 'Prebuild-Songs/Copa70.mid',
+    savedScores: { easy: 0, normal: 0, hard: 0 },
+    settings: { mode: 'battle' },
+    playerCharacterId: 'blank',
+    rivalCharacterId: 'blank',
+  },
+  {
+    id: 'builtin-melody-no7',
+    title: 'Melody No.7',
+    midiName: 'Melody No.7.mid',
+    midiUrl: 'Prebuild-Songs/Melody No.7.mid',
     savedScores: { easy: 0, normal: 0, hard: 0 },
     settings: { mode: 'battle' },
     playerCharacterId: 'blank',
