@@ -109,6 +109,368 @@
     mix-blend-mode: screen;
   }
 
+  /* ── TOUR SCREEN ── */
+  #tour-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 1490;
+    display: none;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 20% 18%, rgba(84, 151, 255, 0.24), transparent 38%),
+      radial-gradient(circle at 85% 80%, rgba(255, 123, 87, 0.18), transparent 42%),
+      linear-gradient(140deg, #080c1c 0%, #0d1025 58%, #171022 100%);
+  }
+
+  #tour-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(90deg, transparent 0 56px, rgba(255,255,255,0.035) 56px 57px),
+      repeating-linear-gradient(0deg, transparent 0 56px, rgba(255,255,255,0.025) 56px 57px);
+    opacity: 0.6;
+  }
+
+  .tour-back-btn {
+    position: absolute;
+    z-index: 2;
+    background: rgba(16, 22, 49, 0.92);
+    color: #d8e5ff;
+    border: 1px solid rgba(122, 164, 255, 0.35);
+    border-radius: 10px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+  }
+
+  .tour-difficulty-wrap,
+  .tour-preview-panel,
+  .tour-character-panel {
+    position: absolute;
+    border-radius: 14px;
+    background: rgba(11, 15, 35, 0.84);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.38);
+    z-index: 1;
+  }
+
+  .tour-difficulty-wrap {
+    padding: 14px;
+  }
+
+  #tour-highscore {
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border-radius: 9px;
+    border: 1px solid rgba(123, 245, 200, 0.35);
+    background: linear-gradient(180deg, rgba(52, 122, 98, 0.26), rgba(22, 64, 48, 0.25));
+    color: #d8ffee;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    line-height: 1.35;
+    white-space: pre-line;
+  }
+
+  .tour-heading {
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #adc3ff;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  #tour-difficulty-select {
+    width: 100%;
+    height: 52px;
+    border-radius: 10px;
+    border: 1px solid rgba(153, 185, 255, 0.42);
+    background: rgba(6, 9, 22, 0.95);
+    color: #eef3ff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 20px;
+    padding: 8px 12px;
+  }
+
+  .tour-preview-panel {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 10px;
+  }
+
+  #tour-character-portrait {
+    width: 100%;
+    flex: 1;
+    /* make portrait bleed: remove box constraints */
+    border-radius: 0;
+    border: none;
+    background: transparent;
+    display: block;
+    align-items: initial;
+    justify-content: initial;
+    overflow: visible;
+  }
+
+  #tour-character-portrait img {
+    width: auto;
+    max-width: 140%;
+    height: auto;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+
+  .tour-portrait-empty {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 22px;
+    color: rgba(228, 238, 255, 0.5);
+    letter-spacing: 0.08em;
+  }
+
+  #tour-character-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(20px, 2.2vw, 32px);
+    color: #ecf2ff;
+    letter-spacing: 0.05em;
+  }
+
+  #tour-character-genres {
+    color: #a0b4e7;
+    font-size: 14px;
+    line-height: 1.4;
+    min-height: 24px;
+  }
+
+  .tour-character-panel {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  #tour-character-grid {
+    flex: 1;
+    overflow: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    align-content: start;
+    padding-right: 6px;
+  }
+
+  .tour-character-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: linear-gradient(180deg, rgba(40, 56, 96, 0.42), rgba(20, 25, 50, 0.75));
+    cursor: pointer;
+    transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+  }
+
+  .tour-character-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(150, 195, 255, 0.75);
+  }
+
+  .tour-character-card.selected {
+    border-color: rgba(124, 255, 205, 0.9);
+    box-shadow: 0 0 0 2px rgba(79, 255, 197, 0.2);
+  }
+
+  .tour-character-icon {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 8px;
+    border: 1px solid rgba(199, 217, 255, 0.3);
+    background: linear-gradient(180deg, rgba(154, 188, 255, 0.2), rgba(72, 88, 145, 0.2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #e8f0ff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 28px;
+    letter-spacing: 0.08em;
+    overflow: hidden;
+  }
+
+  .tour-character-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: pixelated;
+  }
+
+  .tour-character-label {
+    color: #e7eeff;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  #tour-play-btn {
+    position: absolute;
+    z-index: 2;
+    border: 1px solid rgba(186, 246, 204, 0.45);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(86, 204, 136, 0.95), rgba(43, 156, 93, 0.95));
+    color: #03150b;
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(28px, 3.4vw, 52px);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 14px 34px rgba(12, 120, 68, 0.38);
+  }
+
+  #tour-play-btn:hover {
+    filter: brightness(1.06);
+  }
+
+  /* Loading Card Styles */
+  #tour-loading-card {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #tour-loading-card.visible {
+    display: flex;
+  }
+
+  #tour-loading-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  #tour-loading-content {
+    position: relative;
+    background: linear-gradient(135deg, #0a0a16, #0f0f1e);
+    border: 2px solid rgba(186, 246, 204, 0.35);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 600px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    font-family: 'Orbitron', sans-serif;
+  }
+
+  #tour-loading-content.loading-ready #tour-loading-info,
+  #tour-loading-content.loading-ready #tour-loading-visual {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  #tour-loading-info,
+  #tour-loading-visual {
+    opacity: 0.2;
+    transform: translateY(8px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+
+  /* Tour loading visual split: left = titles slot, right = portraits */
+  #tour-loading-visual { display:flex; gap:16px; align-items:center; justify-content:center; margin-top:14px; }
+  #tour-loading-slot { flex:1; min-height:80px; max-height:120px; overflow:hidden; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06)); display:flex; align-items:center; justify-content:center; }
+  #tour-loading-slot .slot-list { display:flex; flex-direction:column; gap:8px; padding:12px 8px; transform:translateY(0); }
+  #tour-loading-portraits { width:160px; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; }
+  #tour-loading-portraits img { width:140px; height:80px; object-fit:contain; image-rendering:pixelated; transform:translateX(0); }
+
+  #tour-loading-content h2 {
+    color: #56cc88;
+    font-size: 24px;
+    margin: 0 0 20px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  #tour-loading-info {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 24px;
+    text-align: left;
+  }
+
+  .tour-loading-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 12px;
+    align-items: start;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border-left: 3px solid #56cc88;
+  }
+
+  .tour-loading-label {
+    color: #99ddcc;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: bold;
+  }
+
+  .tour-loading-value {
+    color: #dfe6ff;
+    font-size: 14px;
+  }
+
+  #tour-loading-status {
+    margin-top: 10px;
+    color: #fff2aa;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    min-height: 16px;
+  }
+
+  #tour-loading-play[hidden] {
+    display: none;
+  }
+
+  #tour-loading-play {
+    background: linear-gradient(180deg, rgba(86, 204, 136, 0.95), rgba(43, 156, 93, 0.95));
+    border: 1px solid rgba(186, 246, 204, 0.45);
+    border-radius: 10px;
+    color: #03150b;
+    padding: 14px 28px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 10px 28px rgba(12, 120, 68, 0.35);
+  }
+
+  #tour-loading-play:hover {
+    filter: brightness(1.08);
+    transform: translateY(-2px);
+  }
+
+  #tour-loading-play:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  @media (max-width: 980px) {
+    #tour-character-grid {
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    }
+  }
+
   .logo {
     font-family: 'Orbitron', sans-serif;
     font-size: clamp(28px, 5vw, 56px);
@@ -1278,6 +1640,79 @@
   <div id="main-menu-hover-overlay"></div>
 </div>
 
+<!-- ═══════════════ TOUR SCREEN ═══════════════ -->
+<div id="tour-screen" aria-label="Tour setup">
+  <button id="btn-tour-back" class="tour-back-btn">BACK</button>
+
+  <div id="tour-difficulty-wrap" class="tour-difficulty-wrap">
+    <div id="tour-highscore">Tour Highscore (normal): 0</div>
+    <div class="tour-heading">Difficulty</div>
+    <select id="tour-difficulty-select">
+      <option value="easy">Easy</option>
+      <option value="normal">Normal</option>
+      <option value="hard">Hard</option>
+    </select>
+  </div>
+
+  <div id="tour-preview-panel" class="tour-preview-panel">
+    <div class="tour-heading">Character Preview</div>
+    <div id="tour-character-portrait"></div>
+    <div id="tour-character-name">None</div>
+    <div id="tour-character-genres"></div>
+  </div>
+
+  <div id="tour-character-panel" class="tour-character-panel">
+    <div class="tour-heading">Character Select</div>
+    <div id="tour-character-grid"></div>
+  </div>
+
+  <button id="tour-play-btn" title="Play button action will be added later">PLAY</button>
+</div>
+
+<!-- ═══════════════ TOUR LOADING CARD ═══════════════ -->
+<div id="tour-loading-card">
+  <div id="tour-loading-backdrop"></div>
+  <div id="tour-loading-content">
+    <h2>🎵 Now Loading</h2>
+    <div id="tour-loading-info">
+        <div class="tour-loading-row">
+          <div class="tour-loading-label">Status</div>
+          <div id="tour-loading-status" class="tour-loading-value">Preparing tour load...</div>
+        </div>
+      <div class="tour-loading-row">
+        <div class="tour-loading-label">Mode</div>
+        <div id="tour-loading-mode" class="tour-loading-value">Battle</div>
+      </div>
+      <div class="tour-loading-row">
+        <div class="tour-loading-label">Song</div>
+        <div id="tour-loading-song" class="tour-loading-value">Unknown</div>
+      </div>
+      <div class="tour-loading-row">
+        <div class="tour-loading-label">Artist</div>
+        <div id="tour-loading-artist" class="tour-loading-value">Unknown</div>
+      </div>
+      <div class="tour-loading-row">
+        <div class="tour-loading-label">Genre Match</div>
+        <div id="tour-loading-genre" class="tour-loading-value">Pop/Electronic</div>
+      </div>
+      <div class="tour-loading-row">
+        <div class="tour-loading-label">Notes</div>
+        <div id="tour-loading-notes" class="tour-loading-value">0</div>
+      </div>
+    </div>
+    <div id="tour-loading-visual">
+      <div id="tour-loading-slot" aria-hidden="true">
+        <div class="slot-list"></div>
+      </div>
+      <div id="tour-loading-portraits" aria-hidden="true">
+        <img id="tour-loading-portrait-player" src="" alt="Player portrait" />
+        <img id="tour-loading-portrait-rival" src="" alt="Rival portrait" />
+      </div>
+    </div>
+    <button id="tour-loading-play">PLAY SONG</button>
+  </div>
+</div>
+
 <!-- ═══════════════ GAME SCREEN ═══════════════ -->
 <div id="game-screen">
   <div id="hud">
@@ -1294,10 +1729,10 @@
     <div id="reference-field"></div>
     <div id="play-field"></div>
     <div id="particle-layer"></div>
-    <div id="character-container-rival" style="position:absolute;z-index:0;pointer-events:none;">
+    <div id="character-container-rival" style="position:fixed;z-index:0;pointer-events:none;">
       <canvas id="character-canvas-rival" style="image-rendering:pixelated;pointer-events:none;display:block;"></canvas>
     </div>
-    <div id="character-container-player" style="position:absolute;z-index:0;pointer-events:none;">
+    <div id="character-container-player" style="position:fixed;z-index:0;pointer-events:none;">
       <canvas id="character-canvas-player" style="image-rendering:pixelated;pointer-events:none;display:block;"></canvas>
     </div>
   </div>
@@ -1583,7 +2018,7 @@ function splitNotesIntoReferenceAndPlay(notes) {
   // Hard difficulty: player plays full track
   if (difficulty === 'hard') {
     const playAll = notes.map(n => ({ ...n, auto: false, sourceRole: 'play', playerMuted: false }));
-    return { reference: [], play: combineSimultaneousNotes(playAll), autoPlay: [] };
+    return { reference: [], play: combineSimultaneousNotes(playAll, CFG.combineMs ?? 10), autoPlay: [] };
   }
 
   // ── Step 1: Slice into riffs at natural silence gaps ──────────────────────
@@ -1754,8 +2189,8 @@ function splitNotesIntoReferenceAndPlay(notes) {
   }
 
   return {
-    reference: combineSimultaneousNotes(reference),
-    play:      combineSimultaneousNotes(play),
+    reference: combineSimultaneousNotes(reference, CFG.combineMs ?? 10),
+    play:      combineSimultaneousNotes(play,      CFG.combineMs ?? 10),
     autoPlay,
   };
 }
@@ -3335,6 +3770,8 @@ function createCharacterConfig(config) {
   return {
     id: config.id,
     label: config.label,
+    portraitSprite: config.portraitSprite || null,
+    genres: Array.isArray(config.genres) ? config.genres.slice() : [],
     spriteSheets: config.spriteSheets,
     soundClipIds: config.soundClipIds,
     tauntClips: config.tauntClips || [],
@@ -3422,6 +3859,8 @@ const CHARACTERS = [
   createCharacterConfig({
     id: 'blank',
     label: 'None',
+    portraitSprite: null,
+    genres: [],
     spriteSheets: {
       idle: createSpriteSheetConfig(null),
       up: createSpriteSheetConfig(null),
@@ -3439,6 +3878,8 @@ const CHARACTERS = [
   createCharacterConfig({
     id: 'mushy',
     label: 'Mushy Singer',
+    portraitSprite: null,
+    genres: ['Pop', 'Electronic', 'Vocal'],
     spriteSheets: {
 // cols, rows, scale, frameCount, frameDuration
       idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
@@ -3456,6 +3897,8 @@ const CHARACTERS = [
   createCharacterConfig({
     id: 'martin',
     label: 'Martin',
+    portraitSprite: null,
+    genres: ['Rock', 'Funk', 'Indie'],
     spriteSheets: {
       idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
       up: createSpriteSheetConfig('Art/Mushy/SS-MushySingerUP.png', 2, 1, 1.0, 2),
@@ -3472,6 +3915,8 @@ const CHARACTERS = [
   createCharacterConfig({
     id: 'recorder',
     label: 'Recorder',
+    portraitSprite: null,
+    genres: ['Lo-fi', 'Experimental', 'Ambient'],
     spriteSheets: {
       idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
       up: createSpriteSheetConfig('Art/Mushy/SS-MushySingerUP.png', 2, 1, 1.0, 2),
@@ -3488,6 +3933,8 @@ const CHARACTERS = [
   createCharacterConfig({
     id: 'tote',
     label: 'Tote',
+    portraitSprite: null,
+    genres: ['Chiptune', 'Synthwave', 'Arcade'],
     spriteSheets: {
       idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
       up: createSpriteSheetConfig('Art/Mushy/SS-MushySingerUP.png', 2, 1, 1.0, 2),
@@ -4175,7 +4622,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ok = await useProjectForPlayback(selectedProjectId);
     if (ok) startGame();
   });
-  document.getElementById('btn-retry').addEventListener('click', () => startGame());
+  document.getElementById('btn-retry').addEventListener('click', async () => {
+    if (tourRunState.active && tourRunState.awaitingResultChoice) {
+      await continueTourRunFromResults();
+      return;
+    }
+    startGame();
+  });
   document.getElementById('btn-confirm-manual')?.addEventListener('click', async () => {
     if (!manualBeatmapDraft.length && !currentManualBeatmap.length) return;
 
@@ -4237,7 +4690,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       showMainMenu();
     });
   }
-  document.getElementById('btn-menu').addEventListener('click', goMenu);
+  document.getElementById('btn-menu').addEventListener('click', () => {
+    if (tourRunState.active && tourRunState.awaitingResultChoice) {
+      endTourRunAndReturnToTourScreen();
+      return;
+    }
+    goMenu();
+  });
   document.getElementById('btn-back').addEventListener('click', goMenu);
   document.getElementById('btn-demo').addEventListener('click', startDemoGame);
 
@@ -4279,6 +4738,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateSelectedProjectSummary();
     }
   }
+  initTourScreen();
   await initMainMenuScreen();
   showMainMenu();
 });
@@ -5109,8 +5569,8 @@ const BUILT_IN_SONG_PROJECTS = [
     midiUrl: 'Prebuild-Songs/Copa70.mid',
     savedScores: { easy: 0, normal: 0, hard: 0 },
     settings: { mode: 'battle' },
-    playerCharacterId: 'blank',
-    rivalCharacterId: 'blank',
+    playerCharacterId: 'Mushy Singer',
+    rivalCharacterId: 'Martin',
   },
   {
     id: 'builtin-melody-no7',
@@ -5119,8 +5579,8 @@ const BUILT_IN_SONG_PROJECTS = [
     midiUrl: 'Prebuild-Songs/Melody No.7.mid',
     savedScores: { easy: 0, normal: 0, hard: 0 },
     settings: { mode: 'battle' },
-    playerCharacterId: 'blank',
-    rivalCharacterId: 'blank',
+    playerCharacterId: 'Mushy Singer',
+    rivalCharacterId: 'Tote',
   },
 ];
 // MP3/song alignment state
@@ -5152,25 +5612,130 @@ let currentPlayerMissSoundId = 'default';
 let currentRivalMissSoundId = 'default';
 
 let recorderMutedTrackIds = new Set();
-// Character positions as fixed percentages of viewport (0.0 to 1.0)
-let playerCharacterPositionXPercent = 0.70; // Position from left (0.0 to 1.0)
-let playerCharacterPositionYPercent = 0.6;  // Position from top (0.0 to 1.0)
-let rivalCharacterPositionXPercent = 0.30;  // Position from left (0.0 to 1.0)
-let rivalCharacterPositionYPercent = 0.6;   // Position from top (0.0 to 1.0)
+// Per-mode layout variables (fractions of viewport width/height and scale)
+const BATTLE_PLAYER_X = 0.75;
+const BATTLE_PLAYER_Y = 0.5;
+const BATTLE_PLAYER_SCALE = 1.0;
+const BATTLE_RIVAL_X = 0.25;
+const BATTLE_RIVAL_Y = 0.5;
+const BATTLE_RIVAL_SCALE = 1.0;
+const BATTLE_RIVAL_VISIBLE = true;
+
+const AUTO_PLAYER_X = 0.75;
+const AUTO_PLAYER_Y = 0.5;
+const AUTO_PLAYER_SCALE = 2.0;
+const AUTO_RIVAL_X = 0.25;
+const AUTO_RIVAL_Y = 0.5;
+const AUTO_RIVAL_SCALE = 2.0;
+const AUTO_RIVAL_VISIBLE = true;
+
+const SOLO_PLAYER_X = 0.35;
+const SOLO_PLAYER_Y = 0.6;
+const SOLO_PLAYER_SCALE = 2.0;
+const SOLO_RIVAL_X = 0.25;
+const SOLO_RIVAL_Y = 0.5;
+const SOLO_RIVAL_SCALE = 2.0;
+const SOLO_RIVAL_VISIBLE = false;
+
+const PIANO_PLAYER_X = 0.5;
+const PIANO_PLAYER_Y = 0.25;
+const PIANO_PLAYER_SCALE = 0.9;
+const PIANO_RIVAL_X = 0.25;
+const PIANO_RIVAL_Y = 0.5;
+const PIANO_RIVAL_SCALE = 2.0;
+const PIANO_RIVAL_VISIBLE = false;
+
+const CHARACTER_LAYOUTS = {
+  battle: {
+    player: { x: BATTLE_PLAYER_X, y: BATTLE_PLAYER_Y, scale: BATTLE_PLAYER_SCALE },
+    rival: { x: BATTLE_RIVAL_X, y: BATTLE_RIVAL_Y, scale: BATTLE_RIVAL_SCALE },
+    rivalVisible: BATTLE_RIVAL_VISIBLE,
+  },
+  auto: {
+    player: { x: AUTO_PLAYER_X, y: AUTO_PLAYER_Y, scale: AUTO_PLAYER_SCALE },
+    rival: { x: AUTO_RIVAL_X, y: AUTO_RIVAL_Y, scale: AUTO_RIVAL_SCALE },
+    rivalVisible: AUTO_RIVAL_VISIBLE,
+  },
+  solo: {
+    player: { x: SOLO_PLAYER_X, y: SOLO_PLAYER_Y, scale: SOLO_PLAYER_SCALE },
+    rival: { x: SOLO_RIVAL_X, y: SOLO_RIVAL_Y, scale: SOLO_RIVAL_SCALE },
+    rivalVisible: SOLO_RIVAL_VISIBLE,
+  },
+  piano: {
+    player: { x: PIANO_PLAYER_X, y: PIANO_PLAYER_Y, scale: PIANO_PLAYER_SCALE },
+    rival: { x: PIANO_RIVAL_X, y: PIANO_RIVAL_Y, scale: PIANO_RIVAL_SCALE },
+    rivalVisible: PIANO_RIVAL_VISIBLE,
+  },
+};
+let characterBaseLayout = CHARACTER_LAYOUTS.battle;
+let characterCameraOffsetXPercent = 0;
+let characterCameraOffsetYPercent = 0;
+let characterCameraZoom = 1;
+// Per-mode constant reference for locked positions (fractions of viewport)
+let currentCharacterReference = {
+  playerX: (CHARACTER_LAYOUTS.battle.player.x || 0),
+  playerY: (CHARACTER_LAYOUTS.battle.player.y || 0),
+  playerScale: (CHARACTER_LAYOUTS.battle.player.scale || 1),
+  rivalX: (CHARACTER_LAYOUTS.battle.rival.x || 0),
+  rivalY: (CHARACTER_LAYOUTS.battle.rival.y || 0),
+  rivalScale: (CHARACTER_LAYOUTS.battle.rival.scale || 1),
+  rivalVisible: !!CHARACTER_LAYOUTS.battle.rivalVisible,
+};
+// When false, characterCameraOffsetXPercent/Y are ignored so positions stay locked per-mode
+let allowCharacterCameraOffset = false;
 
 function updateCharacterContainerPositions() {
+  const layout = characterBaseLayout || CHARACTER_LAYOUTS.battle;
   const playerContainer = document.getElementById('character-container-player');
   const rivalContainer = document.getElementById('character-container-rival');
   if (playerContainer) {
-    playerContainer.style.left = (playerCharacterPositionXPercent * 100) + '%';
-    playerContainer.style.top = (playerCharacterPositionYPercent * 100) + '%';
-    playerContainer.style.transform = 'translate(-50%, -50%)';
+    const playerPos = currentCharacterReference;
+    playerContainer.style.position = 'fixed';
+    playerContainer.style.display = 'block';
+    const offsetX = allowCharacterCameraOffset ? characterCameraOffsetXPercent : 0;
+    const offsetY = allowCharacterCameraOffset ? characterCameraOffsetYPercent : 0;
+    // Clear editor-time absolute anchors so mode layout left/top always wins.
+    playerContainer.style.right = '';
+    playerContainer.style.bottom = '';
+    playerContainer.style.left = `${(playerPos.playerX + offsetX) * 100}vw`;
+    playerContainer.style.top = `${(playerPos.playerY + offsetY) * 100}vh`;
+    playerContainer.style.transform = `translate(-50%, -50%) scale(${playerPos.playerScale * characterCameraZoom})`;
   }
   if (rivalContainer) {
-    rivalContainer.style.left = (rivalCharacterPositionXPercent * 100) + '%';
-    rivalContainer.style.top = (rivalCharacterPositionYPercent * 100) + '%';
-    rivalContainer.style.transform = 'translate(-50%, -50%)';
+    const rivalPos = currentCharacterReference;
+    rivalContainer.style.position = 'fixed';
+    rivalContainer.style.display = rivalPos.rivalVisible ? 'block' : 'none';
+    const offsetX = allowCharacterCameraOffset ? characterCameraOffsetXPercent : 0;
+    const offsetY = allowCharacterCameraOffset ? characterCameraOffsetYPercent : 0;
+    rivalContainer.style.right = '';
+    rivalContainer.style.bottom = '';
+    rivalContainer.style.left = `${(rivalPos.rivalX + offsetX) * 100}vw`;
+    rivalContainer.style.top = `${(rivalPos.rivalY + offsetY) * 100}vh`;
+    rivalContainer.style.transform = `translate(-50%, -50%) scale(${rivalPos.rivalScale * characterCameraZoom})`;
   }
+}
+
+function applyCharacterLayoutForMode(mode = gameMode) {
+  characterBaseLayout = CHARACTER_LAYOUTS[mode] || CHARACTER_LAYOUTS.battle;
+  // Keep sprite-sheet scale separate from mode layout scale to avoid double scaling.
+  playerCharacterScale = 1;
+  rivalCharacterScale = 1;
+  characterCameraOffsetXPercent = 0;
+  characterCameraOffsetYPercent = 0;
+  characterCameraZoom = 1;
+  // Set locked per-mode reference values so layout stays constant unless offsets are explicitly allowed
+  currentCharacterReference = {
+    playerX: (characterBaseLayout.player && characterBaseLayout.player.x) || 0,
+    playerY: (characterBaseLayout.player && characterBaseLayout.player.y) || 0,
+    playerScale: (characterBaseLayout.player && characterBaseLayout.player.scale) || 1,
+    rivalX: (characterBaseLayout.rival && characterBaseLayout.rival.x) || 0,
+    rivalY: (characterBaseLayout.rival && characterBaseLayout.rival.y) || 0,
+    rivalScale: (characterBaseLayout.rival && characterBaseLayout.rival.scale) || 1,
+    rivalVisible: !!characterBaseLayout.rivalVisible,
+  };
+  // By default lock positions per mode
+  allowCharacterCameraOffset = false;
+  updateCharacterContainerPositions();
 }
 let playerCharacterAnimationFrame = 0;
 let rivalCharacterAnimationFrame = 0;
@@ -5374,8 +5939,8 @@ let playerTauntActive = false;
 let playerTauntRemainingMs = 0;
 const PLAYER_TAUNT_DURATION_MS = 700;
 // Sprite scale controls (code-level variables)
-let playerCharacterScale = 2.0;
-let rivalCharacterScale = 2.0;
+let playerCharacterScale = 1.0;
+let rivalCharacterScale = 1.0;
 // Active voices per track to support same-track cutoff behavior
 let activeTrackVoices = {}; // trackIdx -> voice wrapper with stop()
 const FAILED_SOUND_POOL = [
@@ -5406,30 +5971,33 @@ const HARD_BAD_WINDOW       = 100;   // ms
 const HARD_SCORE_MULTIPLIER = 2.0;
 const HARD_MISS_PENALTY     = 100;   // strict penalty
 
+// Piano mode note-processing thresholds (tweakable per difficulty)
+const PIANO_EASY_MERGE_THRESHOLD    = 900;
+const PIANO_EASY_COMBINE_THRESHOLD  = 1350;
+const PIANO_NORMAL_MERGE_THRESHOLD  = 600;
+const PIANO_NORMAL_COMBINE_THRESHOLD = 600;
+const PIANO_HARD_MERGE_THRESHOLD    = 0;
+const PIANO_HARD_COMBINE_THRESHOLD  = 192;
+
+// Visual center split between F and J lanes in piano mode (pixels)
+const PIANO_CENTER_SPLIT_GAP_PX = 12;
+
 // ─── Game Mode Settings ─────────────────────────────────────────────────────
 // Modes: auto, battle, solo, piano
 const PIANO_KEY_MAP = {
-  'a': { key: 'a', minNote: 1, maxNote: 12 },     // lowest 12 notes
-  's': { key: 's', minNote: 13, maxNote: 24 },
-  'd': { key: 'd', minNote: 25, maxNote: 36 },
-  'f': { key: 'f', minNote: 37, maxNote: 48 },
-  'g': { key: 'g', minNote: 49, maxNote: 60 },    // middle
-  'h': { key: 'h', minNote: 61, maxNote: 72 },
-  'j': { key: 'j', minNote: 73, maxNote: 84 },
-  'k': { key: 'k', minNote: 85, maxNote: 96 },
-  'l': { key: 'l', minNote: 97, maxNote: 108 },
-  ';': { key: ';', minNote: 109, maxNote: 127 }   // highest 19 notes
+  // Reduced to 8 piano lanes: A S D F  J K L ;
+  // Distribute MIDI note range roughly evenly across 8 keys (0-127)
+  'a': { key: 'a', minNote: 0,  maxNote: 15 },
+  's': { key: 's', minNote: 16, maxNote: 31 },
+  'd': { key: 'd', minNote: 32, maxNote: 47 },
+  'f': { key: 'f', minNote: 48, maxNote: 63 },
+  'j': { key: 'j', minNote: 64, maxNote: 79 },
+  'k': { key: 'k', minNote: 80, maxNote: 95 },
+  'l': { key: 'l', minNote: 96, maxNote: 111 },
+  ';': { key: ';', minNote: 112, maxNote: 127 }
 };
 
-// Solo mode positioning (player character on left, track on right)
-const SOLO_PLAYER_CHAR_X_PERCENT = 0.35;   // 35% from left
-const SOLO_PLAYER_CHAR_Y_PERCENT = 0.6;    // 60% from top (center)
-const SOLO_PLAYER_CHAR_SCALE = 2.0;        // same as normal battle
-
-// Piano mode positioning (player character centered above track)
-const PIANO_PLAYER_CHAR_X_PERCENT = 0.5;   // 50% from left (center)
-const PIANO_PLAYER_CHAR_Y_PERCENT = 0.25;  // 25% from top
-const PIANO_PLAYER_CHAR_SCALE = 0.8;       // slightly smaller
+// Mode-specific character positioning is defined via per-mode constants above.
 
 // ---------- Defaults (consolidated) ----------
 const DEFAULTS = {
@@ -5499,22 +6067,78 @@ const LAYOUT = {
   playTrackX: '4vw',
   referenceTrackX: '4vw',
   noteSize: '44px',
-  holdNoteWidth: '34px',
+  holdNoteWidth: '24px',
   laneGap: '1vw',
   targetSize: '64px',
 };
 
-function applyLayoutVars() {
+const BATTLE_LAYOUT = {
+  playTrackWidth: '38vw',
+  referenceTrackWidth: '38vw',
+  playTrackX: '4vw',
+  referenceTrackX: '4vw',
+  noteSize: '44px',
+  holdNoteWidth: '40px',
+  laneGap: '1vw',
+  targetSize: '64px',
+};
+
+const AUTO_LAYOUT = {
+  playTrackWidth: '38vw',
+  referenceTrackWidth: '38vw',
+  playTrackX: '4vw',
+  referenceTrackX: '4vw',
+  noteSize: '44px',
+  holdNoteWidth: '40px',
+  laneGap: '1vw',
+  targetSize: '64px',
+};
+
+const SOLO_LAYOUT = {
+  playTrackWidth: '38vw',
+  referenceTrackWidth: '38vw',
+  playTrackX: '4vw',
+  referenceTrackX: '4vw',
+  noteSize: '74px',
+  holdNoteWidth: '67px',
+  laneGap: '1vw',
+  targetSize: '64px',
+};
+
+const PIANO_LAYOUT = {
+  playTrackWidth: '80vw',
+  referenceTrackWidth: '100vw',
+  playTrackX: '10vw',
+  referenceTrackX: '0vw',
+  noteSize: '24px',
+  holdNoteWidth: '20px',
+  laneGap: '1vw',
+  targetSize: '48px',
+};
+
+const MODE_LAYOUTS = {
+  battle: BATTLE_LAYOUT,
+  auto: AUTO_LAYOUT,
+  solo: SOLO_LAYOUT,
+  piano: PIANO_LAYOUT,
+};
+
+function getLayoutForMode(mode = gameMode) {
+  return MODE_LAYOUTS[mode] || LAYOUT;
+}
+
+function applyLayoutVars(mode = gameMode) {
+  const layout = getLayoutForMode(mode);
   const root = document.documentElement.style;
-  root.setProperty('--play-track-width', LAYOUT.playTrackWidth);
-  root.setProperty('--reference-track-width', LAYOUT.referenceTrackWidth);
-  root.setProperty('--play-track-x', LAYOUT.playTrackX);
-  root.setProperty('--reference-track-x', LAYOUT.referenceTrackX);
-  root.setProperty('--note-size', LAYOUT.noteSize);
-  root.setProperty('--hold-note-width', LAYOUT.holdNoteWidth);
-  root.setProperty('--track-width', LAYOUT.playTrackWidth);
-  root.setProperty('--lane-gap', LAYOUT.laneGap);
-  root.setProperty('--target-size', LAYOUT.targetSize);
+  root.setProperty('--play-track-width', layout.playTrackWidth);
+  root.setProperty('--reference-track-width', layout.referenceTrackWidth);
+  root.setProperty('--play-track-x', layout.playTrackX);
+  root.setProperty('--reference-track-x', layout.referenceTrackX);
+  root.setProperty('--note-size', layout.noteSize);
+  root.setProperty('--hold-note-width', layout.holdNoteWidth);
+  root.setProperty('--track-width', layout.playTrackWidth);
+  root.setProperty('--lane-gap', layout.laneGap);
+  root.setProperty('--target-size', layout.targetSize);
 }
 
 applyLayoutVars();
@@ -5522,15 +6146,810 @@ applyLayoutVars();
 const MAIN_MENU_VISUAL_SRC = 'Art/MM-MainMenuDraft-Visual.png';
 const MAIN_MENU_HITBOX_SRC = 'Art/MM-MainMenuDraft-Hitboxes.png';
 
+const TOUR_UI_LAYOUT = {
+  backButton: { left: '2.5vw', top: '2.5vh', width: '10vw', height: '5.2vh' },
+  difficultyWrap: { left: '3vw', top: '9vh', width: '22vw', height: '14vh' },
+  previewPanel: { left: '3vw', top: '26vh', width: '42vw', height: '60vh' },
+  characterPanel: { right: '3vw', top: '8vh', width: '50vw', height: '84vh' },
+  playButton: { left: '8vw', bottom: '5vh', width: '28vw', height: '10vh' },
+};
+
+const TOUR_FETCH_CONFIG = {
+  catalogUrl: 'https://api.github.com/repos/Tonejs/Midi/git/trees/master?recursive=1',
+  maxCatalogEntries: 140,
+  maxFetchAttempts: 8,
+  minProgressionDeltaNotes: 18,
+};
+
+const TOUR_FALLBACK_MIDI_SOURCES = [
+  { title: 'Copa70', url: 'Prebuild-Songs/Copa70.mid', tags: ['latin', 'dance', 'groove'] },
+  { title: 'Melody No.7', url: 'Prebuild-Songs/Melody No.7.mid', tags: ['melody', 'orchestral', 'ambient'] },
+  { title: 'Tone Beat', url: 'https://raw.githubusercontent.com/Tonejs/Midi/master/test/midi/beat.mid', tags: ['electronic', 'drums', 'rhythm'] },
+  { title: 'Bach 846', url: 'https://raw.githubusercontent.com/Tonejs/Midi/master/examples/bach_846.mid', tags: ['classical', 'piano', 'baroque'] },
+];
+
 let mainMenuHotspots = [];
 let mainMenuHoverRegion = null;
+let currentTourCharacterId = 'blank';
+let transientGameplayProject = null;
+let tourMidiCatalogCache = null;
+let tourRunState = {
+  active: false,
+  songIndex: 0,
+  cumulativeScore: 0,
+  lastTrackNotes: 0,
+  awaitingResultChoice: false,
+  currentSongCounted: false,
+  loadingSong: false,
+  difficulty: 'normal',
+  playerCharacterId: 'blank',
+  bestScores: { easy: 0, normal: 0, hard: 0 },
+  lastRunScore: 0,
+  lastScorePercentage: 0,
+};
+
+function applyTourUILayoutVars() {
+  const applyBox = (id, box) => {
+    const el = document.getElementById(id);
+    if (!el || !box) return;
+    if (box.left != null) el.style.left = box.left;
+    if (box.right != null) el.style.right = box.right;
+    if (box.top != null) el.style.top = box.top;
+    if (box.bottom != null) el.style.bottom = box.bottom;
+    if (box.width != null) el.style.width = box.width;
+    if (box.height != null) el.style.height = box.height;
+  };
+
+  applyBox('btn-tour-back', TOUR_UI_LAYOUT.backButton);
+  applyBox('tour-difficulty-wrap', TOUR_UI_LAYOUT.difficultyWrap);
+  applyBox('tour-preview-panel', TOUR_UI_LAYOUT.previewPanel);
+  applyBox('tour-character-panel', TOUR_UI_LAYOUT.characterPanel);
+  applyBox('tour-play-btn', TOUR_UI_LAYOUT.playButton);
+}
+
+function updateTourHighscoreDisplay() {
+  const highscoreEl = document.getElementById('tour-highscore');
+  if (!highscoreEl) return;
+  const difficultyEl = document.getElementById('tour-difficulty-select');
+  const diff = (difficultyEl?.value || tourRunState.difficulty || 'normal').toLowerCase();
+  const high = Number(tourRunState.bestScores?.[diff] || 0);
+  const lastRun = Number(tourRunState.lastRunScore || 0);
+  highscoreEl.textContent = `Tour Highscore (${diff}): ${high}\nLast Run: ${lastRun}`;
+}
+
+function normalizeTourKeyword(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function extractKeywordsFromPath(path) {
+  const normalized = normalizeTourKeyword(path);
+  if (!normalized) return [];
+  const parts = normalized.split(/\s+/g).filter(Boolean);
+  return Array.from(new Set(parts));
+}
+
+function estimateMaxTrackNoteCount(midi) {
+  if (!midi || !Array.isArray(midi.tracks)) return 0;
+  let maxCount = 0;
+  for (const track of midi.tracks) {
+    const count = (track?.events || []).reduce((acc, ev) => {
+      if (ev?.type === 'noteOn' && (ev.velocity || 0) > 0) return acc + 1;
+      return acc;
+    }, 0);
+    if (count > maxCount) maxCount = count;
+  }
+  return maxCount;
+}
+
+function countNotesInTrack(midi, trackIdx) {
+  if (!midi || !Array.isArray(midi.tracks) || !midi.tracks[trackIdx]) return 0;
+  const track = midi.tracks[trackIdx];
+  return (track?.events || []).reduce((acc, ev) => {
+    if (ev?.type === 'noteOn' && (ev.velocity || 0) > 0) return acc + 1;
+    return acc;
+  }, 0);
+}
+
+function isLikelyDrumTrack(trackName) {
+  if (!trackName) return false;
+  const lower = String(trackName).toLowerCase();
+  return /drum|percussion|kick|snare|hi-hat|hihat|bass drum|cymbal/.test(lower);
+}
+
+function findMainTrackIdx(midi) {
+  if (!midi || !Array.isArray(midi.tracks) || midi.tracks.length === 0) return 0;
+  
+  let bestIdx = 0;
+  let bestCount = 0;
+  let bestIsDrum = true;
+  
+  for (let i = 0; i < midi.tracks.length; i++) {
+    const track = midi.tracks[i];
+    const count = countNotesInTrack(midi, i);
+    const isDrum = isLikelyDrumTrack(track.trackName);
+    
+    if (count === 0) continue;
+    
+    // Prefer non-drum tracks, but pick highest note count overall
+    if (!isDrum && bestIsDrum) {
+      bestIdx = i;
+      bestCount = count;
+      bestIsDrum = false;
+    } else if (isDrum === bestIsDrum && count > bestCount) {
+      bestIdx = i;
+      bestCount = count;
+    }
+  }
+  
+  return bestIdx;
+}
+
+function calculateProgressionTarget(songIndex, difficulty) {
+  // Difficulty-based progression tiers
+  if (difficulty === 'easy') {
+    // Easy: starts at 40 notes, increases slowly
+    const stages = [40, 52, 64, 76, 88, 100, 110, 120];
+    return stages[Math.min(songIndex - 1, stages.length - 1)];
+  } else if (difficulty === 'hard') {
+    // Hard: starts at 60 notes, exponential progression
+    const stages = [60, 90, 130, 180, 240, 310, 390, 480];
+    return stages[Math.min(songIndex - 1, stages.length - 1)];
+  } else {
+    // Normal: starts at 50 notes, moderate progression
+    const stages = [50, 75, 100, 125, 150, 175, 200, 225];
+    return stages[Math.min(songIndex - 1, stages.length - 1)];
+  }
+}
+
+function calculateProgressionRange(targetMin, difficulty) {
+  // Return [min, max] note range for this stage
+  if (difficulty === 'easy') {
+    return [targetMin, targetMin + 30];
+  } else if (difficulty === 'hard') {
+    return [targetMin - 15, targetMin + 20];
+  } else {
+    return [targetMin - 10, targetMin + 25];
+  }
+}
+
+function calculatePerfectScore(noteCount, difficulty) {
+  // Perfect score = 300 * (1 + 2 + 3 + ... + noteCount) * difficultyMultiplier
+  // This assumes all notes are perfect with cascading combo
+  const baseComboTotal = (noteCount * (noteCount + 1)) / 2;
+  const pointsPerCombo = 300;
+  const basePerfect = baseComboTotal * pointsPerCombo;
+  
+  const multiplier = difficulty === 'easy' ? EASY_SCORE_MULTIPLIER : (difficulty === 'hard' ? HARD_SCORE_MULTIPLIER : NORMAL_SCORE_MULTIPLIER);
+  return Math.floor(basePerfect * multiplier);
+}
+
+async function buildTourMidiSourcePool(minNotesRangeMin, maxNotesRangeMax, characterGenres, maxPoolSize = 10, onProgress = null) {
+  // Build a pool of up to maxPoolSize MIDI files matching criteria
+  const catalog = await getTourMidiCatalog();
+  if (!catalog.length) throw new Error('No Tour MIDI sources available.');
+  
+  const candidates = [];
+  
+  for (let index = 0; index < catalog.length; index++) {
+    const source = catalog[index];
+    try {
+      if (onProgress) onProgress({ stage: 'fetching', index, total: catalog.length, source });
+      const fetchUrl = (/^https?:\/\//i).test(String(source.url || '')) ? source.url : encodeURI(source.url);
+      const response = await fetch(fetchUrl, { mode: 'cors' });
+      if (!response.ok) continue;
+      if (onProgress) onProgress({ stage: 'parsing', index, total: catalog.length, source });
+      const arrayBuffer = await response.arrayBuffer();
+      const parsed = parseMidi(arrayBuffer.slice(0));
+      
+      const mainTrackIdx = findMainTrackIdx(parsed);
+      const noteCount = countNotesInTrack(parsed, mainTrackIdx);
+      
+      if (noteCount < minNotesRangeMin || noteCount > maxNotesRangeMax) continue;
+      
+      const score = scoreTourSourceForCharacter(source, characterGenres);
+      candidates.push({
+        source,
+        arrayBuffer,
+        parsed,
+        noteCount,
+        mainTrackIdx,
+        score,
+      });
+      if (onProgress) onProgress({ stage: 'matched', index, total: catalog.length, source, noteCount });
+      
+      if (candidates.length >= maxPoolSize) break;
+    } catch (err) {
+      console.warn('Pool source fetch failed:', source?.url, err);
+      continue;
+    }
+  }
+  
+  // Sort by score descending, shuffle within top performers for variety
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates.slice(0, maxPoolSize);
+}
+
+function pickRandomItem(items) {
+  if (!Array.isArray(items) || !items.length) return null;
+  return items[Math.floor(Math.random() * items.length)] || null;
+}
+
+function pickTourModeForSong(songIndex) {
+  if (songIndex <= 3) {
+    return pickRandomItem(['battle', 'solo']) || 'battle';
+  }
+  return pickRandomItem(['battle', 'solo', 'piano']) || 'battle';
+}
+
+function pickRandomBackgroundSceneId() {
+  const ids = (Array.isArray(BACKGROUND_SCENES) ? BACKGROUND_SCENES : []).map(scene => scene.id).filter(Boolean);
+  return pickRandomItem(ids) || DEFAULTS.backgroundScene;
+}
+
+function pickRandomRivalCharacterId(playerCharacterId) {
+  const rivalPool = (Array.isArray(CHARACTERS) ? CHARACTERS : [])
+    .map(character => character.id)
+    .filter(id => id && id !== 'blank' && id !== playerCharacterId);
+  return pickRandomItem(rivalPool) || 'blank';
+}
+
+function scoreTourSourceForCharacter(source, characterGenres = []) {
+  const tags = Array.isArray(source?.tags) ? source.tags.map(normalizeTourKeyword) : [];
+  if (!tags.length || !characterGenres.length) return 0;
+  const genreWords = characterGenres.map(normalizeTourKeyword).flatMap(genre => genre.split(/\s+/g)).filter(Boolean);
+  let score = 0;
+  for (const genreWord of genreWords) {
+    if (tags.some(tag => tag.includes(genreWord))) score += 2;
+  }
+  return score;
+}
+
+async function getTourMidiCatalog() {
+  if (Array.isArray(tourMidiCatalogCache) && tourMidiCatalogCache.length) return tourMidiCatalogCache;
+
+  try {
+    const response = await fetch(TOUR_FETCH_CONFIG.catalogUrl, { method: 'GET' });
+    if (!response.ok) throw new Error(`Catalog fetch failed (${response.status})`);
+    const payload = await response.json();
+    const tree = Array.isArray(payload?.tree) ? payload.tree : [];
+    const midiPaths = tree
+      .filter(item => item && item.type === 'blob' && /\.mid$/i.test(item.path || ''))
+      .slice(0, TOUR_FETCH_CONFIG.maxCatalogEntries)
+      .map(item => String(item.path));
+
+    const remoteSources = midiPaths.map(path => {
+      const fileName = path.split('/').pop() || path;
+      return {
+        title: fileName.replace(/\.mid$/i, ''),
+        url: `https://raw.githubusercontent.com/Tonejs/Midi/master/${path}`,
+        tags: extractKeywordsFromPath(path),
+      };
+    });
+
+    tourMidiCatalogCache = remoteSources.length ? remoteSources.concat(TOUR_FALLBACK_MIDI_SOURCES) : TOUR_FALLBACK_MIDI_SOURCES.slice();
+  } catch (err) {
+    console.warn('Tour catalog fetch failed; using fallback list.', err);
+    tourMidiCatalogCache = TOUR_FALLBACK_MIDI_SOURCES.slice();
+  }
+
+  return tourMidiCatalogCache;
+}
+
+function createTransientTourProject({ midiBuffer, midiName, mode, mapId, playerCharacterId, rivalCharacterId, mainTrackIdx }) {
+  const project = createEmptyProject();
+  project.id = `tour-transient-${Date.now()}`;
+  project.title = `Tour Run ${tourRunState.songIndex}: ${midiName || 'Remote MIDI'}`;
+  project.settings = {
+    ...project.settings,
+    mode,
+    backgroundScene: mapId,
+    difficulty: tourRunState.difficulty || currentDifficulty || 'normal',
+  };
+  project.playerCharacterId = playerCharacterId || 'blank';
+  project.rivalCharacterId = rivalCharacterId || 'blank';
+  project.midiBuffer = midiBuffer ? midiBuffer.slice(0) : null;
+  project.midiName = midiName || `tour-song-${tourRunState.songIndex}.mid`;
+  project.trackRoles = [];
+  project.trackVolumes = [];
+  project.trackClipIds = [];
+  project.trackCollapsed = [];
+  project.manualBeatmap = [];
+  project.manualMapEnabled = false;
+  project.mp3Blob = null;
+  project.recorderVoiceBlob = null;
+  project.updatedAt = Date.now();
+  project.mainTrackIdx = mainTrackIdx || 0;
+  return project;
+}
+
+async function chooseTourMidiSource(difficulty, songIndex, characterGenres = []) {
+  try {
+    // Get target note range for this stage and difficulty
+    const targetMin = calculateProgressionTarget(songIndex, difficulty);
+    const [rangeMin, rangeMax] = calculateProgressionRange(targetMin, difficulty);
+    
+    // Build pool of up to 10 candidate MIDI files
+    const pool = await buildTourMidiSourcePool(rangeMin, rangeMax, characterGenres, 10);
+    if (!pool.length) {
+      console.warn('No pool candidates found, trying fallback sources...');
+      throw new Error('No candidates in target range');
+    }
+    
+    // Pick randomly from pool for variety (avoid same song twice in a run)
+    const picked = pickRandomItem(pool);
+    if (!picked) throw new Error('Failed to pick from pool');
+    
+    return {
+      title: picked.source.title || 'Tour MIDI',
+      sourceUrl: picked.source.url,
+      artist: picked.source.artist || 'Unknown',
+      genre: picked.source.tags ? picked.source.tags.join('/') : 'Mixed',
+      arrayBuffer: picked.arrayBuffer,
+      parsed: picked.parsed,
+      noteCount: picked.noteCount,
+      mainTrackIdx: picked.mainTrackIdx,
+    };
+  } catch (err) {
+    console.warn('Pool-based selection failed:', err);
+    // Fallback to old method using fallback sources
+    const fallback = TOUR_FALLBACK_MIDI_SOURCES[Math.floor(Math.random() * TOUR_FALLBACK_MIDI_SOURCES.length)];
+    try {
+      const fallbackUrl = (/^https?:\/\//i).test(String(fallback.url || '')) ? fallback.url : encodeURI(fallback.url);
+      const response = await fetch(fallbackUrl, { mode: 'cors' });
+      if (!response.ok) throw new Error(`Fallback fetch failed (${response.status})`);
+      const arrayBuffer = await response.arrayBuffer();
+      const parsed = parseMidi(arrayBuffer.slice(0));
+      const mainTrackIdx = findMainTrackIdx(parsed);
+      const noteCount = countNotesInTrack(parsed, mainTrackIdx);
+      return {
+        title: fallback.title || 'Tour MIDI',
+        sourceUrl: fallback.url,
+        artist: 'Unknown',
+        genre: fallback.tags ? fallback.tags.join('/') : 'Mixed',
+        arrayBuffer,
+        parsed,
+        noteCount,
+        mainTrackIdx,
+      };
+    } catch (fallbackErr) {
+      throw new Error('Failed to fetch any playable Tour MIDI file.');
+    }
+  }
+}
+
+async function loadTourSongAndStart() {
+  if (tourRunState.loadingSong) return;
+  tourRunState.loadingSong = true;
+
+  try {
+    showTourLoadingCard({
+      mode: 'Loading...',
+      songName: 'Preparing pool',
+      artist: 'Fetching assets',
+      genre: 'Resolving candidates',
+      noteCount: 0,
+      status: 'Starting tour load...'
+    }, null, { showPlayButton: false, playEnabled: false, ready: false });
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    const songIndex = Math.max(1, tourRunState.songIndex + 1);
+    const playerCharacterId = currentTourCharacterId || currentPlayerCharacterId || 'blank';
+    const character = getCharacterById(playerCharacterId);
+    const genres = Array.isArray(character?.genres) ? character.genres : [];
+    const difficulty = tourRunState.difficulty || 'normal';
+    const mode = pickTourModeForSong(songIndex);
+    const mapId = pickRandomBackgroundSceneId();
+    const rivalCharacterId = pickRandomRivalCharacterId(playerCharacterId);
+
+    // Build pool of candidates, pick one, and show loading animation
+    const targetMin = calculateProgressionTarget(songIndex, difficulty);
+    const [rangeMin, rangeMax] = calculateProgressionRange(targetMin, difficulty);
+    // enforce minimum progression floor per stage/difficulty
+    const difficultyInc = (d) => d === 'easy' ? 8 : (d === 'hard' ? 30 : 18);
+    const minFloor = Math.max(50, 50 + (songIndex - 1) * difficultyInc(difficulty));
+    const effectiveMin = Math.max(rangeMin, minFloor);
+    showTourLoadingCard({
+      mode: `Stage ${songIndex}`,
+      songName: 'Loading MIDI catalog',
+      artist: 'Fetching assets',
+      genre: `${difficulty.toUpperCase()} mode`,
+      noteCount: 0,
+      status: 'Loading catalog and parsing candidates...'
+    }, null, { showPlayButton: false, playEnabled: false, ready: false });
+
+    const pool = await buildTourMidiSourcePool(effectiveMin, rangeMax, genres, 10, progress => {
+      const sourceTitle = progress?.source?.title || progress?.source?.url || 'unknown source';
+      const progressLabel = progress?.stage === 'fetching' ? 'Fetching' : progress?.stage === 'parsing' ? 'Parsing' : 'Matching';
+      showTourLoadingCard({
+        mode: `Stage ${songIndex}`,
+        songName: sourceTitle,
+        artist: 'Loading assets',
+        genre: progress?.stage === 'matched' ? 'Candidate accepted' : `${progressLabel} ${progress?.index + 1 || 0}/${progress?.total || 0}`,
+        noteCount: progress?.noteCount || 0,
+        status: `${progressLabel} ${progress?.index + 1 || 0}/${progress?.total || 0}`,
+      }, null, { showPlayButton: false, playEnabled: false, ready: false });
+    }).catch(() => []);
+    let midiChoice = null;
+    if (pool && pool.length) {
+      // Shuffle top candidates a little then pick
+      const pickIdx = Math.floor(Math.random() * pool.length);
+      const picked = pool[pickIdx];
+      midiChoice = {
+        title: picked.source.title || 'Tour MIDI',
+        sourceUrl: picked.source.url,
+        artist: picked.source.artist || 'Unknown',
+        genre: picked.source.tags ? picked.source.tags.join('/') : 'Mixed',
+        arrayBuffer: picked.arrayBuffer,
+        parsed: picked.parsed,
+        noteCount: picked.noteCount,
+        mainTrackIdx: picked.mainTrackIdx,
+        pool,
+        pickedIndex: pickIdx,
+      };
+    } else {
+      // Fallback to chooser that fetches single source
+      midiChoice = await chooseTourMidiSource(difficulty, songIndex, genres);
+    }
+
+    // Show loading card with song info and pool animation (if available)
+    if (midiChoice) {
+      const titles = (midiChoice.pool && midiChoice.pool.length)
+        ? midiChoice.pool.map(p => ({ title: p.source.title || 'Untitled', noteCount: p.noteCount || 0 }))
+        : [{ title: midiChoice.title || 'Tour MIDI', noteCount: midiChoice.noteCount || 0 }];
+      showTourLoadingWithPool(titles, midiChoice.pickedIndex, {
+        mode,
+        songName: midiChoice.title,
+        artist: midiChoice.artist,
+        genre: midiChoice.genre,
+        noteCount: midiChoice.noteCount || 0,
+        status: 'Song ready - choose Play to start',
+      }, async () => {
+        try {
+          const transientProject = createTransientTourProject({
+            midiBuffer: midiChoice.arrayBuffer,
+            midiName: `${midiChoice.title || 'Tour MIDI'}.mid`,
+            mode,
+            mapId,
+            playerCharacterId,
+            rivalCharacterId,
+            mainTrackIdx: midiChoice.mainTrackIdx,
+          });
+
+          transientGameplayProject = transientProject;
+          currentProjectId = transientProject.id;
+          tourRunState.songIndex = songIndex;
+          tourRunState.lastTrackNotes = midiChoice.noteCount;
+          tourRunState.currentSongCounted = false;
+          tourRunState.awaitingResultChoice = false;
+
+          applyProjectSettingsToUI(transientProject.settings || DEFAULTS);
+          applyCharacterSettingsToUI({
+            playerCharacterId: transientProject.playerCharacterId,
+            rivalCharacterId: transientProject.rivalCharacterId,
+            playerMissSoundId: 'default',
+            rivalMissSoundId: 'default',
+          });
+
+          currentDifficulty = difficulty;
+          const diffEditor = document.getElementById('difficulty-selector');
+          if (diffEditor) diffEditor.value = currentDifficulty;
+          const tourDiff = document.getElementById('tour-difficulty-select');
+          if (tourDiff) tourDiff.value = currentDifficulty;
+
+          await loadMidiProjectBuffer(midiChoice.arrayBuffer, transientProject.midiName || 'tour.mid', false);
+          gameMode = mode;
+          isAutoMode = gameMode === 'auto';
+          const modeEl = document.getElementById('var-mode');
+          if (modeEl) modeEl.value = gameMode;
+          buildTrackSelector();
+          readConfig();
+          startGame();
+        } catch (innerErr) {
+          console.error('Failed to start game from loading card:', innerErr);
+          alert(`Failed to start game: ${innerErr.message}`);
+          hideTourLoadingCard();
+          tourRunState.loadingSong = false;
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Failed to load Tour song:', err);
+    tourRunState.loadingSong = false;
+    alert(`Failed to load tour song: ${err.message}`);
+    endTourRunAndReturnToTourScreen();
+  }
+}
+
+function showTourLoadingCard(info, onPlayClick, options = {}) {
+  const card = document.getElementById('tour-loading-card');
+  const playBtn = document.getElementById('tour-loading-play');
+  const content = document.getElementById('tour-loading-content');
+  
+  if (card) {
+    document.getElementById('tour-loading-mode').textContent = info.mode || 'Battle';
+    document.getElementById('tour-loading-song').textContent = info.songName || 'Unknown';
+    document.getElementById('tour-loading-artist').textContent = info.artist || 'Unknown';
+    document.getElementById('tour-loading-genre').textContent = info.genre || 'Mixed';
+    const notesEl = document.getElementById('tour-loading-notes');
+    if (notesEl) notesEl.textContent = info.noteCount != null ? String(info.noteCount) : '0';
+    const statusEl = document.getElementById('tour-loading-status');
+    if (statusEl && info.status) statusEl.textContent = info.status;
+    if (content) content.classList.toggle('loading-ready', !!options.ready);
+    
+    if (playBtn) {
+      const visible = options.showPlayButton !== false;
+      playBtn.hidden = !visible;
+      playBtn.disabled = options.playEnabled === false;
+      playBtn.textContent = options.playLabel || 'PLAY SONG';
+      playBtn.onclick = visible ? (e) => {
+        e.preventDefault();
+        if (playBtn.disabled) return;
+        playBtn.disabled = true;
+        hideTourLoadingCard();
+        if (onPlayClick) onPlayClick();
+      } : null;
+    }
+    card.classList.add('visible');
+  }
+}
+
+function showTourLoadingWithPool(titles, pickedIndex, info, onPlayClick) {
+  // Populate basic info
+  showTourLoadingCard(info, null, { showPlayButton: false, playEnabled: false, ready: true });
+
+  const slotList = document.querySelector('#tour-loading-slot .slot-list');
+  const playerImg = document.getElementById('tour-loading-portrait-player');
+  const rivalImg = document.getElementById('tour-loading-portrait-rival');
+
+  if (!slotList) return showTourLoadingCard(info, onPlayClick, { ready: true });
+
+  // Build repeated titles list for continuous scroll
+  slotList.innerHTML = '';
+  const repeats = 8;
+  const all = [];
+  for (let r = 0; r < repeats; r++) all.push(...titles);
+  all.forEach(t => {
+    const d = document.createElement('div');
+    d.className = 'slot-item';
+    d.style.fontFamily = "'Share Tech Mono', monospace";
+    d.style.color = '#dfe6ff';
+    d.style.fontSize = '16px';
+    const titleText = (typeof t === 'string') ? t : (t.title || 'Untitled');
+    const noteCount = (t && t.noteCount != null) ? ` — ${t.noteCount} notes` : '';
+    d.textContent = `${titleText}${noteCount}`;
+    slotList.appendChild(d);
+  });
+
+  // Start simple scroll animation using JS
+  const itemHeight = slotList.firstElementChild ? slotList.firstElementChild.getBoundingClientRect().height + 8 : 24;
+  let position = 0;
+  let target = (repeats - 2) * titles.length + (pickedIndex || 0);
+  const duration = 2500 + Math.random() * 1200;
+  const start = performance.now();
+
+  function tick(now) {
+    const t = Math.min(1, (now - start) / duration);
+    // ease out cubic
+    const ease = 1 - Math.pow(1 - t, 3);
+    const current = Math.floor(ease * target);
+    const y = -current * itemHeight;
+    slotList.style.transform = `translateY(${y}px)`;
+    if (t < 1) requestAnimationFrame(tick);
+    else {
+      // reveal final picked item text in song row
+      const songEl = document.getElementById('tour-loading-song');
+      if (songEl) songEl.textContent = (titles[pickedIndex] && (titles[pickedIndex].title || titles[pickedIndex])) || songEl.textContent;
+      // enable play button
+      const playBtn = document.getElementById('tour-loading-play');
+      if (playBtn) {
+        playBtn.hidden = false;
+        playBtn.disabled = false;
+        playBtn.onclick = (e) => { e.preventDefault(); hideTourLoadingCard(); if (onPlayClick) onPlayClick(); };
+      }
+      const content = document.getElementById('tour-loading-content');
+      if (content) content.classList.add('loading-ready');
+    }
+  }
+
+  // Portraits slide-in: use current selected character and a random rival
+  try {
+    const playerChar = getCharacterById(currentTourCharacterId || currentPlayerCharacterId || 'blank');
+    const rivalId = pickRandomRivalCharacterId(currentTourCharacterId || currentPlayerCharacterId || 'blank');
+    const rivalChar = getCharacterById(rivalId);
+    if (playerImg) playerImg.src = playerChar?.portraitSprite || '';
+    if (rivalImg) rivalImg.src = rivalChar?.portraitSprite || '';
+    // start with off-screen transforms
+    if (playerImg) { playerImg.style.transform = 'translateX(-120%)'; playerImg.style.transition = 'transform 700ms cubic-bezier(.22,.9,.27,1)'; setTimeout(()=>playerImg.style.transform='translateX(0)',80); }
+    if (rivalImg) { rivalImg.style.transform = 'translateX(120%)'; rivalImg.style.transition = 'transform 700ms cubic-bezier(.22,.9,.27,1)'; setTimeout(()=>rivalImg.style.transform='translateX(0)',140); }
+  } catch (e) { /* ignore */ }
+
+  // disable immediate play until animation completes
+  const pb = document.getElementById('tour-loading-play'); if (pb) { pb.hidden = true; pb.disabled = true; pb.onclick = null; }
+  requestAnimationFrame(tick);
+}
+
+function hideTourLoadingCard() {
+  const card = document.getElementById('tour-loading-card');
+  if (card) card.classList.remove('visible');
+}
+
+async function startTourRun() {
+  if (tourRunState.loadingSong) return;
+  const difficultyEl = document.getElementById('tour-difficulty-select');
+  tourRunState.difficulty = (difficultyEl?.value || currentDifficulty || 'normal').toLowerCase();
+  tourRunState.playerCharacterId = currentTourCharacterId || currentPlayerCharacterId || 'blank';
+  tourRunState.songIndex = 0;
+  tourRunState.cumulativeScore = 0;
+  tourRunState.lastTrackNotes = 0;
+  tourRunState.awaitingResultChoice = false;
+  tourRunState.currentSongCounted = false;
+  tourRunState.active = true;
+  await loadTourSongAndStart();
+}
+
+async function continueTourRunFromResults() {
+  if (!tourRunState.active || !tourRunState.awaitingResultChoice) return;
+  const results = document.getElementById('results-screen');
+  if (results) results.classList.remove('visible');
+  await loadTourSongAndStart();
+}
+
+function endTourRunAndReturnToTourScreen() {
+  if (tourRunState.active) {
+    const diff = (tourRunState.difficulty || currentDifficulty || 'normal').toLowerCase();
+    const total = Math.max(0, Math.floor(tourRunState.cumulativeScore || 0));
+    tourRunState.lastRunScore = total;
+    tourRunState.bestScores[diff] = Math.max(Number(tourRunState.bestScores[diff] || 0), total);
+  }
+
+  tourRunState.active = false;
+  tourRunState.awaitingResultChoice = false;
+  tourRunState.currentSongCounted = false;
+  tourRunState.loadingSong = false;
+  transientGameplayProject = null;
+  if (selectedProjectId) currentProjectId = selectedProjectId;
+
+  stopProjectSelectionPreview();
+  stopGame();
+
+  const results = document.getElementById('results-screen');
+  if (results) results.classList.remove('visible');
+  updateTourHighscoreDisplay();
+  showTourScreen();
+}
+
+function renderTourCharacterPreview(characterId) {
+  const character = getCharacterById(characterId);
+  const portraitEl = document.getElementById('tour-character-portrait');
+  const nameEl = document.getElementById('tour-character-name');
+  const genresEl = document.getElementById('tour-character-genres');
+  if (!portraitEl || !nameEl || !genresEl) return;
+
+  const portraitSrc = character?.portraitSprite || null;
+  portraitEl.innerHTML = '';
+  if (portraitSrc) {
+    const img = document.createElement('img');
+    img.src = portraitSrc;
+    img.alt = `${character?.label || 'Character'} portrait`;
+    portraitEl.appendChild(img);
+  } else {
+    const empty = document.createElement('div');
+    empty.className = 'tour-portrait-empty';
+    empty.textContent = 'NO PORTRAIT';
+    portraitEl.appendChild(empty);
+  }
+
+  nameEl.textContent = character?.label || 'None';
+  const genres = Array.isArray(character?.genres) ? character.genres : [];
+  genresEl.textContent = genres.length ? `Genre: ${genres.join(' • ')}` : 'Genre: Unspecified';
+}
+
+function selectTourCharacter(characterId) {
+  currentTourCharacterId = characterId || 'blank';
+  const grid = document.getElementById('tour-character-grid');
+  if (grid) {
+    const cards = grid.querySelectorAll('.tour-character-card');
+    cards.forEach(card => {
+      card.classList.toggle('selected', card.dataset.characterId === currentTourCharacterId);
+    });
+  }
+
+  renderTourCharacterPreview(currentTourCharacterId);
+  currentPlayerCharacterId = currentTourCharacterId;
+  const playerCharSelect = document.getElementById('var-player-character');
+  if (playerCharSelect) playerCharSelect.value = currentPlayerCharacterId;
+  try { loadCharacterSprites(currentPlayerCharacterId, 'player'); } catch (_){ }
+  if (currentProjectId) syncProjectSettingsToDraft();
+}
+
+function buildTourCharacterSelect() {
+  const grid = document.getElementById('tour-character-grid');
+  if (!grid) return;
+  const characters = (Array.isArray(CHARACTERS) ? CHARACTERS : []).filter(ch => ch.id !== 'blank');
+  grid.innerHTML = '';
+
+  for (const character of characters) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'tour-character-card';
+    card.dataset.characterId = character.id;
+
+    const icon = document.createElement('div');
+    icon.className = 'tour-character-icon';
+    if (character.portraitSprite) {
+      const img = document.createElement('img');
+      img.src = character.portraitSprite;
+      img.alt = `${character.label} icon`;
+      icon.appendChild(img);
+    } else {
+      const first = (character.label || character.id || '?').trim().charAt(0).toUpperCase() || '?';
+      icon.textContent = first;
+    }
+
+    const label = document.createElement('div');
+    label.className = 'tour-character-label';
+    label.textContent = character.label || character.id;
+
+    card.appendChild(icon);
+    card.appendChild(label);
+    card.addEventListener('click', () => selectTourCharacter(character.id));
+    grid.appendChild(card);
+  }
+}
+
+function initTourScreen() {
+  applyTourUILayoutVars();
+  buildTourCharacterSelect();
+  updateTourHighscoreDisplay();
+
+  const difficultyEl = document.getElementById('tour-difficulty-select');
+  if (difficultyEl) {
+    difficultyEl.value = currentDifficulty || 'normal';
+    difficultyEl.addEventListener('change', () => {
+      currentDifficulty = difficultyEl.value || 'normal';
+      tourRunState.difficulty = currentDifficulty;
+      const editorDifficulty = document.getElementById('difficulty-selector');
+      if (editorDifficulty) editorDifficulty.value = currentDifficulty;
+      renderProjectList();
+      updateSelectedProjectSummary();
+      updateTourHighscoreDisplay();
+    });
+  }
+
+  const backBtn = document.getElementById('btn-tour-back');
+  if (backBtn) backBtn.addEventListener('click', showMainMenu);
+
+  const playBtn = document.getElementById('tour-play-btn');
+  if (playBtn) {
+    playBtn.addEventListener('click', async () => {
+      try {
+        playBtn.disabled = true;
+        playBtn.textContent = 'LOADING...';
+        await startTourRun();
+      } catch (err) {
+        console.warn('Tour start failed', err);
+        alert(`Tour start failed: ${err?.message || 'unknown error'}`);
+      } finally {
+        playBtn.disabled = false;
+        playBtn.textContent = 'PLAY';
+      }
+    });
+  }
+
+  const preferredCharacterId = currentPlayerCharacterId && currentPlayerCharacterId !== 'blank'
+    ? currentPlayerCharacterId
+    : (CHARACTERS.find(ch => ch.id !== 'blank')?.id || 'blank');
+  selectTourCharacter(preferredCharacterId);
+}
 
 function showMainMenu() {
   const mainMenu = document.getElementById('main-menu-screen');
   const setupScreen = document.getElementById('setup-screen');
+  const tourScreen = document.getElementById('tour-screen');
   const gameScreen = document.getElementById('game-screen');
   const resultsScreen = document.getElementById('results-screen');
   if (setupScreen) setupScreen.style.display = 'none';
+  if (tourScreen) tourScreen.style.display = 'none';
   if (gameScreen) gameScreen.style.display = 'none';
   if (resultsScreen) resultsScreen.classList.remove('visible');
   setSetupMenuMode('play', false);
@@ -5540,22 +6959,47 @@ function showMainMenu() {
 function showSetupScreen(showEditor = false) {
   const mainMenu = document.getElementById('main-menu-screen');
   const setupScreen = document.getElementById('setup-screen');
+  const tourScreen = document.getElementById('tour-screen');
   const gameScreen = document.getElementById('game-screen');
   const resultsScreen = document.getElementById('results-screen');
   if (mainMenu) mainMenu.classList.remove('visible');
+  if (tourScreen) tourScreen.style.display = 'none';
   if (gameScreen) gameScreen.style.display = 'none';
   if (resultsScreen) resultsScreen.classList.remove('visible');
   if (setupScreen) setupScreen.style.display = 'flex';
   setSetupMenuMode(showEditor ? 'editor' : 'play', false);
 }
 
-function showGameplayScreen() {
+function showTourScreen() {
   const mainMenu = document.getElementById('main-menu-screen');
   const setupScreen = document.getElementById('setup-screen');
+  const tourScreen = document.getElementById('tour-screen');
   const gameScreen = document.getElementById('game-screen');
   const resultsScreen = document.getElementById('results-screen');
   if (mainMenu) mainMenu.classList.remove('visible');
   if (setupScreen) setupScreen.style.display = 'none';
+  if (gameScreen) gameScreen.style.display = 'none';
+  if (resultsScreen) resultsScreen.classList.remove('visible');
+  if (tourScreen) tourScreen.style.display = 'block';
+
+  const difficultyEl = document.getElementById('tour-difficulty-select');
+  if (difficultyEl) difficultyEl.value = currentDifficulty || 'normal';
+  const preferredCharacterId = currentPlayerCharacterId && currentPlayerCharacterId !== 'blank'
+    ? currentPlayerCharacterId
+    : (CHARACTERS.find(ch => ch.id !== 'blank')?.id || 'blank');
+  selectTourCharacter(preferredCharacterId);
+  updateTourHighscoreDisplay();
+}
+
+function showGameplayScreen() {
+  const mainMenu = document.getElementById('main-menu-screen');
+  const setupScreen = document.getElementById('setup-screen');
+  const tourScreen = document.getElementById('tour-screen');
+  const gameScreen = document.getElementById('game-screen');
+  const resultsScreen = document.getElementById('results-screen');
+  if (mainMenu) mainMenu.classList.remove('visible');
+  if (setupScreen) setupScreen.style.display = 'none';
+  if (tourScreen) tourScreen.style.display = 'none';
   if (resultsScreen) resultsScreen.classList.remove('visible');
   setSetupMenuMode('play', false);
   if (gameScreen) gameScreen.style.display = 'flex';
@@ -5590,6 +7034,7 @@ function classifyMainMenuPixel(r, g, b, a) {
   if (hue >= 85 && hue <= 155) return 1;
   if (hue >= 18 && hue < 55) return 2;
   if (hue >= 55 && hue < 85) return 3;
+  if (hue >= 345 || hue < 18) return 4;
   return 0;
 }
 
@@ -5617,7 +7062,7 @@ function parseMainMenuHotspots(image) {
 
   const visited = new Uint8Array(labels.length);
   const regions = [];
-  const labelToAction = { 1: 'menu', 2: 'editor', 3: 'taunt' };
+  const labelToAction = { 1: 'menu', 2: 'editor', 3: 'taunt', 4: 'tour' };
 
   for (let index = 0; index < labels.length; index += 1) {
     if (!labels[index] || visited[index]) continue;
@@ -5698,6 +7143,10 @@ function runMainMenuAction(region) {
     openProjectEditor(selectedProjectId || currentProjectId || null);
     return;
   }
+  if (region.action === 'tour') {
+    showTourScreen();
+    return;
+  }
   if (region.action === 'taunt') {
     triggerPlayerTaunt();
   }
@@ -5760,14 +7209,12 @@ const BATTLE_LANE_META = {
 
 const BATTLE_LANE_ORDER = ['left', 'up', 'down', 'right'];
 
-const PIANO_LANE_ORDER = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';'];
+const PIANO_LANE_ORDER = ['a', 's', 'd', 'f', 'j', 'k', 'l', ';'];
 const PIANO_LANE_KEYS = {
   a: ['a', 'A'],
   s: ['s', 'S'],
   d: ['d', 'D'],
   f: ['f', 'F'],
-  g: ['g', 'G'],
-  h: ['h', 'H'],
   j: ['j', 'J'],
   k: ['k', 'K'],
   l: ['l', 'L'],
@@ -5779,8 +7226,6 @@ const PIANO_LANE_META = {
   s: { color: '#ff8c42', label: 'S', cls: 'lane-piano-s' },
   d: { color: '#ffd166', label: 'D', cls: 'lane-piano-d' },
   f: { color: '#c0df85', label: 'F', cls: 'lane-piano-f' },
-  g: { color: '#7bd389', label: 'G', cls: 'lane-piano-g' },
-  h: { color: '#4ecdc4', label: 'H', cls: 'lane-piano-h' },
   j: { color: '#5fa8d3', label: 'J', cls: 'lane-piano-j' },
   k: { color: '#4f86c6', label: 'K', cls: 'lane-piano-k' },
   l: { color: '#9b5de5', label: 'L', cls: 'lane-piano-l' },
@@ -5896,12 +7341,16 @@ function buildTrackSelector(options = {}) {
   }
   setLoadingOverlayVisible(false);
 
-  // Auto-assign: first track with noteOns → game, rest → backing, unless the current project has an MP3
+  // Auto-assign: use mainTrackIdx if available (Tour mode), otherwise first track with noteOns → game, rest → backing
   let gameAssigned = false;
+  const useMainTrackIdx = !preserveCurrent && currentProjectId && songProjects.find(p => p.id === currentProjectId)?.mainTrackIdx !== undefined;
+  const mainIdx = useMainTrackIdx ? songProjects.find(p => p.id === currentProjectId).mainTrackIdx : -1;
+  
   midiData.tracks.forEach((track, i) => {
     const hasNotes = track.events.some(e => e.type === 'noteOn');
     if (!preserveCurrent) {
-      if (!gameAssigned && hasNotes) { trackRoles[i] = 'game'; gameAssigned = true; }
+      if (mainIdx >= 0 && i === mainIdx) { trackRoles[i] = 'game'; gameAssigned = true; }
+      else if (!gameAssigned && hasNotes) { trackRoles[i] = 'game'; gameAssigned = true; }
       else if (hasNotes) trackRoles[i] = currentProjectHasMp3 ? 'off' : 'backing';
     } else if (trackRoles[i] === 'game') {
       gameAssigned = true;
@@ -6109,6 +7558,31 @@ function readConfig() {
     CFG.mergeMs   = typeof NORMAL_COMBINE_THRESHOLD !== 'undefined' ? NORMAL_COMBINE_THRESHOLD : DEFAULTS.mergeMs;
   }
 
+  // Combine window used for grouping simultaneous notes (passed to combineSimultaneousNotes)
+  if (difficulty === 'easy') {
+    CFG.combineMs = typeof EASY_MERGE_THRESHOLD !== 'undefined' ? Math.round(EASY_MERGE_THRESHOLD * 1.5) : Math.round((DEFAULTS.mergeMs || 340) * 1.5);
+  } else if (difficulty === 'hard') {
+    CFG.combineMs = typeof NORMAL_COMBINE_THRESHOLD !== 'undefined' ? Math.max(3, Math.round(NORMAL_COMBINE_THRESHOLD * 0.8)) : Math.max(3, Math.round((DEFAULTS.mergeMs || 340) * 0.8));
+  } else {
+    CFG.combineMs = typeof NORMAL_COMBINE_THRESHOLD !== 'undefined' ? NORMAL_COMBINE_THRESHOLD : DEFAULTS.mergeMs;
+  }
+
+  // Piano-mode difficulty thresholds are explicitly configurable via constants.
+  if (gameMode === 'piano') {
+    if (difficulty === 'easy' || difficulty === 'normal') {
+      if (difficulty === 'easy') {
+        CFG.mergeMs = PIANO_EASY_MERGE_THRESHOLD;
+        CFG.combineMs = PIANO_EASY_COMBINE_THRESHOLD;
+      } else {
+        CFG.mergeMs = PIANO_NORMAL_MERGE_THRESHOLD;
+        CFG.combineMs = PIANO_NORMAL_COMBINE_THRESHOLD;
+      }
+    } else if (difficulty === 'hard') {
+      CFG.mergeMs = PIANO_HARD_MERGE_THRESHOLD;
+      CFG.combineMs = PIANO_HARD_COMBINE_THRESHOLD;
+    }
+  }
+
   CFG.longNoteThresholdMs = DEFAULTS.longNoteThresholdMs;
 }
 
@@ -6186,6 +7660,10 @@ function startDemoGame() {
 }
 
 function goMenu() {
+  if (tourRunState.active && !tourRunState.awaitingResultChoice) {
+    endTourRunAndReturnToTourScreen();
+    return;
+  }
   stopProjectSelectionPreview();
   stopGame();
   showSetupScreen(false);
@@ -6615,16 +8093,10 @@ function transformToPianoMode(notes) {
         break;
       }
     }
-    // Map to lane: a→left, s→up, d→right, f→down, g→..., etc.
-    // Using a simple mapping: a-d are left/up/right/down, then cycling
-    const laneLookup = {
-      'a': 'left', 's': 'up', 'd': 'right', 'f': 'down',
-      'g': 'left', 'h': 'up', 'j': 'right', 'k': 'down',
-      'l': 'left', ';': 'up'
-    };
+    // For piano mode use the piano key as the lane directly (a,s,d,f,j,k,l,;)
     return {
       ...note,
-      lane: laneLookup[pianoKey] || 'left',
+      lane: pianoKey,
       pianoKey: pianoKey,
       auto: false,
       playerMuted: false
@@ -6664,15 +8136,12 @@ function startGame() {
   if (gameStartQueued) return;
   gameStartQueued = true;
 
-  const currentProject = songProjects.find(p => p.id === currentProjectId);
-  gameMode = (currentProject && currentProject.settings && currentProject.settings.mode) || DEFAULTS.mode || 'battle';
+  const currentProject = songProjects.find(p => p.id === currentProjectId) || transientGameplayProject;
+  const uiMode = document.getElementById('var-mode')?.value;
+  const projectMode = (currentProject && currentProject.settings && currentProject.settings.mode) || DEFAULTS.mode || 'battle';
+  const isTourProject = !!(transientGameplayProject && currentProject && currentProject.id === transientGameplayProject.id);
+  gameMode = isTourProject ? projectMode : (uiMode || projectMode);
   isAutoMode = gameMode === 'auto';
-  playerCharacterPositionXPercent = 0.85;
-  playerCharacterPositionYPercent = 0.6;
-  rivalCharacterPositionXPercent = 0.25;
-  rivalCharacterPositionYPercent = 0.6;
-  playerCharacterScale = 2.0;
-  rivalCharacterScale = 2.0;
 
   readConfig();
   setLoadingOverlayVisible(false);
@@ -6686,46 +8155,16 @@ function startGame() {
   initializeCharactersForGame(activeGameplayProject);
   resetGameBackgroundScene();
   updateGameBackgroundScene(0);
-  
-  // ── Apply mode-specific character positioning ────────────────────────────
-  const rivalContainer = document.getElementById('character-container-rival');
-  if (gameMode === 'solo') {
-    // Solo: player on left, rival hidden
-    playerCharacterPositionXPercent = SOLO_PLAYER_CHAR_X_PERCENT;
-    playerCharacterPositionYPercent = SOLO_PLAYER_CHAR_Y_PERCENT;
-    playerCharacterScale = SOLO_PLAYER_CHAR_SCALE;
-    if (rivalContainer) rivalContainer.style.display = 'none';
-  } else if (gameMode === 'piano') {
-    // Piano: player centered above track, rival hidden
-    playerCharacterPositionXPercent = PIANO_PLAYER_CHAR_X_PERCENT;
-    playerCharacterPositionYPercent = PIANO_PLAYER_CHAR_Y_PERCENT;
-    playerCharacterScale = PIANO_PLAYER_CHAR_SCALE;
-    if (rivalContainer) rivalContainer.style.display = 'none';
-  } else if (gameMode === 'auto') {
-    // Auto: both visible, both auto-play perfectly
-    playerCharacterPositionXPercent = 0.75;
-    playerCharacterPositionYPercent = 0.5;
-    rivalCharacterPositionXPercent = 0.25;
-    rivalCharacterPositionYPercent = 0.5;
-    playerCharacterScale = 2.0;
-    rivalCharacterScale = 2.0;
-    if (rivalContainer) rivalContainer.style.display = 'block';
-  } else {
-    // Battle: normal positioning, rival visible
-    playerCharacterPositionXPercent = 0.75;
-    playerCharacterPositionYPercent = 0.5;
-    rivalCharacterPositionXPercent = 0.25;
-    rivalCharacterPositionYPercent = 0.5;
-    playerCharacterScale = 2.0;
-    rivalCharacterScale = 2.0;
-    if (rivalContainer) rivalContainer.style.display = 'block';
-  }
+  applyCharacterLayoutForMode(gameMode);
   updateCharacterContainerPositions();
   
   console.debug('after buildPlayFields — laneEls:', Object.keys(laneEls || {}), 'referenceLaneEls:', Object.keys(referenceLaneEls || {}));
 
   // ── Build beatmap for the chosen mode ────────────────────────────────────
   const gameTrackIdx = trackRoles.indexOf('game');
+  const resolvedGameTrackIdx = gameTrackIdx >= 0
+    ? gameTrackIdx
+    : ((currentProject && typeof currentProject.mainTrackIdx === 'number') ? currentProject.mainTrackIdx : findMainTrackIdx(midiData));
   let autoPlayBeatmap = [];
 
   if (recordingManual) {
@@ -6748,27 +8187,41 @@ function startGame() {
     // Cases 1 & 3: MIDI drives the note track (MP3 may or may not also be present)
     manualMappingActive = false;
     if (gameMode === 'battle') {
-      const splitBeatmaps = buildBeatmaps(midiData, gameTrackIdx, CFG.pitchRange, CFG.minVelocity);
-      referenceBeatmap = splitBeatmaps.referenceBeatmap;
-      beatmap = splitBeatmaps.playBeatmap;
-      autoPlayBeatmap = splitBeatmaps.autoPlayBeatmap || [];
+      const splitBeatmaps = buildBeatmaps(midiData, resolvedGameTrackIdx, CFG.pitchRange, CFG.minVelocity);
+      if (isTourProject) {
+        // Tour keeps call-and-response split behavior.
+        referenceBeatmap = splitBeatmaps.referenceBeatmap;
+        beatmap = splitBeatmaps.playBeatmap;
+        autoPlayBeatmap = splitBeatmaps.autoPlayBeatmap || [];
+      } else {
+        // Free Play battle should not inherit Tour splitting; keep full playable density.
+        beatmap = [
+          ...(splitBeatmaps.playBeatmap || []),
+          ...(splitBeatmaps.referenceBeatmap || []),
+          ...(splitBeatmaps.autoPlayBeatmap || []),
+        ]
+          .sort((a, b) => (a.time || 0) - (b.time || 0))
+          .map(n => ({ ...n, auto: false, playerMuted: false, sourceRole: 'play' }));
+        referenceBeatmap = [];
+        autoPlayBeatmap = [];
+      }
     } else if (gameMode === 'auto') {
-      const splitBeatmaps = buildBeatmaps(midiData, gameTrackIdx, CFG.pitchRange, CFG.minVelocity);
+      const splitBeatmaps = buildBeatmaps(midiData, resolvedGameTrackIdx, CFG.pitchRange, CFG.minVelocity);
       referenceBeatmap = (splitBeatmaps.referenceBeatmap || []).map(n => ({ ...n, auto: true }));
       beatmap = (splitBeatmaps.playBeatmap || []).map(n => ({ ...n, auto: true }));
       autoPlayBeatmap = (splitBeatmaps.autoPlayBeatmap || []).map(n => ({ ...n, auto: true }));
     } else if (gameMode === 'solo') {
-      const splitBeatmaps = buildBeatmaps(midiData, gameTrackIdx, CFG.pitchRange, CFG.minVelocity);
+      const splitBeatmaps = buildBeatmaps(midiData, resolvedGameTrackIdx, CFG.pitchRange, CFG.minVelocity);
       const combinedBeatmap = [
         ...(splitBeatmaps.playBeatmap || []),
         ...(splitBeatmaps.referenceBeatmap || []),
         ...(splitBeatmaps.autoPlayBeatmap || []),
       ];
-      beatmap = assignLanes(combinedBeatmap, gameTrackIdx, CFG.pitchRange, BATTLE_LANE_ORDER).map(n => ({ ...n, auto: false, playerMuted: false }));
+      beatmap = assignLanes(combinedBeatmap, resolvedGameTrackIdx, CFG.pitchRange, BATTLE_LANE_ORDER).map(n => ({ ...n, auto: false, playerMuted: false }));
       referenceBeatmap = [];
       autoPlayBeatmap = [];
     } else if (gameMode === 'piano') {
-      beatmap = buildPianoBeatmap(midiData, gameTrackIdx, CFG.minVelocity);
+      beatmap = buildPianoBeatmap(midiData, resolvedGameTrackIdx, CFG.minVelocity);
       referenceBeatmap = [];
       autoPlayBeatmap = [];
     }
@@ -6863,9 +8316,9 @@ function startGame() {
       } catch (e) { console.warn('song schedule failed', e); }
       autoPlayActiveNotes.forEach(note => {
         const tSec = startSec + note.time / 1000;
-        const trackConfig = getTrackConfig(gameTrackIdx);
+        const trackConfig = getTrackConfig(resolvedGameTrackIdx);
         const resolvedClip = (trackConfig.clipId === '__character__') ? resolveCharacterClipForPlayback('reference', note.lane, note.note) : trackConfig.clipId;
-        const useExactDuration = trackClipIds[gameTrackIdx] === '__original__' || clipUsesPitchShiftAndExactDuration(resolvedClip);
+        const useExactDuration = trackClipIds[resolvedGameTrackIdx] === '__original__' || clipUsesPitchShiftAndExactDuration(resolvedClip);
         const voice = createClipVoice({
           clipId: resolvedClip,
           note: note.note,
@@ -7079,6 +8532,9 @@ function buildLaneSet(field, store, isReference) {
     const lane = document.createElement('div');
     lane.className = `lane ${meta.cls}${isReference ? ' reference-lane' : ''}`;
     if (gameMode === 'piano') lane.classList.add('lane-piano');
+    if (gameMode === 'piano' && key === 'f') {
+      lane.style.marginRight = `${PIANO_CENTER_SPLIT_GAP_PX}px`;
+    }
     lane.id = `${isReference ? 'ref' : 'play'}-lane-${key}`;
     lane.style.setProperty('--lane-color', meta.color);
 
@@ -7115,12 +8571,16 @@ function buildLaneSet(field, store, isReference) {
 }
 
 let currentBoardTargetY = 60;
+let currentBoardTargetHitY = 60;
 let currentBoardSpawnY = null;
 let currentBoardNoteSize = null;
 let currentBoardHoldWidth = null;
+let currentBoardTargetSize = null;
 
 function applyGameplayModeLayout(mode = gameMode) {
+  applyLayoutVars(mode);
   const layout = applyLaneLayoutForMode(mode);
+  const modeVars = getLayoutForMode(mode);
   const referenceField = document.getElementById('reference-field');
   const playField = document.getElementById('play-field');
   if (!referenceField || !playField) return layout;
@@ -7143,36 +8603,34 @@ function applyGameplayModeLayout(mode = gameMode) {
   playField.style.gridTemplateColumns = `repeat(${laneCount}, minmax(0, 1fr))`;
   referenceField.style.gridTemplateColumns = `repeat(${laneCount}, minmax(0, 1fr))`;
 
-  if (isPiano) {
-    const fallbackWidth = playField.parentElement?.clientWidth || window.innerWidth;
-    const fallbackHeight = playField.parentElement?.clientHeight || window.innerHeight;
-    const fieldWidth = Math.max(1, playField.clientWidth || playField.getBoundingClientRect().width || fallbackWidth || 1);
-    const laneWidth = fieldWidth / laneCount;
-    currentBoardNoteSize = Math.max(18, Math.floor(laneWidth * 0.72));
-    currentBoardHoldWidth = Math.max(14, Math.floor(currentBoardNoteSize * 0.78));
-    const fieldHeight = Math.max(1, playField.clientHeight || playField.getBoundingClientRect().height || fallbackHeight || 1);
-    currentBoardTargetY = Math.max(96, fieldHeight - Math.max(72, Math.floor(currentBoardNoteSize * 2.2)));
-    currentBoardSpawnY = -Math.max(currentBoardNoteSize * 3, Math.floor(fieldHeight * 0.15), 96);
+  // Always set per-mode CSS vars at field level so mode edits apply immediately.
+  playField.style.setProperty('--note-size', modeVars.noteSize);
+  playField.style.setProperty('--hold-note-width', modeVars.holdNoteWidth);
+  playField.style.setProperty('--target-size', modeVars.targetSize);
+  playField.style.setProperty('--lane-gap', modeVars.laneGap);
+  referenceField.style.setProperty('--note-size', modeVars.noteSize);
+  referenceField.style.setProperty('--hold-note-width', modeVars.holdNoteWidth);
+  referenceField.style.setProperty('--target-size', modeVars.targetSize);
+  referenceField.style.setProperty('--lane-gap', modeVars.laneGap);
 
-    playField.style.setProperty('--note-size', `${currentBoardNoteSize}px`);
-    playField.style.setProperty('--hold-note-width', `${currentBoardHoldWidth}px`);
-    playField.style.setProperty('--target-size', `${Math.max(26, Math.floor(currentBoardNoteSize * 0.92))}px`);
-    referenceField.style.setProperty('--note-size', `${currentBoardNoteSize}px`);
-    referenceField.style.setProperty('--hold-note-width', `${currentBoardHoldWidth}px`);
-    referenceField.style.setProperty('--target-size', `${Math.max(26, Math.floor(currentBoardNoteSize * 0.92))}px`);
+  if (isPiano) {
+    const fallbackHeight = playField.parentElement?.clientHeight || window.innerHeight;
+    const fieldHeight = Math.max(1, playField.clientHeight || playField.getBoundingClientRect().height || fallbackHeight || 1);
+    currentBoardNoteSize = Math.max(8, parseFloat(modeVars.noteSize) || 24);
+    currentBoardHoldWidth = Math.max(4, parseFloat(modeVars.holdNoteWidth) || 16);
+    currentBoardTargetSize = Math.max(10, parseFloat(modeVars.targetSize) || 36);
+    currentBoardTargetY = Math.max(96, fieldHeight - Math.max(72, Math.floor(currentBoardNoteSize * 2.2)));
+    currentBoardTargetHitY = currentBoardTargetY + currentBoardTargetSize;
+    currentBoardSpawnY = -Math.max(currentBoardNoteSize * 3, Math.floor(fieldHeight * 0.15), 96);
   } else {
     currentBoardNoteSize = null;
     currentBoardHoldWidth = null;
     currentBoardTargetY = TARGET_Y;
+    currentBoardTargetHitY = TARGET_Y;
     currentBoardSpawnY = null;
-    playField.style.removeProperty('--note-size');
-    playField.style.removeProperty('--hold-note-width');
-    playField.style.removeProperty('--target-size');
+    currentBoardTargetSize = null;
     playField.style.removeProperty('--play-track-x');
     playField.style.removeProperty('--play-track-width');
-    referenceField.style.removeProperty('--note-size');
-    referenceField.style.removeProperty('--hold-note-width');
-    referenceField.style.removeProperty('--target-size');
     referenceField.style.removeProperty('--play-track-x');
     referenceField.style.removeProperty('--play-track-width');
   }
@@ -7245,7 +8703,7 @@ function gameLoop(now) {
   // Travel distance = fieldH - TARGET_Y pixels at CFG.noteSpeed px/frame (60fps assumed)
   // Time to travel = (fieldH - TARGET_Y) / CFG.noteSpeed / 60 * 1000 ms
   const travelDistance = gameMode === 'piano'
-    ? Math.max(1, currentBoardTargetY - (currentBoardSpawnY ?? 0))
+    ? Math.max(1, currentBoardTargetHitY - (currentBoardSpawnY ?? 0))
     : Math.max(1, fieldH - TARGET_Y);
   const travelMs = travelDistance / CFG.noteSpeed / 60 * 1000;
   const spawnTime = elapsed + travelMs;
@@ -7289,7 +8747,7 @@ function gameLoop(now) {
 
 function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference) {
   const isPianoBoard = gameMode === 'piano';
-  const targetY = isPianoBoard ? currentBoardTargetY : TARGET_Y;
+  const targetY = isPianoBoard ? currentBoardTargetHitY : TARGET_Y;
   for (const note of notes) {
     if (note.hit || note.missed || note.el) continue;
     if (note.time <= spawnTime) {
@@ -7303,7 +8761,13 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
     const y = isPianoBoard
       ? targetY - remainMs * CFG.noteSpeed * 60 / 1000
       : targetY + remainMs * CFG.noteSpeed * 60 / 1000;
-    note.el.style.top = y + 'px';
+    if (isPianoBoard && note.el) {
+      // For piano board, treat `y` as the bottom coordinate so the bottom (head) reaches target first
+      const elHeight = (note.el && note.el.offsetHeight) ? note.el.offsetHeight : (note.hold ? (currentBoardNoteSize || Math.max(1, parseFloat(getLayoutForMode(gameMode).noteSize) || 46)) : (currentBoardNoteSize || Math.max(1, parseFloat(getLayoutForMode(gameMode).noteSize) || 46)));
+      note.el.style.top = (y - elHeight) + 'px';
+    } else if (note.el) {
+      note.el.style.top = y + 'px';
+    }
 
     if (isReference) {
       // Reference track auto-plays at target time
@@ -7319,7 +8783,8 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
       } else if (!note.hold && note.started && elapsed >= note.time + 180) {
         completeReferenceTap(note);
       }
-      if (!note.hold && y < -60 && !note.completed) {
+      if (!note.hold && ((isPianoBoard && y > fieldH + 60) || (!isPianoBoard && y < -60)) && !note.completed) {
+        if (gameMode === 'piano') console.log('Piano miss lane:', note.lane);
         note.missed = true;
         if (note.el) { note.el.remove(); note.el = null; }
       }
@@ -7372,6 +8837,7 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
     if (note.hold && !note.started && elapsed > note.time + CFG.badMs) {
       note.el.remove();
       note.el = null;
+      if (gameMode === 'piano') console.log('Piano miss lane:', note.lane);
       note.missed = true;
       registerMiss(note);
       continue;
@@ -7387,7 +8853,8 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
     }
 
     // Tap note missed if it passes off screen without being hit
-    if (!note.hold && y < -60 && !note.started) {
+    if (!note.hold && ((isPianoBoard && y > fieldH + 60) || (!isPianoBoard && y < -60)) && !note.started) {
+      if (gameMode === 'piano') console.log('Piano miss lane:', note.lane);
       note.el.remove();
       note.el = null;
       note.missed = true;
@@ -7403,14 +8870,20 @@ function spawnNote(note, fieldH, laneMap, isReference = false) {
   const el = document.createElement('div');
   el.className = 'note' + (note.hold ? ' hold' : '') + (isReference ? ' reference-note' : '');
   const spawnTopValue = gameMode === 'piano' ? (currentBoardSpawnY ?? -(currentBoardNoteSize || 24)) : fieldH;
-  const spawnTop = `${spawnTopValue}px`;
-  el.style.top = spawnTop;
-  if (note.hold) {
+  // For piano mode we want hold notes to be bottom-anchored so the head reaches target first.
+  if (gameMode === 'piano' && note.hold) {
+    const baseNoteSize = currentBoardNoteSize || Math.max(1, parseFloat(getLayoutForMode(gameMode).noteSize) || 46);
     const holdPixels = Math.max(0, (note.endTime - note.time) * CFG.noteSpeed * 60 / 1000);
-    const baseNoteSize = currentBoardNoteSize || Math.max(1, parseFloat(LAYOUT.noteSize) || 46);
+    // Position top so the bottom of the element starts at the spawnY (so bottom-leading)
+    const topPos = (spawnTopValue - (baseNoteSize + holdPixels));
+    el.style.top = `${topPos}px`;
     el.style.height = (baseNoteSize + holdPixels) + 'px';
     el.style.clipPath = 'inset(0% 0 0 0)';
   } else {
+    const spawnTop = `${spawnTopValue}px`;
+    el.style.top = spawnTop;
+  }
+  if (!note.hold) {
     // Add sprite class for single notes if character uses directional sprites
     const charId = isReference ? currentRivalCharacterId : currentPlayerCharacterId;
     if (charId === 'mushy' && note.trackIdx !== undefined) {
@@ -7878,6 +9351,9 @@ function flashLane(lane) {
 
 // ─── RESULTS ─────────────────────────────────────────────────────────────────
 function showResults() {
+  const retryBtn = document.getElementById('btn-retry');
+  const menuBtn = document.getElementById('btn-menu');
+
   document.getElementById('res-score').textContent   = String(score).padStart(6, '0');
   document.getElementById('res-perfect').textContent = stats.perfect;
   document.getElementById('res-good').textContent    = stats.good;
@@ -7888,7 +9364,39 @@ function showResults() {
   const acc = judged > 0
     ? ((stats.perfect * 1 + stats.good * 0.67 + stats.bad * 0.33) / judged * 100).toFixed(1)
     : '0.0';
-  document.getElementById('res-acc').textContent = `Accuracy: ${acc}%  |  Max Combo: ${maxCombo}`;
+  const multiplier = currentDifficulty === 'easy' ? EASY_SCORE_MULTIPLIER : (currentDifficulty === 'hard' ? HARD_SCORE_MULTIPLIER : NORMAL_SCORE_MULTIPLIER);
+  const finalScore = Math.floor(score * multiplier);
+
+  if (tourRunState.active) {
+    if (!tourRunState.currentSongCounted) {
+      tourRunState.cumulativeScore += Math.max(0, finalScore);
+      tourRunState.currentSongCounted = true;
+    }
+    tourRunState.awaitingResultChoice = true;
+    
+    // Calculate percentage score achieved vs perfect
+    const perfectScore = calculatePerfectScore(totalNotes, currentDifficulty);
+    const scorePercentage = totalNotes > 0 ? Math.round((finalScore / perfectScore) * 100) : 0;
+    tourRunState.lastScorePercentage = scorePercentage;
+    
+    // Disable continue if below 50% score
+    const canContinue = scorePercentage >= 50;
+    if (retryBtn) {
+      retryBtn.textContent = 'CONTINUE TOUR';
+      retryBtn.disabled = !canContinue;
+    }
+    if (menuBtn) menuBtn.textContent = 'END TOUR';
+    
+    document.getElementById('res-acc').textContent = `Accuracy: ${acc}%  |  Performance: ${scorePercentage}%  |  Max Combo: ${maxCombo}  |  Tour Song ${tourRunState.songIndex}  |  Tour Total: ${tourRunState.cumulativeScore}`;
+  } else {
+    tourRunState.awaitingResultChoice = false;
+    if (retryBtn) {
+      retryBtn.textContent = 'RETRY';
+      retryBtn.disabled = false;
+    }
+    if (menuBtn) menuBtn.textContent = 'MENU';
+    document.getElementById('res-acc').textContent = `Accuracy: ${acc}%  |  Max Combo: ${maxCombo}`;
+  }
 
   document.getElementById('results-screen').classList.add('visible');
   const confirmBtn = document.getElementById('btn-confirm-manual');
@@ -7904,12 +9412,10 @@ function showResults() {
     document.getElementById('results-screen').appendChild(resultNote);
   }
   
-  if (currentProjectId && !isAutoMode) {
+  if (currentProjectId && !isAutoMode && !tourRunState.active) {
     const project = songProjects.find(item => item.id === currentProjectId);
     if (project) {
       ensureProjectScoresFormat(project);
-      const multiplier = currentDifficulty === 'easy' ? EASY_SCORE_MULTIPLIER : (currentDifficulty === 'hard' ? HARD_SCORE_MULTIPLIER : NORMAL_SCORE_MULTIPLIER);
-      const finalScore = Math.floor(score * multiplier);
       project.savedScores[currentDifficulty] = Math.max(project.savedScores[currentDifficulty] || 0, finalScore);
       project.updatedAt = Date.now();
       persistProjectToStorage(project).catch(err => console.warn('Failed to save project score', err));
