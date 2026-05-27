@@ -338,7 +338,7 @@
     display: none;
     position: fixed;
     inset: 0;
-    z-index: 1000;
+    z-index: 3000;
     align-items: center;
     justify-content: center;
   }
@@ -350,88 +350,237 @@
   #tour-loading-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.8);
   }
 
   #tour-loading-content {
     position: relative;
     background: linear-gradient(135deg, #0a0a16, #0f0f1e);
-    border: 2px solid rgba(186, 246, 204, 0.35);
-    border-radius: 16px;
-    padding: 32px;
-    max-width: 600px;
-    width: 90%;
+    border: 3px solid rgba(186, 246, 204, 0.4);
+    border-radius: 24px;
+    padding: 48px 40px;
+    max-width: 1000px;
+    width: 95%;
+    max-height: 80vh;
     text-align: center;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9);
     font-family: 'Orbitron', sans-serif;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
   }
 
-  #tour-loading-content.loading-ready #tour-loading-info,
-  #tour-loading-content.loading-ready #tour-loading-visual {
-    opacity: 1;
+  /* ─── Slot Machine Layout ─── */
+  #tour-loading-slot-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 300px;
+  }
+
+  .tour-slot-machine {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    width: 100%;
+  }
+
+  .slot-viewport {
+    flex: 1;
+    position: relative;
+    height: 280px;
+    overflow: hidden;
+    border: 3px solid rgba(200, 50, 50, 0.8);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(30, 10, 10, 0.6), rgba(50, 15, 15, 0.4));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .slot-center-indicator {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 60px;
+    transform: translateY(-50%);
+    border-top: 2px solid rgba(200, 80, 80, 0.6);
+    border-bottom: 2px solid rgba(200, 80, 80, 0.6);
+    background: linear-gradient(90deg, rgba(200, 50, 50, 0.15), transparent, rgba(200, 50, 50, 0.15));
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .slot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 8px;
+    width: 100%;
     transform: translateY(0);
+    transition: transform 0.05s linear;
   }
 
-  #tour-loading-info,
-  #tour-loading-visual {
-    opacity: 0.2;
-    transform: translateY(8px);
-    transition: opacity 0.35s ease, transform 0.35s ease;
+  .slot-item {
+    padding: 16px 12px;
+    background: rgba(200, 50, 50, 0.7);
+    border: 2px solid rgba(255, 100, 100, 0.8);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    font-family: 'Share Tech Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.6;
+    transition: opacity 0.1s ease, transform 0.1s ease;
   }
 
-  /* Tour loading visual split: left = titles slot, right = portraits */
-  #tour-loading-visual { display:flex; gap:16px; align-items:center; justify-content:center; margin-top:14px; }
-  #tour-loading-slot { flex:1; min-height:80px; max-height:120px; overflow:hidden; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06)); display:flex; align-items:center; justify-content:center; }
-  #tour-loading-slot .slot-list { display:flex; flex-direction:column; gap:8px; padding:12px 8px; transform:translateY(0); }
-  #tour-loading-portraits { width:160px; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; }
-  #tour-loading-portraits img { width:140px; height:80px; object-fit:contain; image-rendering:pixelated; transform:translateX(0); }
+  .slot-item.center {
+    opacity: 1;
+    transform: scale(1.1);
+    background: rgba(255, 100, 100, 0.9);
+    border-color: rgba(255, 150, 150, 1);
+    box-shadow: 0 0 20px rgba(255, 100, 100, 0.5);
+  }
 
-  #tour-loading-content h2 {
-    color: #56cc88;
-    font-size: 24px;
-    margin: 0 0 20px 0;
+  /* ─── Portraits Container ─── */
+  #tour-loading-portraits-container {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+
+  #tour-loading-card.ready #tour-loading-portraits-container {
+    opacity: 1;
+  }
+
+  #tour-loading-portrait-player,
+  #tour-loading-portrait-rival {
+    width: 140px;
+    height: 100px;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+
+  /* ─── Info Boxes (Mode + Notes) ─── */
+  .info-boxes {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.4s ease 0.3s;
+  }
+
+  #tour-loading-card.ready .info-boxes {
+    opacity: 1;
+  }
+
+  .info-box {
+    padding: 16px 24px;
+    border-radius: 8px;
+    border: 2px solid;
+    text-align: center;
+    min-width: 150px;
+  }
+
+  .mode-box {
+    background: rgba(100, 150, 200, 0.3);
+    border-color: rgba(100, 150, 200, 0.8);
+  }
+
+  .notes-box {
+    background: rgba(100, 200, 220, 0.3);
+    border-color: rgba(100, 200, 220, 0.8);
+  }
+
+  .info-label {
+    color: #99ddcc;
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-  }
-
-  #tour-loading-info {
-    display: grid;
-    gap: 16px;
-    margin-bottom: 24px;
-    text-align: left;
-  }
-
-  .tour-loading-row {
-    display: grid;
-    grid-template-columns: 120px 1fr;
-    gap: 12px;
-    align-items: start;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    border-left: 3px solid #56cc88;
-  }
-
-  .tour-loading-label {
-    color: #99ddcc;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
     font-weight: bold;
+    margin-bottom: 6px;
   }
 
-  .tour-loading-value {
+  .info-value {
     color: #dfe6ff;
-    font-size: 14px;
+    font-size: 18px;
+    font-weight: bold;
+    font-family: 'Share Tech Mono', monospace;
   }
 
-  #tour-loading-status {
-    margin-top: 10px;
-    color: #fff2aa;
-    font-size: 12px;
-    letter-spacing: 0.08em;
+  /* ─── Start Song Button ─── */
+  .tour-play-btn {
+    padding: 14px 32px;
+    background: linear-gradient(135deg, #2a8f3f, #1f6b30);
+    border: 2px solid rgba(100, 255, 150, 0.6);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    font-family: 'Orbitron', sans-serif;
     text-transform: uppercase;
-    min-height: 16px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #tour-loading-card.ready .tour-play-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .tour-play-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #35b350, #2a8f3f);
+    border-color: rgba(150, 255, 180, 1);
+    box-shadow: 0 0 15px rgba(100, 255, 150, 0.5);
+  }
+
+  .tour-play-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* ─── Cancel Tour Button ─── */
+  .tour-cancel-btn {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #66aa00, #4a7f00);
+    border: 2px solid rgba(180, 255, 100, 0.7);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: bold;
+    font-family: 'Orbitron', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    z-index: 20;
+  }
+
+  .tour-cancel-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #77bb11, #5a8f00);
+    border-color: rgba(200, 255, 150, 1);
+    box-shadow: 0 0 12px rgba(180, 255, 100, 0.6);
+    transform: scale(1.05);
+  }
+
+  .tour-cancel-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   #tour-loading-play[hidden] {
@@ -1673,43 +1822,39 @@
 <div id="tour-loading-card">
   <div id="tour-loading-backdrop"></div>
   <div id="tour-loading-content">
-    <h2>🎵 Now Loading</h2>
-    <div id="tour-loading-info">
-        <div class="tour-loading-row">
-          <div class="tour-loading-label">Status</div>
-          <div id="tour-loading-status" class="tour-loading-value">Preparing tour load...</div>
+    <!-- Slot machine area on the left side -->
+    <div id="tour-loading-slot-container" aria-hidden="true">
+      <div id="tour-loading-slot" class="tour-slot-machine">
+        <div class="slot-viewport">
+          <div class="slot-list"></div>
         </div>
-      <div class="tour-loading-row">
-        <div class="tour-loading-label">Mode</div>
-        <div id="tour-loading-mode" class="tour-loading-value">Battle</div>
-      </div>
-      <div class="tour-loading-row">
-        <div class="tour-loading-label">Song</div>
-        <div id="tour-loading-song" class="tour-loading-value">Unknown</div>
-      </div>
-      <div class="tour-loading-row">
-        <div class="tour-loading-label">Artist</div>
-        <div id="tour-loading-artist" class="tour-loading-value">Unknown</div>
-      </div>
-      <div class="tour-loading-row">
-        <div class="tour-loading-label">Genre Match</div>
-        <div id="tour-loading-genre" class="tour-loading-value">Pop/Electronic</div>
-      </div>
-      <div class="tour-loading-row">
-        <div class="tour-loading-label">Notes</div>
-        <div id="tour-loading-notes" class="tour-loading-value">0</div>
+        <div class="slot-center-indicator"></div>
       </div>
     </div>
-    <div id="tour-loading-visual">
-      <div id="tour-loading-slot" aria-hidden="true">
-        <div class="slot-list"></div>
+    
+    <!-- Character portraits on the right side -->
+    <div id="tour-loading-portraits-container" aria-hidden="true">
+      <img id="tour-loading-portrait-player" src="" alt="Player character" />
+      <img id="tour-loading-portrait-rival" src="" alt="Rival character" />
+    </div>
+
+    <!-- Info boxes (fade in when song selected) -->
+    <div id="tour-loading-info-boxes" class="info-boxes">
+      <div id="tour-loading-mode-box" class="info-box mode-box">
+        <div class="info-label">Mode</div>
+        <div id="tour-loading-mode" class="info-value">Battle</div>
       </div>
-      <div id="tour-loading-portraits" aria-hidden="true">
-        <img id="tour-loading-portrait-player" src="" alt="Player portrait" />
-        <img id="tour-loading-portrait-rival" src="" alt="Rival portrait" />
+      <div id="tour-loading-notes-box" class="info-box notes-box">
+        <div class="info-label">Notes</div>
+        <div id="tour-loading-notes" class="info-value">0</div>
       </div>
     </div>
-    <button id="tour-loading-play">PLAY SONG</button>
+
+    <!-- Start Song button (fade in when ready) -->
+    <button id="tour-loading-play" class="tour-play-btn">START SONG</button>
+
+    <!-- Cancel Tour button (always visible, overlaid on top) -->
+    <button id="tour-loading-cancel" class="tour-cancel-btn">CANCEL TOUR</button>
   </div>
 </div>
 
@@ -3879,7 +4024,7 @@ const CHARACTERS = [
     id: 'mushy',
     label: 'Mushy Singer',
     portraitSprite: null,
-    genres: ['Pop', 'Electronic', 'Vocal'],
+    genres: ['Pop', 'Electronic', 'Vocal', "[GENRE CURRENTLY DOESN'T EFFECT TOUR MODE]"],
     spriteSheets: {
 // cols, rows, scale, frameCount, frameDuration
       idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
@@ -3898,12 +4043,12 @@ const CHARACTERS = [
     id: 'martin',
     label: 'Martin',
     portraitSprite: null,
-    genres: ['Rock', 'Funk', 'Indie'],
+    genres: ['Rock', 'Funk', 'Indie', "[GENRE CURRENTLY DOESN'T EFFECT TOUR MODE]"],
     spriteSheets: {
-      idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
+      idle: createSpriteSheetConfig('Art/Hero.HeroIdleSpriteSheet.png', 1, 4, 1.0, 4, 100),
       up: createSpriteSheetConfig('Art/Mushy/SS-MushySingerUP.png', 2, 1, 1.0, 2),
-      left: createSpriteSheetConfig('Art/Mushy/SS-MushySingerLeft.png', 2, 1, 1.0, 2),
-      right: createSpriteSheetConfig('Art/Mushy/SS-MushySingerRight.png', 2, 1, 1.0, 2),
+      left: createSpriteSheetConfig('Art/Hero/HeroLeftSpriteSheet.png', 3, 3, 1.0, 8),
+      right: createSpriteSheetConfig('Art/Hero/HeroRightSpriteSheet.png', 8, 1, 1.0, 8),
       down: createSpriteSheetConfig('Art/Mushy/SS-MushySingerDown.png', 2, 1, 1.0, 2),
     },
     soundClipIds: buildMartinSoundClipIds(),
@@ -3916,7 +4061,7 @@ const CHARACTERS = [
     id: 'recorder',
     label: 'Recorder',
     portraitSprite: null,
-    genres: ['Lo-fi', 'Experimental', 'Ambient'],
+    genres: ['Lo-fi', 'Experimental', 'Ambient', "[GENRE CURRENTLY DOESN'T EFFECT TOUR MODE]"],
     spriteSheets: {
       idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
       up: createSpriteSheetConfig('Art/Mushy/SS-MushySingerUP.png', 2, 1, 1.0, 2),
@@ -3934,7 +4079,7 @@ const CHARACTERS = [
     id: 'tote',
     label: 'Tote',
     portraitSprite: null,
-    genres: ['Chiptune', 'Synthwave', 'Arcade'],
+    genres: ['Pop', 'Synthwave', 'Arcade', "[GENRE CURRENTLY DOESN'T EFFECT TOUR MODE]"],
     spriteSheets: {
       idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
       up: createSpriteSheetConfig('Art/Mushy/SS-MushySingerUP.png', 2, 1, 1.0, 2),
@@ -6181,6 +6326,8 @@ let tourRunState = {
   awaitingResultChoice: false,
   currentSongCounted: false,
   loadingSong: false,
+  loadingCancelled: false,
+  loadStartTime: null,
   difficulty: 'normal',
   playerCharacterId: 'blank',
   bestScores: { easy: 0, normal: 0, hard: 0 },
@@ -6284,6 +6431,25 @@ function findMainTrackIdx(midi) {
   return bestIdx;
 }
 
+// Tour progression configuration: min/max note counts and per-stage scaling
+const TOUR_PROGRESSION_CONFIG = {
+  easy: {
+    poolStartMin: 60,
+    poolStartMax: 500,
+    stageIncreaseMultiplier: 1.06, // 6% increase in max per stage
+  },
+  normal: {
+    poolStartMin: 100,
+    poolStartMax: 850,
+    stageIncreaseMultiplier: 1.10, // 10% increase in max per stage
+  },
+  hard: {
+    poolStartMin: 200,
+    poolStartMax: 1000,
+    stageIncreaseMultiplier: 1.15, // 15% increase in max per stage
+  },
+};
+
 function calculateProgressionTarget(songIndex, difficulty) {
   // Difficulty-based progression tiers
   if (difficulty === 'easy') {
@@ -6301,15 +6467,24 @@ function calculateProgressionTarget(songIndex, difficulty) {
   }
 }
 
-function calculateProgressionRange(targetMin, difficulty) {
-  // Return [min, max] note range for this stage
-  if (difficulty === 'easy') {
-    return [targetMin, targetMin + 30];
-  } else if (difficulty === 'hard') {
-    return [targetMin - 15, targetMin + 20];
-  } else {
-    return [targetMin - 10, targetMin + 25];
-  }
+function calculateProgressionRange(targetMin, difficulty, songIndex = 1) {
+  // Return [min, max] note range for this stage using configurable progression
+  const config = TOUR_PROGRESSION_CONFIG[difficulty] || TOUR_PROGRESSION_CONFIG.normal;
+  
+  // Start with base range
+  const baseMin = config.poolStartMin;
+  let baseMax = config.poolStartMax;
+  
+  // Scale max by stage (multiplicative progression)
+  baseMax = Math.floor(baseMax * Math.pow(config.stageIncreaseMultiplier, Math.max(0, songIndex - 1)));
+  
+  console.log(`%c[TOUR] Progression range for ${difficulty} stage ${songIndex}:`, 'color: #2196F3;', { 
+    baseMin, 
+    baseMax, 
+    multiplier: config.stageIncreaseMultiplier 
+  });
+  
+  return [baseMin, baseMax];
 }
 
 function calculatePerfectScore(noteCount, difficulty) {
@@ -6325,48 +6500,149 @@ function calculatePerfectScore(noteCount, difficulty) {
 
 async function buildTourMidiSourcePool(minNotesRangeMin, maxNotesRangeMax, characterGenres, maxPoolSize = 10, onProgress = null) {
   // Build a pool of up to maxPoolSize MIDI files matching criteria
+  // If initial range yields no results, progressively widen the range
+  console.log('%c[TOUR DEBUG] buildTourMidiSourcePool started', 'color: #ff9800; font-weight: bold;', {
+    targetMin: minNotesRangeMin,
+    targetMax: maxNotesRangeMax,
+    maxPoolSize,
+    genres: characterGenres,
+  });
+
   const catalog = await getTourMidiCatalog();
-  if (!catalog.length) throw new Error('No Tour MIDI sources available.');
+  console.log(`%c[TOUR DEBUG] Catalog loaded: ${catalog.length} sources available`, 'color: #2196F3;');
   
-  const candidates = [];
+  if (!catalog.length) {
+    console.error('%c[TOUR ERROR] No tour MIDI sources in catalog!', 'color: #f44336; font-weight: bold;');
+    throw new Error('No Tour MIDI sources available.');
+  }
   
-  for (let index = 0; index < catalog.length; index++) {
-    const source = catalog[index];
-    try {
-      if (onProgress) onProgress({ stage: 'fetching', index, total: catalog.length, source });
-      const fetchUrl = (/^https?:\/\//i).test(String(source.url || '')) ? source.url : encodeURI(source.url);
-      const response = await fetch(fetchUrl, { mode: 'cors' });
-      if (!response.ok) continue;
-      if (onProgress) onProgress({ stage: 'parsing', index, total: catalog.length, source });
-      const arrayBuffer = await response.arrayBuffer();
-      const parsed = parseMidi(arrayBuffer.slice(0));
-      
-      const mainTrackIdx = findMainTrackIdx(parsed);
-      const noteCount = countNotesInTrack(parsed, mainTrackIdx);
-      
-      if (noteCount < minNotesRangeMin || noteCount > maxNotesRangeMax) continue;
-      
-      const score = scoreTourSourceForCharacter(source, characterGenres);
-      candidates.push({
-        source,
-        arrayBuffer,
-        parsed,
-        noteCount,
-        mainTrackIdx,
-        score,
-      });
-      if (onProgress) onProgress({ stage: 'matched', index, total: catalog.length, source, noteCount });
-      
-      if (candidates.length >= maxPoolSize) break;
-    } catch (err) {
-      console.warn('Pool source fetch failed:', source?.url, err);
-      continue;
+  let currentMin = minNotesRangeMin;
+  let currentMax = maxNotesRangeMax;
+  const widthPercent = 0.25; // Widen by 25% each retry
+  let retryCount = 0;
+  const maxRetries = 5; // Try up to 5 times with progressively wider ranges
+  
+  while (retryCount <= maxRetries) {
+    console.log(`%c[TOUR DEBUG] Attempt ${retryCount + 1}/${maxRetries + 1}: searching range [${currentMin}, ${currentMax}]`, 'color: #2196F3;');
+    const candidates = [];
+    let fetchedCount = 0;
+    let parsedCount = 0;
+    let filteredCount = 0;
+    
+    for (let index = 0; index < catalog.length; index++) {
+      const source = catalog[index];
+      try {
+        if (onProgress) onProgress({ stage: 'fetching', index, total: catalog.length, source });
+        
+        const fetchUrl = (/^https?:\/\//i).test(String(source.url || '')) ? source.url : encodeURI(source.url);
+        console.log(`%c[TOUR] Fetching [${index + 1}/${catalog.length}]: ${source.title} from ${fetchUrl}`, 'color: #666;');
+        
+        const fetchStartTime = performance.now();
+        const response = await fetch(fetchUrl, { mode: 'cors' });
+        const fetchTime = performance.now() - fetchStartTime;
+        
+        if (!response.ok) {
+          console.warn(`%c[TOUR BLOCKED] HTTP ${response.status} - ${source.title}`, 'color: #ff9800;', { url: fetchUrl, status: response.status });
+          continue;
+        }
+        
+        fetchedCount++;
+        console.log(`%c[TOUR] Fetched successfully (${fetchTime.toFixed(0)}ms)`, 'color: #4CAF50;');
+        
+        if (onProgress) onProgress({ stage: 'parsing', index, total: catalog.length, source });
+        
+        const parseStartTime = performance.now();
+        const arrayBuffer = await response.arrayBuffer();
+        const parsed = parseMidi(arrayBuffer.slice(0));
+        const parseTime = performance.now() - parseStartTime;
+        
+        const mainTrackIdx = findMainTrackIdx(parsed);
+        const noteCount = countNotesInTrack(parsed, mainTrackIdx);
+        parsedCount++;
+        
+        console.log(`%c[TOUR] Parsed (${parseTime.toFixed(0)}ms): ${noteCount} notes on track ${mainTrackIdx}`, 'color: #4CAF50;');
+        
+        if (noteCount < currentMin || noteCount > currentMax) {
+          filteredCount++;
+          console.log(`%c[TOUR FILTERED] Note count ${noteCount} outside range [${currentMin}, ${currentMax}]`, 'color: #ff9800;');
+          continue;
+        }
+        
+        const score = scoreTourSourceForCharacter(source, characterGenres);
+        candidates.push({
+          source,
+          arrayBuffer,
+          parsed,
+          noteCount,
+          mainTrackIdx,
+          score,
+        });
+        console.log(`%c[TOUR MATCHED] ${source.title} (${noteCount} notes) ✓`, 'color: #4CAF50; font-weight: bold;');
+        if (onProgress) onProgress({ stage: 'matched', index, total: catalog.length, source, noteCount });
+        
+        if (candidates.length >= maxPoolSize) {
+          candidates.sort((a, b) => b.score - a.score);
+          console.log(`%c[TOUR] Pool full! Returning ${candidates.length} candidates`, 'color: #4CAF50; font-weight: bold;');
+          return candidates.slice(0, maxPoolSize);
+        }
+      } catch (err) {
+        // Enhanced error logging with MIDI structure validation details
+        let errorDetails = {
+          error: err.message,
+          sourceTitle: source?.title || 'Unknown',
+          sourceUrl: source?.url || 'Unknown',
+        };
+
+        // Try to determine what validation failed
+        if (err.message && err.message.includes('Not a MIDI file')) {
+          errorDetails.validationFailure = 'Invalid MIDI file header';
+          errorDetails.expected = 'Header should start with bytes: 0x4D546864 ("MThd")';
+          errorDetails.issue = 'File is not a valid MIDI file or corrupted header';
+        } else if (err.message && err.message.includes('track')) {
+          errorDetails.validationFailure = 'Invalid track structure';
+          errorDetails.expected = 'Each track should have chunkId 0x4D54726B ("MTrk"), length, and events';
+          errorDetails.issue = 'Track chunk malformed or missing required fields';
+        } else if (err.message && err.message.includes('event')) {
+          errorDetails.validationFailure = 'Invalid MIDI event structure';
+          errorDetails.expected = 'Events should have valid status bytes and proper data fields';
+          errorDetails.issue = 'Event parsing failed - possible data corruption';
+        } else {
+          errorDetails.validationFailure = 'Unknown parse error';
+          errorDetails.expected = 'Valid MIDI structure with proper header, tracks, and events';
+          errorDetails.issue = 'Check if file is corrupted or uses uncommon MIDI extensions';
+        }
+
+        console.error(`%c[TOUR FAILED] Fetch/parse error for ${source?.title}:`, 'color: #f44336; font-weight: bold;', errorDetails);
+        continue;
+      }
+    }
+    
+    console.log(`%c[TOUR DEBUG] Attempt ${retryCount + 1} summary: Fetched=${fetchedCount}, Parsed=${parsedCount}, Filtered=${filteredCount}, Matched=${candidates.length}`, 'color: #FF6D00;');
+    
+    // If we found some candidates, return them even if < maxPoolSize
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => b.score - a.score);
+      console.log(`%c[TOUR] Found ${candidates.length} candidates at attempt ${retryCount + 1}. Returning.`, 'color: #4CAF50; font-weight: bold;');
+      return candidates.slice(0, maxPoolSize);
+    }
+    
+    // No candidates found, widen the range and retry
+    retryCount++;
+    const rangeWidth = currentMax - currentMin;
+    const expansion = Math.ceil(rangeWidth * widthPercent);
+    const oldMin = currentMin;
+    const oldMax = currentMax;
+    currentMin = Math.max(0, currentMin - expansion);
+    currentMax = currentMax + expansion;
+    
+    if (retryCount <= maxRetries) {
+      console.warn(`%c[TOUR] No candidates found. Widening range from [${oldMin}, ${oldMax}] to [${currentMin}, ${currentMax}]`, 'color: #ff9800;');
     }
   }
   
-  // Sort by score descending, shuffle within top performers for variety
-  candidates.sort((a, b) => b.score - a.score);
-  return candidates.slice(0, maxPoolSize);
+  // If we exhausted all retries, return empty (caller will use hardcoded fallback)
+  console.error('%c[TOUR FAILED] Could not find any pool candidates after 5 widening attempts. Using hardcoded fallback.', 'color: #f44336; font-weight: bold;');
+  return [];
 }
 
 function pickRandomItem(items) {
@@ -6394,28 +6670,44 @@ function pickRandomRivalCharacterId(playerCharacterId) {
 }
 
 function scoreTourSourceForCharacter(source, characterGenres = []) {
-  const tags = Array.isArray(source?.tags) ? source.tags.map(normalizeTourKeyword) : [];
-  if (!tags.length || !characterGenres.length) return 0;
-  const genreWords = characterGenres.map(normalizeTourKeyword).flatMap(genre => genre.split(/\s+/g)).filter(Boolean);
-  let score = 0;
-  for (const genreWord of genreWords) {
-    if (tags.some(tag => tag.includes(genreWord))) score += 2;
-  }
-  return score;
+  // Note: Genre matching disabled. API tags contain song names, not genre keywords.
+  // All songs get equal weight; pool selection is based on note count only.
+  return 1.0;
 }
 
 async function getTourMidiCatalog() {
-  if (Array.isArray(tourMidiCatalogCache) && tourMidiCatalogCache.length) return tourMidiCatalogCache;
+  if (Array.isArray(tourMidiCatalogCache) && tourMidiCatalogCache.length) {
+    console.log(`%c[TOUR] Catalog cache hit: ${tourMidiCatalogCache.length} sources`, 'color: #4CAF50;');
+    return tourMidiCatalogCache;
+  }
 
+  console.log('%c[TOUR] Fetching remote MIDI catalog from GitHub API...', 'color: #2196F3;');
+  
   try {
-    const response = await fetch(TOUR_FETCH_CONFIG.catalogUrl, { method: 'GET' });
-    if (!response.ok) throw new Error(`Catalog fetch failed (${response.status})`);
+    const catalogUrl = TOUR_FETCH_CONFIG.catalogUrl;
+    console.log(`%c[TOUR] Catalog URL: ${catalogUrl}`, 'color: #666;');
+    
+    const fetchStart = performance.now();
+    const response = await fetch(catalogUrl, { method: 'GET' });
+    const fetchTime = performance.now() - fetchStart;
+    
+    console.log(`%c[TOUR] Catalog fetch completed in ${fetchTime.toFixed(0)}ms, HTTP ${response.status}`, 'color: #2196F3;');
+    
+    if (!response.ok) {
+      console.error(`%c[TOUR BLOCKED] Catalog HTTP error ${response.status}`, 'color: #f44336;', { url: catalogUrl, status: response.status });
+      throw new Error(`Catalog fetch failed (${response.status})`);
+    }
+    
     const payload = await response.json();
     const tree = Array.isArray(payload?.tree) ? payload.tree : [];
+    console.log(`%c[TOUR] Catalog JSON parsed: ${tree.length} tree items`, 'color: #4CAF50;');
+    
     const midiPaths = tree
       .filter(item => item && item.type === 'blob' && /\.mid$/i.test(item.path || ''))
       .slice(0, TOUR_FETCH_CONFIG.maxCatalogEntries)
       .map(item => String(item.path));
+    
+    console.log(`%c[TOUR] Filtered to ${midiPaths.length} MIDI files (max: ${TOUR_FETCH_CONFIG.maxCatalogEntries})`, 'color: #4CAF50;');
 
     const remoteSources = midiPaths.map(path => {
       const fileName = path.split('/').pop() || path;
@@ -6426,9 +6718,15 @@ async function getTourMidiCatalog() {
       };
     });
 
-    tourMidiCatalogCache = remoteSources.length ? remoteSources.concat(TOUR_FALLBACK_MIDI_SOURCES) : TOUR_FALLBACK_MIDI_SOURCES.slice();
+    const totalSources = remoteSources.length + TOUR_FALLBACK_MIDI_SOURCES.length;
+    tourMidiCatalogCache = remoteSources.length 
+      ? remoteSources.concat(TOUR_FALLBACK_MIDI_SOURCES) 
+      : TOUR_FALLBACK_MIDI_SOURCES.slice();
+    
+    console.log(`%c[TOUR] Catalog ready: ${remoteSources.length} remote + ${TOUR_FALLBACK_MIDI_SOURCES.length} fallback = ${tourMidiCatalogCache.length} total`, 'color: #4CAF50; font-weight: bold;');
   } catch (err) {
-    console.warn('Tour catalog fetch failed; using fallback list.', err);
+    console.error(`%c[TOUR FAILED] Catalog fetch error:`, 'color: #f44336; font-weight: bold;', err.message);
+    console.log(`%c[TOUR] Falling back to ${TOUR_FALLBACK_MIDI_SOURCES.length} hardcoded sources`, 'color: #ff9800;');
     tourMidiCatalogCache = TOUR_FALLBACK_MIDI_SOURCES.slice();
   }
 
@@ -6463,44 +6761,70 @@ function createTransientTourProject({ midiBuffer, midiName, mode, mapId, playerC
 }
 
 async function chooseTourMidiSource(difficulty, songIndex, characterGenres = []) {
+  console.log('%c[TOUR] chooseTourMidiSource called as fallback', 'color: #ff9800; font-weight: bold;', { difficulty, songIndex });
+  
   try {
     // Get target note range for this stage and difficulty
     const targetMin = calculateProgressionTarget(songIndex, difficulty);
-    const [rangeMin, rangeMax] = calculateProgressionRange(targetMin, difficulty);
+    const [rangeMin, rangeMax] = calculateProgressionRange(targetMin, difficulty, songIndex);
     
-    // Build pool of up to 10 candidate MIDI files
+    console.log(`%c[TOUR] Target range for ${difficulty} stage ${songIndex}: [${rangeMin}, ${rangeMax}]`, 'color: #2196F3;');
+    
+    // Build pool of up to 10 candidate MIDI files (with automatic range widening on failure)
     const pool = await buildTourMidiSourcePool(rangeMin, rangeMax, characterGenres, 10);
-    if (!pool.length) {
-      console.warn('No pool candidates found, trying fallback sources...');
-      throw new Error('No candidates in target range');
+    console.log(`%c[TOUR] Pool result: ${pool.length} candidates`, 'color: #2196F3;');
+    
+    if (pool.length > 0) {
+      // Pick randomly from pool for variety (avoid same song twice in a run)
+      const picked = pickRandomItem(pool);
+      if (picked) {
+        console.log(`%c[TOUR] Selected from pool: ${picked.source.title}`, 'color: #4CAF50; font-weight: bold;');
+        return {
+          title: picked.source.title || 'Tour MIDI',
+          sourceUrl: picked.source.url,
+          artist: picked.source.artist || 'Unknown',
+          genre: picked.source.tags ? picked.source.tags.join('/') : 'Mixed',
+          arrayBuffer: picked.arrayBuffer,
+          parsed: picked.parsed,
+          noteCount: picked.noteCount,
+          mainTrackIdx: picked.mainTrackIdx,
+        };
+      }
     }
     
-    // Pick randomly from pool for variety (avoid same song twice in a run)
-    const picked = pickRandomItem(pool);
-    if (!picked) throw new Error('Failed to pick from pool');
-    
-    return {
-      title: picked.source.title || 'Tour MIDI',
-      sourceUrl: picked.source.url,
-      artist: picked.source.artist || 'Unknown',
-      genre: picked.source.tags ? picked.source.tags.join('/') : 'Mixed',
-      arrayBuffer: picked.arrayBuffer,
-      parsed: picked.parsed,
-      noteCount: picked.noteCount,
-      mainTrackIdx: picked.mainTrackIdx,
-    };
+    // Pool finding failed or empty - try hardcoded fallback sources
+    console.warn('%c[TOUR] Pool selection failed, using hardcoded fallback sources...', 'color: #ff9800;');
+    throw new Error('No pool candidates; using fallback');
   } catch (err) {
-    console.warn('Pool-based selection failed:', err);
-    // Fallback to old method using fallback sources
-    const fallback = TOUR_FALLBACK_MIDI_SOURCES[Math.floor(Math.random() * TOUR_FALLBACK_MIDI_SOURCES.length)];
+    console.error('%c[TOUR] Pool-based selection error:','color: #f44336;', err.message);
+    
+    // Fallback to hardcoded TOUR_FALLBACK_MIDI_SOURCES
+    const fallbackArray = TOUR_FALLBACK_MIDI_SOURCES;
+    console.log(`%c[TOUR] Attempting hardcoded fallback (${fallbackArray.length} sources available)`, 'color: #ff9800;');
+    
+    const fallback = fallbackArray[Math.floor(Math.random() * fallbackArray.length)];
+    console.log(`%c[TOUR] Selected fallback: ${fallback.title}`, 'color: #ff9800;');
+    
     try {
       const fallbackUrl = (/^https?:\/\//i).test(String(fallback.url || '')) ? fallback.url : encodeURI(fallback.url);
+      console.log(`%c[TOUR] Fetching fallback: ${fallbackUrl}`, 'color: #ff9800;');
+      
       const response = await fetch(fallbackUrl, { mode: 'cors' });
-      if (!response.ok) throw new Error(`Fallback fetch failed (${response.status})`);
+      
+      if (!response.ok) {
+        console.error(`%c[TOUR BLOCKED] Fallback HTTP ${response.status}`, 'color: #f44336;', { url: fallbackUrl, status: response.status });
+        throw new Error(`Fallback fetch failed (${response.status})`);
+      }
+      
+      console.log(`%c[TOUR] Fallback fetch succeeded, parsing...`, 'color: #4CAF50;');
+      
       const arrayBuffer = await response.arrayBuffer();
       const parsed = parseMidi(arrayBuffer.slice(0));
       const mainTrackIdx = findMainTrackIdx(parsed);
       const noteCount = countNotesInTrack(parsed, mainTrackIdx);
+      
+      console.log(`%c[TOUR] Fallback parsed: ${noteCount} notes on track ${mainTrackIdx}`, 'color: #4CAF50; font-weight: bold;');
+      
       return {
         title: fallback.title || 'Tour MIDI',
         sourceUrl: fallback.url,
@@ -6512,24 +6836,55 @@ async function chooseTourMidiSource(difficulty, songIndex, characterGenres = [])
         mainTrackIdx,
       };
     } catch (fallbackErr) {
+      console.error('%c[TOUR CRITICAL] Fallback source also failed:', 'color: #f44336; font-weight: bold;', fallbackErr.message);
       throw new Error('Failed to fetch any playable Tour MIDI file.');
     }
   }
 }
 
+function cancelTourLoading() {
+  tourRunState.loadingCancelled = true;
+  tourRunState.loadingSong = false;
+  hideTourLoadingCard();
+  stopSongPlayback();
+  showTourScreen();
+  console.log('%c[TOUR UI] Loading cancelled - tour screen restored', 'color: #2196F3;');
+}
+
 async function loadTourSongAndStart() {
-  if (tourRunState.loadingSong) return;
+  if (tourRunState.loadingSong) {
+    console.warn('%c[TOUR] loadTourSongAndStart called while already loading, ignoring', 'color: #ff9800;');
+    return;
+  }
   tourRunState.loadingSong = true;
+  tourRunState.loadingCancelled = false;
+  tourRunState.loadStartTime = null;
+
+  console.log('%c[TOUR UI] loadTourSongAndStart begin', 'color: #2196F3;', {
+    difficulty: tourRunState.difficulty,
+    songIndex: tourRunState.songIndex,
+    playerCharacterId: currentTourCharacterId || currentPlayerCharacterId || 'blank',
+  });
+
+  console.log('%c[TOUR] ═════════════════════════════════════════', 'color: #2196F3; font-weight: bold;');
+  console.log('%c[TOUR] loadTourSongAndStart initiated', 'color: #2196F3; font-weight: bold;');
+  console.log('%c[TOUR] ═════════════════════════════════════════', 'color: #2196F3; font-weight: bold;');
 
   try {
-    showTourLoadingCard({
-      mode: 'Loading...',
-      songName: 'Preparing pool',
-      artist: 'Fetching assets',
-      genre: 'Resolving candidates',
-      noteCount: 0,
-      status: 'Starting tour load...'
-    }, null, { showPlayButton: false, playEnabled: false, ready: false });
+    const card = document.getElementById('tour-loading-card');
+    if (card) {
+      card.classList.remove('ready');
+      card.classList.add('visible');
+      console.log('%c[TOUR] Loading card displayed', 'color: #4CAF50;');
+    }
+    tourRunState.loadStartTime = performance.now();
+
+    const cancelBtn = document.getElementById('tour-loading-cancel');
+    if (cancelBtn) {
+      cancelBtn.onclick = cancelTourLoading;
+      console.log('%c[TOUR] Cancel button ready', 'color: #4CAF50;');
+    }
+
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     const songIndex = Math.max(1, tourRunState.songIndex + 1);
@@ -6541,34 +6896,35 @@ async function loadTourSongAndStart() {
     const mapId = pickRandomBackgroundSceneId();
     const rivalCharacterId = pickRandomRivalCharacterId(playerCharacterId);
 
+    console.log('%c[TOUR] Setup complete:', 'color: #2196F3;', { songIndex, difficulty, mode, playerCharacterId, rivalCharacterId });
+
     // Build pool of candidates, pick one, and show loading animation
     const targetMin = calculateProgressionTarget(songIndex, difficulty);
-    const [rangeMin, rangeMax] = calculateProgressionRange(targetMin, difficulty);
+    const [rangeMin, rangeMax] = calculateProgressionRange(targetMin, difficulty, songIndex);
     // enforce minimum progression floor per stage/difficulty
     const difficultyInc = (d) => d === 'easy' ? 8 : (d === 'hard' ? 30 : 18);
     const minFloor = Math.max(50, 50 + (songIndex - 1) * difficultyInc(difficulty));
     const effectiveMin = Math.max(rangeMin, minFloor);
-    showTourLoadingCard({
-      mode: `Stage ${songIndex}`,
-      songName: 'Loading MIDI catalog',
-      artist: 'Fetching assets',
-      genre: `${difficulty.toUpperCase()} mode`,
-      noteCount: 0,
-      status: 'Loading catalog and parsing candidates...'
-    }, null, { showPlayButton: false, playEnabled: false, ready: false });
 
+    const songTitles = []; // Track titles as they're loaded for the slot machine
     const pool = await buildTourMidiSourcePool(effectiveMin, rangeMax, genres, 10, progress => {
-      const sourceTitle = progress?.source?.title || progress?.source?.url || 'unknown source';
-      const progressLabel = progress?.stage === 'fetching' ? 'Fetching' : progress?.stage === 'parsing' ? 'Parsing' : 'Matching';
-      showTourLoadingCard({
-        mode: `Stage ${songIndex}`,
-        songName: sourceTitle,
-        artist: 'Loading assets',
-        genre: progress?.stage === 'matched' ? 'Candidate accepted' : `${progressLabel} ${progress?.index + 1 || 0}/${progress?.total || 0}`,
-        noteCount: progress?.noteCount || 0,
-        status: `${progressLabel} ${progress?.index + 1 || 0}/${progress?.total || 0}`,
-      }, null, { showPlayButton: false, playEnabled: false, ready: false });
+      if (tourRunState.loadingCancelled) return; // Check for cancellation
+      
+      // Add new title to the slot machine if it's a new song
+      if (progress?.stage === 'matched' && progress?.source) {
+        const newTitle = progress.source.title || 'Untitled';
+        if (!songTitles.some(t => t.title === newTitle)) {
+          songTitles.push({ title: newTitle, noteCount: progress?.noteCount || 0 });
+          updateTourLoadingSlotMachine(songTitles); // Update slot machine with new title
+        }
+      }
     }).catch(() => []);
+
+    if (tourRunState.loadingCancelled) {
+      tourRunState.loadingSong = false;
+      return;
+    }
+
     let midiChoice = null;
     if (pool && pool.length) {
       // Shuffle top candidates a little then pick
@@ -6591,6 +6947,11 @@ async function loadTourSongAndStart() {
       midiChoice = await chooseTourMidiSource(difficulty, songIndex, genres);
     }
 
+    if (tourRunState.loadingCancelled) {
+      tourRunState.loadingSong = false;
+      return;
+    }
+
     // Show loading card with song info and pool animation (if available)
     if (midiChoice) {
       const titles = (midiChoice.pool && midiChoice.pool.length)
@@ -6602,8 +6963,8 @@ async function loadTourSongAndStart() {
         artist: midiChoice.artist,
         genre: midiChoice.genre,
         noteCount: midiChoice.noteCount || 0,
-        status: 'Song ready - choose Play to start',
       }, async () => {
+        if (tourRunState.loadingCancelled) return;
         try {
           const transientProject = createTransientTourProject({
             midiBuffer: midiChoice.arrayBuffer,
@@ -6643,138 +7004,222 @@ async function loadTourSongAndStart() {
           if (modeEl) modeEl.value = gameMode;
           buildTrackSelector();
           readConfig();
+          hideTourLoadingCard();
+          tourRunState.loadingSong = false;
+          tourRunState.loadStartTime = null;
           startGame();
         } catch (innerErr) {
           console.error('Failed to start game from loading card:', innerErr);
           alert(`Failed to start game: ${innerErr.message}`);
           hideTourLoadingCard();
           tourRunState.loadingSong = false;
+          console.error('%c[TOUR] Error starting game after load:', 'color: #f44336;', innerErr);
         }
       });
     }
   } catch (err) {
-    console.error('Failed to load Tour song:', err);
+    console.error('%c[TOUR CRITICAL] loadTourSongAndStart failed:', 'color: #f44336; font-weight: bold;');
+    console.error('%c Error message:', 'color: #f44336;', err.message);
+    console.error('%c Stack:', 'color: #f44336;', err.stack);
     tourRunState.loadingSong = false;
     alert(`Failed to load tour song: ${err.message}`);
     endTourRunAndReturnToTourScreen();
+    console.log('%c[TOUR] Returned to tour screen', 'color: #ff9800;');
   }
 }
 
 function showTourLoadingCard(info, onPlayClick, options = {}) {
   const card = document.getElementById('tour-loading-card');
-  const playBtn = document.getElementById('tour-loading-play');
-  const content = document.getElementById('tour-loading-content');
+  if (!card) {
+    console.warn('[TOUR UI] Loading card element missing');
+    return;
+  }
+  console.log('%c[TOUR UI] showTourLoadingCard', 'color: #2196F3;', { info, options });
   
-  if (card) {
-    document.getElementById('tour-loading-mode').textContent = info.mode || 'Battle';
-    document.getElementById('tour-loading-song').textContent = info.songName || 'Unknown';
-    document.getElementById('tour-loading-artist').textContent = info.artist || 'Unknown';
-    document.getElementById('tour-loading-genre').textContent = info.genre || 'Mixed';
-    const notesEl = document.getElementById('tour-loading-notes');
-    if (notesEl) notesEl.textContent = info.noteCount != null ? String(info.noteCount) : '0';
-    const statusEl = document.getElementById('tour-loading-status');
-    if (statusEl && info.status) statusEl.textContent = info.status;
-    if (content) content.classList.toggle('loading-ready', !!options.ready);
-    
-    if (playBtn) {
-      const visible = options.showPlayButton !== false;
-      playBtn.hidden = !visible;
-      playBtn.disabled = options.playEnabled === false;
-      playBtn.textContent = options.playLabel || 'PLAY SONG';
-      playBtn.onclick = visible ? (e) => {
+  // Update mode info
+  const modeEl = document.getElementById('tour-loading-mode');
+  if (modeEl) modeEl.textContent = info.mode || 'Unknown';
+  
+  // Update notes count
+  const notesEl = document.getElementById('tour-loading-notes');
+  if (notesEl) notesEl.textContent = String(info.noteCount != null ? info.noteCount : 0);
+  
+  // Update ready state
+  card.classList.toggle('ready', !!options.ready);
+  
+  // Setup play button
+  const playBtn = document.getElementById('tour-loading-play');
+  if (playBtn) {
+    playBtn.hidden = !options.showPlayButton;
+    playBtn.disabled = options.playEnabled === false;
+    if (onPlayClick) {
+      playBtn.onclick = (e) => {
         e.preventDefault();
-        if (playBtn.disabled) return;
-        playBtn.disabled = true;
-        hideTourLoadingCard();
-        if (onPlayClick) onPlayClick();
-      } : null;
+        if (!playBtn.disabled) {
+          playBtn.disabled = true;
+          if (onPlayClick) onPlayClick();
+        }
+      };
     }
-    card.classList.add('visible');
   }
 }
 
-function showTourLoadingWithPool(titles, pickedIndex, info, onPlayClick) {
-  // Populate basic info
-  showTourLoadingCard(info, null, { showPlayButton: false, playEnabled: false, ready: true });
-
+function updateTourLoadingSlotMachine(titles) {
+  // Dynamically build slot items as titles arrive
   const slotList = document.querySelector('#tour-loading-slot .slot-list');
+  if (!slotList) return;
+  
+  // Only add new titles that aren't already there
+  const existingTitles = new Set(Array.from(slotList.querySelectorAll('.slot-item')).map(el => el.textContent.split(' — ')[0]));
+  
+  titles.forEach(title => {
+    const titleText = title.title || 'Untitled';
+    if (!existingTitles.has(titleText)) {
+      const item = document.createElement('div');
+      item.className = 'slot-item';
+      item.textContent = titleText;
+      slotList.appendChild(item);
+      existingTitles.add(titleText);
+    }
+  });
+}
+
+function showTourLoadingWithPool(titles, pickedIndex, info, onPlayClick) {
+  const card = document.getElementById('tour-loading-card');
+  if (!card) {
+    console.warn('[TOUR UI] Loading card element missing (pool)');
+    return;
+  }
+  
+  // Show the card with initial info
+  showTourLoadingCard(info, null, { showPlayButton: false, playEnabled: false, ready: false });
+  
+  const slotList = document.querySelector('#tour-loading-slot .slot-list');
+  const viewport = document.querySelector('.slot-viewport');
   const playerImg = document.getElementById('tour-loading-portrait-player');
   const rivalImg = document.getElementById('tour-loading-portrait-rival');
-
-  if (!slotList) return showTourLoadingCard(info, onPlayClick, { ready: true });
-
-  // Build repeated titles list for continuous scroll
-  slotList.innerHTML = '';
-  const repeats = 8;
-  const all = [];
-  for (let r = 0; r < repeats; r++) all.push(...titles);
-  all.forEach(t => {
-    const d = document.createElement('div');
-    d.className = 'slot-item';
-    d.style.fontFamily = "'Share Tech Mono', monospace";
-    d.style.color = '#dfe6ff';
-    d.style.fontSize = '16px';
-    const titleText = (typeof t === 'string') ? t : (t.title || 'Untitled');
-    const noteCount = (t && t.noteCount != null) ? ` — ${t.noteCount} notes` : '';
-    d.textContent = `${titleText}${noteCount}`;
-    slotList.appendChild(d);
-  });
-
-  // Start simple scroll animation using JS
-  const itemHeight = slotList.firstElementChild ? slotList.firstElementChild.getBoundingClientRect().height + 8 : 24;
-  let position = 0;
-  let target = (repeats - 2) * titles.length + (pickedIndex || 0);
-  const duration = 2500 + Math.random() * 1200;
-  const start = performance.now();
-
-  function tick(now) {
-    const t = Math.min(1, (now - start) / duration);
-    // ease out cubic
-    const ease = 1 - Math.pow(1 - t, 3);
-    const current = Math.floor(ease * target);
-    const y = -current * itemHeight;
-    slotList.style.transform = `translateY(${y}px)`;
-    if (t < 1) requestAnimationFrame(tick);
-    else {
-      // reveal final picked item text in song row
-      const songEl = document.getElementById('tour-loading-song');
-      if (songEl) songEl.textContent = (titles[pickedIndex] && (titles[pickedIndex].title || titles[pickedIndex])) || songEl.textContent;
-      // enable play button
-      const playBtn = document.getElementById('tour-loading-play');
-      if (playBtn) {
-        playBtn.hidden = false;
-        playBtn.disabled = false;
-        playBtn.onclick = (e) => { e.preventDefault(); hideTourLoadingCard(); if (onPlayClick) onPlayClick(); };
-      }
-      const content = document.getElementById('tour-loading-content');
-      if (content) content.classList.add('loading-ready');
-    }
+  
+  if (!slotList || !viewport) {
+    console.warn('[TOUR UI] Slot machine elements missing', { slotList: !!slotList, viewport: !!viewport });
+    return;
   }
 
-  // Portraits slide-in: use current selected character and a random rival
-  try {
-    const playerChar = getCharacterById(currentTourCharacterId || currentPlayerCharacterId || 'blank');
-    const rivalId = pickRandomRivalCharacterId(currentTourCharacterId || currentPlayerCharacterId || 'blank');
-    const rivalChar = getCharacterById(rivalId);
-    if (playerImg) playerImg.src = playerChar?.portraitSprite || '';
-    if (rivalImg) rivalImg.src = rivalChar?.portraitSprite || '';
-    // start with off-screen transforms
-    if (playerImg) { playerImg.style.transform = 'translateX(-120%)'; playerImg.style.transition = 'transform 700ms cubic-bezier(.22,.9,.27,1)'; setTimeout(()=>playerImg.style.transform='translateX(0)',80); }
-    if (rivalImg) { rivalImg.style.transform = 'translateX(120%)'; rivalImg.style.transition = 'transform 700ms cubic-bezier(.22,.9,.27,1)'; setTimeout(()=>rivalImg.style.transform='translateX(0)',140); }
-  } catch (e) { /* ignore */ }
+  // Build initial slot items (limit to 7 visible items)
+  slotList.innerHTML = '';
+  const maxVisible = Math.min(7, titles.length);
+  const itemHeight = 60; // Approximate, will adjust
+  
+  titles.forEach((t, idx) => {
+    const item = document.createElement('div');
+    item.className = 'slot-item';
+    item.textContent = t.title || 'Untitled';
+    item.dataset.index = idx;
+    slotList.appendChild(item);
+  });
 
-  // disable immediate play until animation completes
-  const pb = document.getElementById('tour-loading-play'); if (pb) { pb.hidden = true; pb.disabled = true; pb.onclick = null; }
-  requestAnimationFrame(tick);
+  // Measure actual item height
+  const firstItem = slotList.firstElementChild;
+  const actualItemHeight = firstItem ? firstItem.getBoundingClientRect().height + 12 : 72; // height + gap
+
+  // Calculate scroll animation parameters
+  const loadStartTime = tourRunState.loadStartTime || performance.now();
+  const spinDurationAfterLoad = 3000; // 3 seconds spin after loading completes
+  const targetItem = pickedIndex !== undefined ? pickedIndex : 0;
+  const finalScrollOffset = targetItem * actualItemHeight;
+  
+  // Start animation
+  let isScrolling = true;
+  let startScrollTime = null;
+  
+  function animateScroll(now) {
+    if (!isScrolling || tourRunState.loadingCancelled) return;
+    
+    if (!startScrollTime) {
+      startScrollTime = now;
+    }
+    
+    const elapsed = now - startScrollTime;
+    const loadingElapsed = now - loadStartTime;
+    
+    // Fast spin initially, then slow down to final position
+    // Total duration is 3 seconds or adaptive to loading time
+    const totalDuration = spinDurationAfterLoad;
+    const progress = Math.min(1, elapsed / totalDuration);
+    
+    // Ease-out cubic for deceleration effect
+    const easeProgress = 1 - Math.pow(1 - progress, 3);
+    const currentOffset = finalScrollOffset * easeProgress;
+    
+    slotList.style.transform = `translateY(-${currentOffset}px)`;
+    
+    // Update center item highlighting
+    const items = slotList.querySelectorAll('.slot-item');
+    items.forEach((item, i) => {
+      const itemOffset = i * actualItemHeight;
+      const distanceFromCenter = Math.abs(itemOffset - (currentOffset + viewport.offsetHeight / 2));
+      item.classList.toggle('center', distanceFromCenter < actualItemHeight / 2);
+    });
+    
+    if (progress < 1) {
+      requestAnimationFrame(animateScroll);
+    } else {
+      // Animation complete - reveal selected song info and enable play button
+      isScrolling = false;
+      slotList.style.transform = `translateY(-${finalScrollOffset}px)`;
+      
+      // Fade in selected info and portraits
+      card.classList.add('ready');
+      showTourLoadingCard(info, null, { showPlayButton: true, playEnabled: true, ready: true });
+      
+      // Load and show character portraits
+      try {
+        const playerChar = getCharacterById(currentTourCharacterId || currentPlayerCharacterId || 'blank');
+        const rivalId = pickRandomRivalCharacterId(currentTourCharacterId || currentPlayerCharacterId || 'blank');
+        const rivalChar = getCharacterById(rivalId);
+        if (playerImg && playerChar?.portraitSprite) playerImg.src = playerChar.portraitSprite;
+        if (rivalImg && rivalChar?.portraitSprite) rivalImg.src = rivalChar.portraitSprite;
+      } catch (e) { /* ignore */ }
+      
+      // Set up play button
+      const playBtn = document.getElementById('tour-loading-play');
+      if (playBtn) {
+        playBtn.onclick = (e) => {
+          e.preventDefault();
+          playBtn.disabled = true;
+          if (onPlayClick) onPlayClick();
+        };
+      }
+    }
+  }
+  
+  requestAnimationFrame(animateScroll);
 }
 
 function hideTourLoadingCard() {
   const card = document.getElementById('tour-loading-card');
-  if (card) card.classList.remove('visible');
+  if (card) {
+    card.classList.remove('visible', 'ready');
+    console.log('%c[TOUR UI] Loading card hidden', 'color: #2196F3;');
+  }
 }
 
 async function startTourRun() {
   if (tourRunState.loadingSong) return;
+  console.log('%c[TOUR UI] startTourRun pressed', 'color: #2196F3;');
+  // Ensure the tour screen is visible and show the loading card immediately.
+  showTourScreen();
+  const card = document.getElementById('tour-loading-card');
+  if (card) {
+    card.classList.remove('ready');
+    card.classList.add('visible');
+    console.log('%c[TOUR UI] Loading card shown immediately', 'color: #2196F3;');
+  }
+  const tourScreen = document.getElementById('tour-screen');
+  if (tourScreen) {
+    tourScreen.style.display = 'none';
+    console.log('%c[TOUR UI] Tour screen hidden while loading', 'color: #2196F3;');
+  }
+  showTourLoadingCard({ mode: 'Loading', noteCount: 0 }, null, { showPlayButton: false, playEnabled: false, ready: false });
   const difficultyEl = document.getElementById('tour-difficulty-select');
   tourRunState.difficulty = (difficultyEl?.value || currentDifficulty || 'normal').toLowerCase();
   tourRunState.playerCharacterId = currentTourCharacterId || currentPlayerCharacterId || 'blank';
@@ -6917,7 +7362,13 @@ function initTourScreen() {
   }
 
   const backBtn = document.getElementById('btn-tour-back');
-  if (backBtn) backBtn.addEventListener('click', showMainMenu);
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      // Prevent navigation while loading
+      if (tourRunState.loadingSong) return;
+      showMainMenu();
+    });
+  }
 
   const playBtn = document.getElementById('tour-play-btn');
   if (playBtn) {
@@ -8625,10 +9076,10 @@ function applyGameplayModeLayout(mode = gameMode) {
   } else {
     currentBoardNoteSize = null;
     currentBoardHoldWidth = null;
-    currentBoardTargetY = TARGET_Y;
+    currentBoardTargetSize = Math.max(10, parseFloat(modeVars.targetSize) || 64);
+    currentBoardTargetY = TARGET_Y - (currentBoardTargetSize / 2);
     currentBoardTargetHitY = TARGET_Y;
     currentBoardSpawnY = null;
-    currentBoardTargetSize = null;
     playField.style.removeProperty('--play-track-x');
     playField.style.removeProperty('--play-track-width');
     referenceField.style.removeProperty('--play-track-x');
@@ -8699,12 +9150,18 @@ function gameLoop(now) {
   }
 
   // Spawn notes whose time has come
-  // A note should reach target at note.time ms.
-  // Travel distance = fieldH - TARGET_Y pixels at CFG.noteSpeed px/frame (60fps assumed)
-  // Time to travel = (fieldH - TARGET_Y) / CFG.noteSpeed / 60 * 1000 ms
+  // A note should reach target at note.time ms (center aligned).
+  // Travel distance uses the note center so timing windows align to the visual center.
+  const baseNoteSize = currentBoardNoteSize || Math.max(1, parseFloat(getLayoutForMode(gameMode).noteSize) || 46);
+  const noteHalf = baseNoteSize / 2;
   const travelDistance = gameMode === 'piano'
-    ? Math.max(1, currentBoardTargetHitY - (currentBoardSpawnY ?? 0))
-    : Math.max(1, fieldH - TARGET_Y);
+    ? (() => {
+        const spawnTop = currentBoardSpawnY ?? -(baseNoteSize || 24);
+        const spawnBottom = spawnTop + baseNoteSize;
+        const targetBottom = currentBoardTargetHitY + noteHalf;
+        return Math.max(1, targetBottom - spawnBottom);
+      })()
+    : Math.max(1, fieldH - (TARGET_Y - noteHalf));
   const travelMs = travelDistance / CFG.noteSpeed / 60 * 1000;
   const spawnTime = elapsed + travelMs;
 
@@ -8747,7 +9204,16 @@ function gameLoop(now) {
 
 function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference) {
   const isPianoBoard = gameMode === 'piano';
-  const targetY = isPianoBoard ? currentBoardTargetHitY : TARGET_Y;
+  const baseNoteSize = currentBoardNoteSize || Math.max(1, parseFloat(getLayoutForMode(gameMode).noteSize) || 46);
+  const noteHalf = baseNoteSize / 2;
+  const targetCenterY = isPianoBoard ? currentBoardTargetHitY : TARGET_Y;
+  const targetTopY = targetCenterY - noteHalf;
+  for (const note of notes) {
+    if ((note.hit || note.completed) && note.el) {
+      note.el.remove();
+      note.el = null;
+    }
+  }
   for (const note of notes) {
     if (note.hit || note.missed || note.el) continue;
     if (note.time <= spawnTime) {
@@ -8759,8 +9225,8 @@ function advanceBeatmap(notes, laneMap, fieldH, elapsed, spawnTime, isReference)
     if (note.hit || note.missed || !note.el) continue;
     const remainMs = note.time - elapsed;
     const y = isPianoBoard
-      ? targetY - remainMs * CFG.noteSpeed * 60 / 1000
-      : targetY + remainMs * CFG.noteSpeed * 60 / 1000;
+      ? (targetCenterY + noteHalf) - remainMs * CFG.noteSpeed * 60 / 1000
+      : targetTopY + remainMs * CFG.noteSpeed * 60 / 1000;
     if (isPianoBoard && note.el) {
       // For piano board, treat `y` as the bottom coordinate so the bottom (head) reaches target first
       const elHeight = (note.el && note.el.offsetHeight) ? note.el.offsetHeight : (note.hold ? (currentBoardNoteSize || Math.max(1, parseFloat(getLayoutForMode(gameMode).noteSize) || 46)) : (currentBoardNoteSize || Math.max(1, parseFloat(getLayoutForMode(gameMode).noteSize) || 46)));
@@ -9140,6 +9606,8 @@ function registerMiss(note) {
 
 function completeTapNote(note, lane, dist) {
   note.hit = true;
+  note.started = true;
+  note.completed = true;
   if (note.el) { note.el.remove(); note.el = null; }
 
   let judgment;
