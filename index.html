@@ -356,7 +356,6 @@
   #tour-loading-content {
     position: relative;
     background: linear-gradient(135deg, #0a0a16, #0f0f1e);
-    border: 3px solid rgba(186, 246, 204, 0.4);
     border-radius: 24px;
     padding: 48px 40px;
     max-width: 1000px;
@@ -377,6 +376,7 @@
     justify-content: center;
     flex: 1;
     min-height: 300px;
+    margin-top: 40px;
   }
 
   .tour-slot-machine {
@@ -392,7 +392,6 @@
     position: relative;
     height: 280px;
     overflow: hidden;
-    border: 3px solid rgba(200, 50, 50, 0.8);
     border-radius: 12px;
     background: linear-gradient(180deg, rgba(30, 10, 10, 0.6), rgba(50, 15, 15, 0.4));
     display: flex;
@@ -407,8 +406,6 @@
     right: 0;
     height: 60px;
     transform: translateY(-50%);
-    border-top: 2px solid rgba(200, 80, 80, 0.6);
-    border-bottom: 2px solid rgba(200, 80, 80, 0.6);
     background: linear-gradient(90deg, rgba(200, 50, 50, 0.15), transparent, rgba(200, 50, 50, 0.15));
     pointer-events: none;
     z-index: 10;
@@ -418,7 +415,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 16px 8px;
+    padding: 0;
     width: 100%;
     transform: translateY(0);
     transition: transform 0.05s linear;
@@ -427,7 +424,6 @@
   .slot-item {
     padding: 16px 12px;
     background: rgba(200, 50, 50, 0.7);
-    border: 2px solid rgba(255, 100, 100, 0.8);
     border-radius: 6px;
     color: #fff;
     font-size: 16px;
@@ -444,18 +440,17 @@
     opacity: 1;
     transform: scale(1.1);
     background: rgba(255, 100, 100, 0.9);
-    border-color: rgba(255, 150, 150, 1);
     box-shadow: 0 0 20px rgba(255, 100, 100, 0.5);
   }
 
   /* ─── Portraits Container ─── */
   #tour-loading-portraits-container {
-    display: flex;
-    gap: 24px;
-    align-items: center;
-    justify-content: center;
+    position: absolute;
+    inset: 0;
+    display: block;
     opacity: 0;
     transition: opacity 0.6s ease;
+    pointer-events: none;
   }
 
   #tour-loading-card.ready #tour-loading-portraits-container {
@@ -464,10 +459,21 @@
 
   #tour-loading-portrait-player,
   #tour-loading-portrait-rival {
-    width: 140px;
-    height: 100px;
+    position: absolute;
+    top: 8%;
+    height: 84%;
+    width: auto;
+    max-width: 42%;
     object-fit: contain;
     image-rendering: pixelated;
+  }
+
+  #tour-loading-portrait-player {
+    left: -2%;
+  }
+
+  #tour-loading-portrait-rival {
+    right: -2%;
   }
 
   /* ─── Info Boxes (Mode + Notes) ─── */
@@ -486,19 +492,16 @@
   .info-box {
     padding: 16px 24px;
     border-radius: 8px;
-    border: 2px solid;
     text-align: center;
     min-width: 150px;
   }
 
   .mode-box {
     background: rgba(100, 150, 200, 0.3);
-    border-color: rgba(100, 150, 200, 0.8);
   }
 
   .notes-box {
     background: rgba(100, 200, 220, 0.3);
-    border-color: rgba(100, 200, 220, 0.8);
   }
 
   .info-label {
@@ -7120,6 +7123,7 @@ function showTourLoadingWithPool(titles, pickedIndex, info, onPlayClick) {
   // Measure actual item height
   const firstItem = slotList.firstElementChild;
   const actualItemHeight = firstItem ? firstItem.getBoundingClientRect().height + 12 : 72; // height + gap
+  const centerOffset = Math.max(0, (viewport.offsetHeight - actualItemHeight) / 2);
 
   // Calculate scroll animation parameters
   const loadStartTime = tourRunState.loadStartTime || performance.now();
@@ -7150,13 +7154,14 @@ function showTourLoadingWithPool(titles, pickedIndex, info, onPlayClick) {
     const easeProgress = 1 - Math.pow(1 - progress, 3);
     const currentOffset = finalScrollOffset * easeProgress;
     
-    slotList.style.transform = `translateY(-${currentOffset}px)`;
+    slotList.style.transform = `translateY(${centerOffset - currentOffset}px)`;
     
     // Update center item highlighting
     const items = slotList.querySelectorAll('.slot-item');
     items.forEach((item, i) => {
       const itemOffset = i * actualItemHeight;
-      const distanceFromCenter = Math.abs(itemOffset - (currentOffset + viewport.offsetHeight / 2));
+      const itemCenter = itemOffset + (actualItemHeight / 2) + centerOffset;
+      const distanceFromCenter = Math.abs(itemCenter - (currentOffset + viewport.offsetHeight / 2));
       item.classList.toggle('center', distanceFromCenter < actualItemHeight / 2);
     });
     
@@ -7165,7 +7170,7 @@ function showTourLoadingWithPool(titles, pickedIndex, info, onPlayClick) {
     } else {
       // Animation complete - reveal selected song info and enable play button
       isScrolling = false;
-      slotList.style.transform = `translateY(-${finalScrollOffset}px)`;
+      slotList.style.transform = `translateY(${centerOffset - finalScrollOffset}px)`;
       
       // Fade in selected info and portraits
       card.classList.add('ready');
@@ -9608,6 +9613,7 @@ function completeTapNote(note, lane, dist) {
   note.hit = true;
   note.started = true;
   note.completed = true;
+  note.missed = false;
   if (note.el) { note.el.remove(); note.el = null; }
 
   let judgment;
@@ -9682,6 +9688,9 @@ function completeTapNote(note, lane, dist) {
 function autoCompleteTapNote(note, lane) {
   // Perfect timing auto-complete (no player input needed)
   note.hit = true;
+  note.started = true;
+  note.completed = true;
+  note.missed = false;
   if (note.el) { note.el.remove(); note.el = null; }
 
   const judgment = 'perfect';
