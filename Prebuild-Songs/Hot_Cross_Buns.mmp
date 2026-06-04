@@ -1,0 +1,52 @@
+{
+  "_format": "mmp/1",
+  "meta": {
+    "id": "efd771ab-67b6-47c1-9feb-5222b4e79de0",
+    "title": "Hot Cross Buns",
+    "artist": "Unknown",
+    "settings": {
+      "noteSpeed": 5,
+      "pitchRange": 100,
+      "minVelocity": 30,
+      "cameraSpeed": 1,
+      "mode": "solo",
+      "backgroundScene": "city-night",
+      "backgroundTempoBpm": 0,
+      "artist": "Unknown"
+    },
+    "trackRoles": [
+      "off",
+      "game"
+    ],
+    "trackVolumes": [
+      0.8,
+      0.8
+    ],
+    "trackClipIds": [
+      "__character__",
+      "__character__"
+    ],
+    "trackCollapsed": [
+      true,
+      true
+    ],
+    "mp3OffsetMs": 0,
+    "manualMapEnabled": false,
+    "manualBeatmap": [],
+    "midiName": "hot-cross-buns.mid",
+    "mp3Name": "",
+    "recorderVoiceName": "",
+    "midiDurationMs": 15313.125,
+    "mp3DurationMs": 0,
+    "playerCharacterId": "mushsol",
+    "rivalCharacterId": "vendor",
+    "difficultyRating": 0,
+    "exportedAt": 1780578450749
+  },
+  "midiBase64": "TVRoZAAAAAYAAQACAQBNVHJrAAAASAD/WAQEAhgIAP9ZAgEAAP9RAwdTAAD/AwxHcmVlbnNsZWV2ZXMA/wELVHJhZGl0aW9uYWwA/wIMSmltIFBhdGVyc29uAf8vAE1UcmsAAAKHAMAAALB5AACwQAAAsAo/ALAHXwCQSkkAsHkAALBAAACwCj8AsAdfAP8DBVBpYW5vAJAyPwCQOT+BdIBKAAyQPkiBZ4AyAACAOQANgD4ADJBDWACQN0cAkDtHg2eAQwAAgDcAAIA7ABmQSlsAkDJKAJA5SoF0gEoADJA+SYFngDIAAIA5AA2APgAMkENXAJA3RwCQO0eDZ4BDAACANwAAgDsAGZBKWQCQL0UAkDdFeoBKAAaQSFF6gEgABpBHVHqARwAGkEVQZ4AvAACANwATgEUABpBDUACQL0YAkDJGeoBDAAaQRVR6gEUABpBHVXqARwAGkEhWZ4AvAACAMgATgEgABpBKVwCQMkoAkDlKgXSASgAMkD5JgWeAMgAAgDkADYA+AAyQQ1YAkDdHAJA7R4F0gEMADJBDVHqAQwAGkENWZ4A3AACAOwATgEMABpBKWwCQL0YAkDdGeoBKAAaQSlV6gEoABpBKVnqASgAGkEpWZ4AvAACANwATgEoABpBIUgCQMEcAkDdHgXSASAAMkEhTgWeAMAAAgDcADYBIAAyQR1EAkDJHAJA3R3qARwAGkEdTeoBHAAaQR1F6gEcABpBHU2eAMgAAgDcAE4BHAAaQRVAAkDJFAJA2RYNngEUAAIAyAACANgAZkEpYAJAvRwCQN0d6gEoABpBIVHqASAAGkEdReoBHAAaQRVNngC8AAIA3ABOARQAGkENQAJAvRgCQMkZ6gEMABpBFVnqARQAGkEdVeoBHAAaQSFZngC8AAIAyABOASAAGkEpZAJAyTQCQOU2BdIBKAAyQPkiBZ4AyAACAOQANgD4ADJBDWQCQN0oAkDtKg2eAQwAAgDcAAIA7AAH/LwA=",
+  "mp3Base64": null,
+  "recorderVoiceBase64": null,
+  "midiHash": "cee102deab8ca45f7230018fd5daea993cf48595d63986847038297aa89e5c35",
+  "mp3Hash": null,
+  "recorderHash": null
+}
