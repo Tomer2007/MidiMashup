@@ -89,3 +89,56 @@ Current bugs
 - Create something with variety of ways to interact to keep user's interested.
 - 
 
+
+To start with the main idea for this projection was actually thought up before I'd even gotten the assignment, with me already wanting to try and make a rhythm game which uses MIDI files to automatically generate a game so users could make their own custom rhythm games.
+Once I had the idea I got Claude to make a basic engine which pretty directly converted the MIDIs inputted into 4 tracks which could be played with the arrow keys.
+
+From this I had the base structure, but it still needed lots of work so I then I added a simple editor menu which allowed users to tweak values for things like Note Speed, track assigment (as most midis use multiple tracks for different instruments, this setting let me choose which track to make Playing, Backing, or Off), track volumes and much more. Doing this helped a lot with making the song more designed and actually playable. To further help I also made the beatmap generator merge notes that were extremely close together into long notes which needed to be held down. This helped a lot as long notes in the midis I used where just being turned into very close together consecutive notes that were extremely difficult to play with. Later this system got more advanced with me asking CoPilot to make the beat mapping algorithm find these rapid consecutive notes and read them as long notes, with set start and end times, which resulted in them overlapping other notes which was also a problem I fixed by forcing long notes to end before another note played, and just having that note continue without input for it's proper length.
+
+ Now that I had fixed the gameplay I wanted to work on how the songs sound, as one of the major limitations with making a game based on midis is that they don't sound very good when played by themselves. So I got CoPilot to add the ability to add a mp3 that will play alongside the song giving a better sounding backing track to the gameplay. Due to some issues with lining these up I also added another setting to tweak the starting time of the mp3 to try and line them up along with a Sound wave for each file to help, though still kind of difficult to do without trial and error.
+
+ At this point I had been adding a bunch of songs to test the game and I found that even when using Midis with backing MP3s it still didn't feel right when playing as the the overly complex Midi beatmaps never matched the more simple lead instrumentals and vocals of the mp3s. So I got Claude to add a sort of manual tracking where you could play through and record a beatmap which would then be applied to the song. This allowed me to have more control over the actual gameplay of the song projects which helped with the problem of balancing difficulty, as most the midi files I'd found up until this point where either very long, or had way too many notes to make a balanced progression of difficulty.
+
+Editor Menu
+
+Editor Settings, merge window other things for balancing
+
+Added backing MP3s
+
+Added Manual Tracking Patch 1
+
+Battle Mode
+
+Mushy Character
+ - Taunt System
+
+Night Background
+
+Martin Character
+
+Abandonded Tote character
+
+Recorder Character - Made specifically to try and use vocal mp3
+
+Solo Mode + Piano Mode + Auto Mode (required a lot of iterating and fixing)
+
+Actual Difficulties
+
+More modes planned, but dropped Battle Board mode, Drum Mode, Gauntlet Mode
+
+Tour Mode Planning and Struggles, UI breaking, failing to get song data, spinning wheel
+
+UI redesign
+
+Prebuilt Songs - Fixing Manual Tracking, finding songs, using songs from testing
+
+Tour Mode PT2 - Second Slot Machine, expanded library, bug fixes, adjusting character art, adding portraits, lose conditions and win screens
+
+Menu UI changes
+
+Final touches, issues with prebuilt songs, importing, saving
+
+Issues with sound loading and playing in game, kept breaking at random points throughout.
+
+Possible Improvements - Cut content, Tour mode roguelike mechanics, cut characters, scenes, mechanics, 
+

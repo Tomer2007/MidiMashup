@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- Inline favicon to avoid missing /favicon.ico requests -->
 <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=">
-<title>MIDI Beat Engine</title>
+<title>MIDI MASHUP</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
@@ -80,6 +80,46 @@
     overflow: hidden;
     background: #0a0a18;
   }
+  /* ── Main menu button sprites ──────────────────────────────────────────── */
+  .main-menu-btn-sprite {
+    position: absolute;
+    pointer-events: none;   /* hitbox layer handles clicks */
+    image-rendering: pixelated;
+    object-fit: contain;
+    z-index: 1550;
+    transition: transform 0.12s ease, filter 0.12s ease;
+  }
+  #main-menu-title-sprite {
+    position: absolute;
+    pointer-events: none;
+    image-rendering: pixelated;
+    object-fit: contain;
+    z-index: 1550;
+  }
+
+  /* ── Music visualizer canvases ─────────────────────────────────────────── */
+  .menu-visualizer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    opacity: 0.45;
+    z-index: 0;
+  }
+  /* Side visualizers each take one half so left+right overlap at centre */
+  #play-menu-viz-left  { clip-path: inset(0 50% 0 0); }
+  #play-menu-viz-right { clip-path: inset(0 0 0 50%); }
+
+  /* Editor visualizer — same full-viewport fixed */
+  #editor-menu-viz { opacity: 0.32; }
+
+  /* Play menu title beat-swap */
+  #play-menu-title-sprite {
+    transition: opacity 0.06s ease;
+  }
+
   #main-menu-screen.visible { display: block; }
   #main-menu-visual {
     position: absolute;
@@ -94,19 +134,47 @@
     position: absolute;
     inset: 0;
   }
+  #main-menu-char-portrait {
+    position: absolute;
+    /* Default geometry — overridden at runtime by MAIN_MENU_LAYOUT.portrait */
+    left: 1%;
+    bottom: 0;
+    width: 28%;
+    height: auto;
+    z-index: 1600;
+    cursor: pointer;
+    image-rendering: pixelated;
+    display: none; /* shown by updateMainMenuCharacterPortrait() */
+    pointer-events: auto;
+  }
+  .main-menu-portrait {
+    position: absolute;
+    bottom: 0;
+    width: var(--main-menu-portrait-width, 28%);
+    height: auto;
+    z-index: 1600;
+    image-rendering: pixelated;
+    pointer-events: none;
+    display: none;
+    transform-origin: bottom center;
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), filter 0.2s ease;
+  }
+  .main-menu-portrait.hovered { /* scale handled per-id above */ }
+  .main-menu-portrait.clicked { /* scale handled per-id above */ }
+  /* Player on right faces left (into screen); rival on left faces right (into screen) */
+  #main-menu-portrait-player          { right: var(--main-menu-portrait-player-right, 0%); transform: scaleX(1);    }
+  #main-menu-portrait-player.hovered  { transform: scaleX(1)    scale(1.07); }
+  #main-menu-portrait-player.clicked  { transform: scaleX(1)    scale(1.13); }
+  #main-menu-portrait-rival           { left:  var(--main-menu-portrait-rival-left,   0%); transform: scaleX(-1);   }
+  #main-menu-portrait-rival.hovered   { transform: scaleX(-1)   scale(1.07); }
+  #main-menu-portrait-rival.clicked   { transform: scaleX(-1)   scale(1.13); }
   .main-menu-hotspot {
     position: absolute;
-    background: rgba(255, 255, 255, 0);
+    background: transparent;
     cursor: pointer;
   }
   #main-menu-hover-overlay {
-    position: absolute;
-    display: none;
-    pointer-events: none;
-    background: rgba(255, 255, 255, 0.18);
-    outline: 2px solid rgba(255, 255, 255, 0.42);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-    mix-blend-mode: screen;
+    display: none !important; /* sprites handle all hover feedback */
   }
 
   /* ── TOUR SCREEN ── */
@@ -228,18 +296,22 @@
   }
 
   #tour-character-backstory {
-    min-height: 120px;
-    resize: vertical;
+    min-height: 40px;
+    max-height: 140px;
+    overflow-y: auto;
     width: 100%;
-    padding: 12px 14px;
+    padding: 10px 14px;
     border-radius: 10px;
-    border: 1px solid rgba(153, 185, 255, 0.42);
-    background: rgba(6, 9, 22, 0.95);
-    color: #eef3ff;
+    border: 1px solid rgba(153, 185, 255, 0.18);
+    background: rgba(6, 9, 22, 0.60);
+    color: #b0bde8;
     font-family: 'Orbitron', sans-serif;
-    font-size: 16px;
-    line-height: 1.45;
+    font-size: 13px;
+    line-height: 1.55;
     box-sizing: border-box;
+    white-space: pre-wrap;
+    user-select: text;
+    pointer-events: auto;
   }
 
   .tour-portrait-empty {
@@ -399,6 +471,7 @@
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9);
     font-family: 'Orbitron', sans-serif;
     display: flex;
+    z-index: 8000;
     flex-direction: column;
     gap: 20px;
   }
@@ -410,9 +483,11 @@
     0%   { transform: translateY(0); }
     100% { transform: translateY(-50%); }
   }
+  @keyframes portrait-slide-in-right {
     from { opacity: 0; transform: translateX(200px); }
     to   { opacity: 1; transform: translateX(0); }
-  
+  }
+
   @keyframes portrait-slide-in-left {
     from { opacity: 0; transform: translateX(-200px) scaleX(-1); }
     to   { opacity: 1; transform: translateX(0)   scaleX(-1); }
@@ -427,7 +502,7 @@
     object-fit: contain;
     image-rendering: pixelated;
     opacity: 0;
-    z-index: 3001;
+    z-index: 1999;
   }
   /* body class set/cleared by showTourLoadingCard / hideTourLoadingCard */
   body.tour-portraits-visible #tour-loading-portrait-player {
@@ -436,8 +511,8 @@
   body.tour-portraits-visible #tour-loading-portrait-rival {
     animation: portrait-slide-in-left  0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
   }
-  #tour-loading-portrait-player { right: 1%; height: 72vh; }
-  #tour-loading-portrait-rival  { left: 1%;  height: 72vh; transform: scaleX(-1); }
+  #tour-loading-portrait-player { right: var(--portrait-player-right, 1%); height: var(--portrait-height, 72vh); }
+  #tour-loading-portrait-rival  { left:  var(--portrait-rival-left,   1%); height: var(--portrait-height, 72vh); transform: scaleX(-1); }
 
   /* ── Two-slot container ───────────────────────────────── */
   #tour-loading-slot-container {
@@ -1307,6 +1382,23 @@
   .lane-right .note.sprite { background-image: url('Art/Mushy/Mushy_RightNote.png'); }
   .lane-down .note.sprite { background-image: url('Art/Mushy/Mushy-DownNote.png'); }
 
+  #pregame-loading-overlay {
+    position: fixed; inset: 0; background: #000; z-index: 9000;
+    display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  }
+  #pregame-loading-overlay.visible { display: flex; }
+  #pregame-loading-label {
+    font-family: 'Orbitron', sans-serif; font-size: 13px; color: rgba(255,255,255,0.55);
+    letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  #pregame-loading-bar-track {
+    width: min(340px, 60vw); height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;
+  }
+  #pregame-loading-bar-fill {
+    height: 100%; width: 0%; background: var(--up, #00f5ff);
+    border-radius: 2px; transition: width 0.12s linear;
+  }
+
   #countdown-overlay {
     position: fixed;
     inset: 0;
@@ -1373,9 +1465,9 @@
   #scanlines {
     position: fixed;
     inset: 0;
-    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 1px, transparent 1px, transparent 2px);
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px, transparent 1px, transparent 2px);
     pointer-events: none;
-    z-index: 100;
+    z-index: 10000;
   }
 
   /* Results */
@@ -1451,12 +1543,173 @@
     position: relative;
     z-index: 2;
     overflow: hidden;
+    justify-content: flex-end; /* bar grows from right edge leftward when health drops */
   }
+
+  /* ── Battle FAIL overlay ─────────────────────────────────────────────────── */
+  #battle-fail-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    backdrop-filter: blur(6px);
+    z-index: 250;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+  }
+  #battle-fail-overlay.visible { display: flex; }
+  #battle-fail-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(64px, 12vw, 120px);
+    font-weight: 900;
+    color: #ff1a1a;
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 40px rgba(255,30,30,0.8), 0 0 80px rgba(255,30,30,0.4);
+    animation: fail-pulse 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes fail-pulse {
+    from { filter: brightness(1); }
+    to   { filter: brightness(1.35) drop-shadow(0 0 24px #ff1a1a); }
+  }
+  .battle-fail-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 14px 40px;
+    border: 2px solid #ff1a1a;
+    background: transparent;
+    color: #ff1a1a;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .battle-fail-btn:hover { background: #ff1a1a; color: #000; }
+
+  /* ── Tour loss screen ────────────────────────────────────────────────────── */
+  #tour-loss-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    overflow: hidden;
+  }
+  #tour-loss-screen.visible { display: flex; }
+  #tour-loss-bg {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  #tour-loss-bg img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: pixelated;
+    opacity: 0.85;
+  }
+  #tour-loss-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    text-align: center;
+  }
+  #tour-loss-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(48px, 10vw, 96px);
+    font-weight: 900;
+    color: #ff1a1a;
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 32px rgba(255,30,30,0.9);
+  }
+  #tour-loss-score-label {
+    font-size: 14px;
+    color: #888;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+  }
+  #tour-loss-score {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(32px, 6vw, 64px);
+    font-weight: 700;
+    color: #fff;
+  }
+  #tour-loss-back-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    padding: 14px 44px;
+    border: 2px solid #ff1a1a;
+    background: transparent;
+    color: #ff1a1a;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.15s, color 0.15s;
+  }
+  #tour-loss-back-btn:hover { background: #ff1a1a; color: #000; }
+
+  /* ── Tour victory screen ──────────────────────────────────────────────────── */
+  #tour-victory-screen {
+    display: none; position: fixed; inset: 0; z-index: 4500;
+    flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.72);
+  }
+  #tour-victory-screen.visible { display: flex; }
+  #tour-victory-bg {
+    position: absolute; inset: 0; overflow: hidden;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  #tour-victory-bg img {
+    max-height: 100%; max-width: 100%; object-fit: contain;
+    image-rendering: pixelated; opacity: 0.85;
+  }
+  #tour-victory-content {
+    position: relative; z-index: 1; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    background: rgba(0,0,0,0.55); border-radius: 20px; padding: 40px 60px;
+    box-shadow: 0 0 60px rgba(255,220,0,0.25);
+  }
+  #tour-victory-title {
+    font-family: 'Orbitron', sans-serif; font-size: 52px; font-weight: 900;
+    color: #ffd700; letter-spacing: 0.12em; text-shadow: 0 0 30px rgba(255,215,0,0.7);
+  }
+  #tour-victory-score-label {
+    font-family: 'Orbitron', sans-serif; font-size: 14px; color: #ffffaa;
+    letter-spacing: 0.2em; text-transform: uppercase;
+  }
+  #tour-victory-score {
+    font-family: 'Orbitron', sans-serif; font-size: 64px; font-weight: 900;
+    color: #fff; letter-spacing: 0.05em;
+  }
+  #tour-victory-back-btn {
+    padding: 14px 32px; font-family: 'Orbitron', sans-serif; font-size: 14px;
+    font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em;
+    background: #b8860b; border: 2px solid #ffd700; border-radius: 8px;
+    color: #fff; cursor: pointer; margin-top: 8px;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 0 18px rgba(255,215,0,0.35);
+  }
+  #tour-victory-back-btn:hover { background: #ffd700; color: #000; box-shadow: 0 0 28px rgba(255,215,0,0.7); }
 
   #battle-health-bar {
     height: 100%;
     width: 50%;
-    background: linear-gradient(90deg, #e85b5b, #f0c15c 42%, #62e08a 100%);
+    /* Anchored to the LEFT — full health = full width growing rightward */
+    margin-left: auto;
+    margin-right: 0;
+    background: linear-gradient(90deg, #62e08a 0%, #f0c15c 58%, #e85b5b 100%);
     box-shadow: 0 0 12px rgba(98, 224, 138, 0.35);
     transition: width 0.14s ease, filter 0.14s ease;
   }
@@ -1604,7 +1857,7 @@
   .project-list { display:flex; flex-direction:column; gap:10px; }
   .project-card { text-align:left; background:#08081a; border:1px solid #24244a; border-radius:4px; color:var(--text); padding:16px 18px; cursor:pointer; transition:all .15s; }
   .project-selected-char-desc { margin-top:6px; font-size:11px; color:#9999cc; font-style:italic; max-width:480px; line-height:1.4; min-height:14px; }
-  .project-card-stars { position:absolute; top:10px; right:12px; font-size:13px; letter-spacing:1px; color:#ffcc44; }
+  .project-card-stars { position:absolute; top:10px; right:12px; font-size:23px; letter-spacing:1px; color:#ffcc44; }
   .project-card { position:relative; }
 
   /* ── Import overlay ── */
@@ -1629,8 +1882,8 @@
   .project-card.uploaded-project { border-color: #1f4f8f; }
   .project-card.built-in-project:hover { border-color: #ff9a3c; transform: translateY(-1px); }
   .project-card.uploaded-project:hover { border-color: #4da3ff; transform: translateY(-1px); }
-  .project-card.built-in-project.selected { border-color: #ff9a3c; box-shadow: 0 0 0 1px rgba(255,154,60,0.22) inset; }
-  .project-card.uploaded-project.selected { border-color: #4da3ff; box-shadow: 0 0 0 1px rgba(77,163,255,0.22) inset; }
+  .project-card.built-in-project.selected { border-color: #ff9a3c; border-width: 3px; box-shadow: 0 0 0 2px rgba(255,154,60,0.35) inset, 0 0 18px rgba(255,154,60,0.25); }
+  .project-card.uploaded-project.selected { border-color: #4da3ff; border-width: 3px; box-shadow: 0 0 0 2px rgba(77,163,255,0.35) inset, 0 0 18px rgba(77,163,255,0.25); }
   .project-card-title { font-family:'Orbitron', sans-serif; font-size:15px; letter-spacing:0.08em; color:#fff; }
   .project-card-meta { margin-top:4px; font-size:12px; color:#aaffff; }
   .project-card-submeta { margin-top:4px; font-size:11px; color:#7777aa; }
@@ -1763,6 +2016,8 @@
 
 <!-- ═══════════════ SETUP SCREEN ═══════════════ -->
 <div id="setup-screen">
+  <canvas id="play-menu-viz-left"  class="menu-visualizer"></canvas>
+  <canvas id="play-menu-viz-right" class="menu-visualizer"></canvas>
   <img id="play-menu-title-sprite" class="play-menu-title-sprite" src="" alt="MIDI Beat Engine" onerror="this.style.display='none'; document.getElementById('play-menu-title-fallback').style.display='block';">
   <div id="play-menu-title-fallback" class="logo" style="display:none;">MIDI Beat Engine</div>
   <div class="subtitle">Projects · Play · Edit</div>
@@ -1785,7 +2040,7 @@
           </select>
           <div style="width:12px;flex-shrink:0;"></div>
           <button class="btn-primary" id="btn-add-song-project" style="padding:10px 14px; width:auto;">Add Song Project</button>
-          <button class="btn-primary" id="btn-play-import" style="padding:10px 14px; width:auto; background:#2f4f2f;">Import</button>
+          <button class="btn-primary" id="btn-play-import" style="padding:10px 14px; width:auto; background:#42c061;">Import</button>
           <div style="width:12px;flex-shrink:0;"></div>
           <button class="btn-primary" id="btn-main-menu" style="padding:10px 14px; width:auto; background:#2f2f55; color:#fff;">Main Menu</button>
         </div>
@@ -1794,7 +2049,8 @@
     </div>
   </div>
 
-  <div id="editor-menu-view" class="setup-view hidden">
+  <div id="editor-menu-view" class="setup-view hidden" style="position:relative;">
+    <canvas id="editor-menu-viz" class="menu-visualizer"></canvas>
     <div id="project-editor" class="setup-card project-editor">
       <div class="project-editor-head">
         <div class="project-editor-title-wrap">
@@ -1961,6 +2217,14 @@
 <!-- ═══════════════ MAIN MENU ═══════════════ -->
 <div id="main-menu-screen" aria-label="Main menu">
   <img id="main-menu-visual" src="Art/MM-MainMenuDraft-Visual.png" alt="Midi Mashup main menu art">
+  <img id="main-menu-portrait-player" class="main-menu-portrait" alt="Player character portrait" style="display:none;">
+  <img id="main-menu-portrait-rival"  class="main-menu-portrait" alt="Rival character portrait" style="display:none;">
+  <!-- Title sprite -->
+  <img id="main-menu-title-sprite" src="Art/MidiMashUpMain.png" alt="MIDI Mash-Up">
+  <!-- Button sprites (positioned by MAIN_MENU_LAYOUT) -->
+  <img id="main-menu-sprite-play"   class="main-menu-btn-sprite" src="Art/MM-PlayButton.png"   alt="Play">
+  <img id="main-menu-sprite-editor" class="main-menu-btn-sprite" src="Art/MM-EditorButton.png" alt="Editor">
+  <img id="main-menu-sprite-tour"   class="main-menu-btn-sprite" src="Art/MM-TourButton.png"   alt="Tour">
   <div id="main-menu-hitbox-layer"></div>
   <div id="main-menu-hover-overlay"></div>
 </div>
@@ -1984,7 +2248,7 @@
     <div id="tour-character-portrait"></div>
     <div id="tour-character-name">None</div>
     <div id="tour-character-genres"></div>
-    <textarea id="tour-character-backstory" placeholder="Write the character backstory here..."></textarea>
+    <div id="tour-character-backstory" class="tour-character-backstory-text"></div>
   </div>
 
   <div id="tour-character-panel" class="tour-character-panel">
@@ -2107,20 +2371,55 @@
     </div>
   </div>
 </div>
+<div id="pregame-loading-overlay">
+  <div id="pregame-loading-label">Loading…</div>
+  <div id="pregame-loading-bar-track"><div id="pregame-loading-bar-fill"></div></div>
+</div>
 <div id="countdown-overlay"><div id="countdown-value"></div></div>
+
+<!-- ═══════════════════ BATTLE FAIL ═══════════════════ -->
+<div id="battle-fail-overlay">
+  <div id="battle-fail-title">FAIL</div>
+  <button class="battle-fail-btn" id="battle-fail-retry">RETRY</button>
+  <button class="battle-fail-btn" id="battle-fail-menu" style="border-color:#555;color:#999;">MAIN MENU</button>
+</div>
+
+<!-- ═══════════════════ TOUR LOSS ═══════════════════ -->
+<div id="tour-loss-screen">
+  <div id="tour-loss-bg"><img src="Art/TourLoseScreen.png" alt=""></div>
+  <div id="tour-loss-content">
+    <div id="tour-loss-title">GAME OVER</div>
+    <div id="tour-loss-score-label">Final Tour Score</div>
+    <div id="tour-loss-score">0</div>
+    <button id="tour-loss-back-btn">BACK TO CHARACTER SELECT</button>
+  </div>
+</div>
+
+<div id="tour-victory-screen">
+  <div id="tour-victory-bg"><img id="tour-victory-bg-img" src="" alt=""></div>
+  <div id="tour-victory-content">
+    <div id="tour-victory-title">VICTORY!</div>
+    <div id="tour-victory-score-label">Final Tour Score</div>
+    <div id="tour-victory-score">0</div>
+    <button id="tour-victory-back-btn">BACK TO CHARACTER SELECT</button>
+  </div>
+</div>
 
 <!-- ═══════════════ RESULTS ═══════════════ -->
 <div id="results-screen">
   <div class="results-card">
     <div class="results-title">RESULTS</div>
     <div class="results-score" id="res-score">000000</div>
+    <div id="res-tour-total-row" style="display:none; font-family:'Orbitron',sans-serif; font-size:clamp(18px,3vw,28px); font-weight:700; color:#aaddff; letter-spacing:0.1em; margin: 4px 0 8px;">TOUR TOTAL: <span id="res-tour-total">0</span></div>
     <div class="results-stats">
+      <div class="stat"><div class="stat-label">ACCURACY</div><div class="stat-val perfect" id="res-perfect-pct">0%</div></div>
       <div class="stat"><div class="stat-label">PERFECT</div><div class="stat-val perfect" id="res-perfect">0</div></div>
       <div class="stat"><div class="stat-label">GOOD</div><div class="stat-val good" id="res-good">0</div></div>
       <div class="stat"><div class="stat-label">BAD</div><div class="stat-val bad" id="res-bad">0</div></div>
       <div class="stat"><div class="stat-label">MISS</div><div class="stat-val miss" id="res-miss">0</div></div>
     </div>
     <div style="font-size:12px;color:#555588;" id="res-acc"></div>
+    <div id="res-lives-row" style="display:none; margin: 8px 0; gap: 6px; align-items:center; justify-content:center; flex-wrap:wrap;"></div>
     <button class="btn-primary" id="btn-confirm-manual" style="margin-top:8px; display:none; background:#2f5a4b;">CONFIRM MANUAL MAP</button>
     <button class="btn-primary" id="btn-retry" style="margin-top:8px">RETRY</button>
     <button class="btn-primary" id="btn-menu" style="background:#1a1a3a;color:var(--text);margin-top:0px">MENU</button>
@@ -2577,6 +2876,31 @@ function splitNotesIntoReferenceAndPlay(notes) {
     }
   }
 
+  // ── Step 8: Enforce minimum 10% reference track ───────────────────────────
+  // If the reference list has fewer than 10% of total notes, steal the lowest-
+  // intensity player-only phrases (excluding the last) until the floor is met.
+  const MIN_REFERENCE_RATIO = 0.10;
+  const totalNoteCount = refList.length + playList.length;
+  if (totalNoteCount > 0 && refList.length / totalNoteCount < MIN_REFERENCE_RATIO) {
+    // Sort unassigned player phrases by intensity ascending so we take the calmest ones first
+    const playerOnlyPhrasesAsc = phraseMeta
+      .map((ph, i) => ({ ph, i, owner: owners[i] ?? 'player' }))
+      .filter(({ owner, i }) => owner === 'player' && i < phraseMeta.length - 1)
+      .sort((a, b) => a.ph.normIntensity - b.ph.normIntensity);
+
+    for (const { ph } of playerOnlyPhrasesAsc) {
+      if (refList.length / totalNoteCount >= MIN_REFERENCE_RATIO) break;
+      // Move all notes in this phrase from playList to refList
+      for (const n of ph.notes) {
+        const idx = playList.findIndex(p => p.time === n.time && p.note === n.note);
+        if (idx !== -1) {
+          const [moved] = playList.splice(idx, 1);
+          refList.push({ ...moved, auto: true, sourceRole: 'reference' });
+        }
+      }
+    }
+  }
+
   refList.sort((a, b) => a.time - b.time);
   playList.sort((a, b) => a.time - b.time);
   return {
@@ -2625,7 +2949,7 @@ function assignLanes(notes, gameTrackIdx, pitchRangePercent, laneOrder = BATTLE_
   // Each entry records the lane index used and when that hold ended.
   // A new hold is "consecutive" if it starts before the previous hold's endTime
   // plus a small grace window — meaning the player's finger barely released.
-  const HOLD_CONSECUTIVE_GRACE_MS = Math.max(320, holdThreshold);
+  const HOLD_CONSECUTIVE_GRACE_MS = Math.max(160, holdThreshold);
   let lastHoldLaneIdx  = -1; // lane used by the most recent hold
   let lastHoldEndTime  = -Infinity; // endTime of the most recent hold
   let holdRotationStep = 0; // +1 or -1, flips each consecutive hold so they zigzag
@@ -2785,11 +3109,11 @@ function applyHitScore(judgment, comboCount) {
   return Math.round(basePoints * multiplier);
 }
 
-const BATTLE_HEALTH_PERFECT_GAIN = 8;
-const BATTLE_HEALTH_GOOD_GAIN = 5;
-const BATTLE_HEALTH_BAD_GAIN = 2;
-const BATTLE_HEALTH_MISS_LOSS = 10;
-const BATTLE_HEALTH_HOLD_MIN_SCALE = 0.35;
+const BATTLE_HEALTH_PERFECT_GAIN = 1;
+const BATTLE_HEALTH_GOOD_GAIN = 0.85;
+const BATTLE_HEALTH_BAD_GAIN = 0.65;
+const BATTLE_HEALTH_MISS_LOSS = 2;
+const BATTLE_HEALTH_HOLD_MIN_SCALE = 0.25;
 
 function resetBattleHealthState() {
   battleHealth = 50;
@@ -2800,6 +3124,28 @@ function adjustBattleHealth(delta) {
   if (gameMode !== 'battle') return;
   battleHealth = Math.max(0, Math.min(100, battleHealth + delta));
   updateBattleHealthBar();
+  if (battleHealth <= 0 && gameRunning) {
+    if (tourRunState.active) {
+      // Treat health-zero as a failed stage — deduct one life here, mark flag so
+      // the results quota-check doesn't deduct a second one.
+      stopSongPlayback();
+      stopGame();
+      if (tourRunState.livesRemaining <= 1) {
+        tourRunState.livesRemaining = 0;
+        tourRunState.lifeAlreadyDeducted = true;
+        showTourLossScreen(tourRunState.cumulativeScore);
+      } else {
+        tourRunState.livesRemaining = Math.max(0, (tourRunState.livesRemaining || 0) - TOUR_LIFE_LOSS_PER_FAILED_STAGE);
+        tourRunState.lifeAlreadyDeducted = true;
+        tourRunState.awaitingResultChoice = true;
+        showResults();
+      }
+    } else {
+      stopSongPlayback();
+      stopGame();
+      showBattleFailScreen();
+    }
+  }
 }
 
 function updateBattleHealthBar() {
@@ -2874,46 +3220,115 @@ function updateComboRecovery(nowMs) {
   comboRecoveryState.cooldownUntil = now + 5000;
 }
 // Web Audio API — synthesise notes on demand
+// ── Sample buffer cache ───────────────────────────────────────────────────
+// AudioBuffers are bound to the AudioContext that decoded them.
+// This cache is cleared whenever the context is recreated.
+const SAMPLE_BUFFER_CACHE = new Map();
+
+// ── Audio voice limiter ────────────────────────────────────────────────────
+// Chrome silently drops audio nodes when too many are active at once.
+// We track active voices and shed oldest ones when the limit is reached.
+const MAX_CONCURRENT_VOICES = 48;
+const _activeVoices = [];
+function _trackVoice(voiceObj) {
+  _activeVoices.push(voiceObj);
+  if (_activeVoices.length > MAX_CONCURRENT_VOICES) {
+    const oldest = _activeVoices.shift();
+    try { oldest.stop(getAudioCtx().currentTime); } catch (_) {}
+    console.warn('[AUDIO] Voice limit reached — shed oldest voice. Active:', _activeVoices.length);
+  }
+}
+function _untrackVoice(voiceObj) {
+  const i = _activeVoices.indexOf(voiceObj);
+  if (i >= 0) _activeVoices.splice(i, 1);
+}
+
 let audioCtx = null;
+let _audioCtxCreationCount = 0;
+
 function getAudioCtx() {
   if (!audioCtx || audioCtx.state === 'closed') {
+    // Clear sample buffer cache — AudioBuffers are bound to their originating context
+    // and silently produce no output when played on a different context.
+    if (SAMPLE_BUFFER_CACHE && SAMPLE_BUFFER_CACHE.size > 0) {
+      console.warn('[AUDIO] Clearing SAMPLE_BUFFER_CACHE on context recreation (' + SAMPLE_BUFFER_CACHE.size + ' entries)');
+      SAMPLE_BUFFER_CACHE.clear();
+    }
+    if (decodedBufferCache && decodedBufferCache.size > 0) {
+      console.warn('[AUDIO] Clearing decodedBufferCache on context recreation (' + decodedBufferCache.size + ' entries)');
+      decodedBufferCache.clear();
+    }
+    _activeVoices.length = 0;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    _audioCtxCreationCount++;
+    console.log('[AUDIO] New AudioContext created (#' + _audioCtxCreationCount + '), state:', audioCtx.state);
     audioCtx.addEventListener('statechange', () => {
+      console.log('[AUDIO] AudioContext statechange →', audioCtx.state);
       if (audioCtx.state === 'closed') {
         console.warn('[AUDIO] AudioContext closed — will recreate on next use');
         audioCtx = null;
       }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        // Auto-resume on any user interaction
+        const resumeOnce = () => {
+          audioCtx && audioCtx.state === 'suspended' && audioCtx.resume().then(() => console.log('[AUDIO] Context auto-resumed after suspension'));
+          document.removeEventListener('keydown', resumeOnce, true);
+          document.removeEventListener('pointerdown', resumeOnce, true);
+        };
+        document.addEventListener('keydown', resumeOnce, true);
+        document.addEventListener('pointerdown', resumeOnce, true);
+      }
     });
-    // Chrome fires an error event when the audio device fails
     audioCtx.addEventListener('error', (e) => {
-      console.error('[AUDIO] AudioContext error event — resetting context:', e);
+      console.error('[AUDIO] AudioContext error event:', e);
       resetAudioContextIfBroken();
     });
   }
+  // Resume if suspended (e.g. browser autoplay policy)
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(e => console.warn('[AUDIO] resume() failed:', e));
+  }
   return audioCtx;
 }
+
 // Recover from device/renderer errors by closing the broken context so getAudioCtx() rebuilds it.
 function resetAudioContextIfBroken() {
   if (!audioCtx) return;
   if (audioCtx.state === 'closed') { audioCtx = null; return; }
-  // The "encountered an error from the audio device" state still shows as 'running' but
-  // produces silence. Close and recreate on next use.
+  console.warn('[AUDIO] resetAudioContextIfBroken — closing context, state was:', audioCtx.state);
   try { audioCtx.close().catch(() => {}); } catch (_) {}
   audioCtx = null;
-  console.warn('[AUDIO] AudioContext reset after error — will recreate on next use');
+  // Cache cleared on next getAudioCtx() call
 }
 
-const SAMPLE_BUFFER_CACHE = new Map();
+// Dual-cache: SAMPLE_BUFFER_CACHE stores in-flight Promises, decodedBufferCache stores resolved AudioBuffers.
+// createSampleBufferVoice checks decodedBufferCache first — if hit, plays synchronously so startTime is never stale.
+const decodedBufferCache = new Map();
 
 function getSampleBuffer(url) {
   if (!url) return Promise.reject(new Error('Missing sample URL'));
+  // Return already-decoded buffer as a resolved promise (fastest path)
+  if (decodedBufferCache.has(url)) return Promise.resolve(decodedBufferCache.get(url));
   if (SAMPLE_BUFFER_CACHE.has(url)) return SAMPLE_BUFFER_CACHE.get(url);
   const loadPromise = fetch(url)
     .then(res => {
-      if (!res.ok) throw new Error(`Failed to fetch sample: ${url}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status} fetching sample: ${url}`);
       return res.arrayBuffer();
     })
-    .then(arrayBuffer => getAudioCtx().decodeAudioData(arrayBuffer.slice(0)));
+    .then(ab => {
+      const ctx = getAudioCtx();
+      return ctx.decodeAudioData(ab.slice(0));
+    })
+    .then(buffer => {
+      decodedBufferCache.set(url, buffer); // store decoded buffer for synchronous lookup
+      SAMPLE_BUFFER_CACHE.delete(url);     // no longer need promise entry
+      return buffer;
+    })
+    .catch(err => {
+      console.warn('[AUDIO] getSampleBuffer failed for', url, '—', err.message);
+      SAMPLE_BUFFER_CACHE.delete(url);
+      throw err;
+    });
   SAMPLE_BUFFER_CACHE.set(url, loadPromise);
   return loadPromise;
 }
@@ -2997,6 +3412,8 @@ function setSelectedProjectId(id) {
   if (id) startProjectSelectionPreview(id).catch(err => console.warn('Project preview failed', err));
   else stopProjectSelectionPreview();
   if (id) syncSelectedProjectCharacterState(id).catch(err => console.warn('Character sync failed', err));
+  // Re-sync the beat-swap title tempo to the newly selected project
+  updateTitleBeatFromSelectedProject();
 }
 
 async function syncSelectedProjectCharacterState(projectId) {
@@ -3028,7 +3445,8 @@ function updateSelectedProjectSummary() {
   const scoreForDifficulty = savedScores[currentDifficulty] || 0;
   if (scoreEl) scoreEl.textContent = `Saved score (${currentDifficulty}): ${scoreForDifficulty}`;
   if (charDescEl) {
-    const charId = project.playerCharacterId || 'blank';
+    const proj = project || BUILT_IN_SONG_PROJECTS.find(p => p.id === selectedProjectId);
+    const charId = proj?.playerCharacterId || 'blank';
     const char   = getCharacterById(charId);
     charDescEl.textContent = char?.characterDescription || '';
   }
@@ -3142,145 +3560,22 @@ function stopSongPlayback() {
 
 function stopProjectSelectionPreview() {
   projectPreviewToken++;
-  if (projectPreviewTimer) {
-    clearTimeout(projectPreviewTimer);
-    projectPreviewTimer = null;
-  }
-  for (const node of projectPreviewNodes) {
-    try { if (node && node.stop) node.stop(); } catch (_) {}
-    try { if (node && node.osc) node.osc.stop(); } catch (_) {}
-    try { if (node && node.source) node.source.stop(); } catch (_) {}
-  }
+  if (projectPreviewTimer) { clearTimeout(projectPreviewTimer); projectPreviewTimer = null; }
   projectPreviewNodes = [];
   if (projectPreviewAudio) {
-    try {
-      projectPreviewAudio.pause();
-      projectPreviewAudio.currentTime = 0;
-      projectPreviewAudio.onended = null;
-    } catch (_) {}
+    try { projectPreviewAudio.pause(); projectPreviewAudio.src = ''; } catch(_) {}
     projectPreviewAudio = null;
   }
   if (projectPreviewObjectUrl) {
-    try { URL.revokeObjectURL(projectPreviewObjectUrl); } catch (_) {}
+    try { URL.revokeObjectURL(projectPreviewObjectUrl); } catch(_) {}
     projectPreviewObjectUrl = '';
   }
 }
 
-function scheduleProjectPreviewTrack(midi, trackIdx, startTime, previewTrackVolumes, previewTrackClipIds) {
-  const resolve = ticksToMs(midi);
-  const track = midi.tracks[trackIdx];
-  const active = new Map();
-  const clipId = previewTrackClipIds[trackIdx] || '__original__';
-  const clip = getClipById(clipId);
-  const volume = finiteOr(previewTrackVolumes[trackIdx], 0.8);
-  const useExactDuration = clipId === '__original__' || clipUsesPitchShiftAndExactDuration(clipId);
-  const nodes = [];
-
-  for (const ev of track.events) {
-    const tSec = startTime + resolve(ev.tick) / 1000;
-    const key = `${ev.note}_${ev.channel || 0}`;
-    if (ev.type === 'noteOn' && ev.velocity > 0) {
-      const voice = createClipVoice({
-        clipId,
-        note: ev.note,
-        velocity: ev.velocity,
-        volume: volume * 0.25,
-        startTime: tSec,
-        exactDuration: useExactDuration,
-      });
-      if (clip.type !== 'mp3' || useExactDuration) active.set(key, voice);
-      nodes.push(voice);
-    } else if ((clip.type !== 'mp3' || useExactDuration) && (ev.type === 'noteOff' || (ev.type === 'noteOn' && ev.velocity === 0)) && active.has(key)) {
-      const voice = active.get(key);
-      voice.stop(tSec);
-      active.delete(key);
-    }
-  }
-  return nodes;
-}
-
-async function startProjectSelectionPreview(projectId) {
-  stopProjectSelectionPreview();
-  if (!projectId) return;
-  const token = ++projectPreviewToken;
-  const project = await loadProjectFromStorage(projectId);
-  if (token !== projectPreviewToken || !project) return;
-
-  const hasMidi = !!project.midiBuffer;
-  const hasMp3 = !!project.mp3Blob;
-  if (!hasMidi && !hasMp3) return;
-
-  const ctx = getAudioCtx();
-  try { await ctx.resume(); } catch (_) {}
-  const startSec = ctx.currentTime + 0.08;
-
-  let midiDurationMs = project.midiDurationMs || 0;
-  if (hasMidi) {
-    try {
-      const previewMidi = parseMidi(project.midiBuffer.slice(0));
-      midiDurationMs = Math.max(midiDurationMs, getMidiDurationMs(previewMidi));
-      const previewRoles = Array.isArray(project.trackRoles) ? project.trackRoles : [];
-      const previewTrackVolumes = Array.isArray(project.trackVolumes) ? project.trackVolumes : [];
-      const previewTrackClipIds = Array.isArray(project.trackClipIds) ? project.trackClipIds : [];
-
-      let scheduledAny = false;
-      previewRoles.forEach((role, idx) => {
-        if (role !== 'backing') return;
-        const nodes = scheduleProjectPreviewTrack(previewMidi, idx, startSec, previewTrackVolumes, previewTrackClipIds);
-        projectPreviewNodes.push(...nodes);
-        if (nodes.length) scheduledAny = true;
-      });
-
-      // No backing tracks — fall back to previewing the game/main track with Original clip
-      if (!scheduledAny && !hasMp3) {
-        const mainIdx = previewRoles.indexOf('game') >= 0
-          ? previewRoles.indexOf('game')
-          : findMainTrackIdx(previewMidi);
-        if (mainIdx >= 0) {
-          const fallbackClipIds = previewMidi.tracks.map((_, i) => i === mainIdx ? '__original__' : '__blank__');
-          const fallbackVolumes = previewMidi.tracks.map(() => 0.5);
-          const nodes = scheduleProjectPreviewTrack(previewMidi, mainIdx, startSec, fallbackVolumes, fallbackClipIds);
-          projectPreviewNodes.push(...nodes);
-        }
-      }
-    } catch (err) {
-      console.warn('Preview MIDI parse failed', err);
-    }
-  }
-
-  const mp3DurationMs = project.mp3DurationMs || 0;
-  if (hasMp3) {
-    try {
-      projectPreviewObjectUrl = URL.createObjectURL(project.mp3Blob);
-      projectPreviewAudio = new Audio(projectPreviewObjectUrl);
-      projectPreviewAudio.preload = 'auto';
-      projectPreviewAudio.crossOrigin = 'anonymous';
-      projectPreviewAudio.volume = Math.max(0.05, Math.min(0.35, (songBaseVolume || 1) * 0.28));
-      const offsetMs = project.mp3OffsetMs || 0;
-      const now = ctx.currentTime;
-      const delayMs = Math.max(0, Math.round(((startSec + (offsetMs / 1000)) - now) * 1000));
-      const startAt = Math.max(0, (-offsetMs) / 1000);
-      setTimeout(() => {
-        if (token !== projectPreviewToken || !projectPreviewAudio) return;
-        try {
-          projectPreviewAudio.currentTime = startAt;
-          projectPreviewAudio.play().catch(() => {});
-        } catch (_) {}
-      }, delayMs);
-      projectPreviewAudio.onended = () => {
-        if (!projectPreviewNodes.length) stopProjectSelectionPreview();
-      };
-    } catch (err) {
-      console.warn('Preview MP3 load failed', err);
-    }
-  }
-
-  const previewDurationMs = Math.max(midiDurationMs || 0, mp3DurationMs || 0);
-  if (previewDurationMs > 0) {
-    projectPreviewTimer = setTimeout(() => {
-      if (token === projectPreviewToken) stopProjectSelectionPreview();
-    }, previewDurationMs + 400);
-  }
+// Project preview is disabled — no MIDI synthesis available and mp3 previews
+// were removed to avoid noise. Call sites are kept for compatibility.
+async function startProjectSelectionPreview(_projectId) {
+  // intentionally empty
 }
 
 function duckSongTemporarily() {
@@ -3339,6 +3634,15 @@ function playFailedSound(characterId = null) {
 }
 
 function setEditorVisibility(visible) {
+  if (visible) {
+    stopPlayMenuVisualizers();
+    stopTitleBeatSwap();
+    startEditorMenuVisualizer();
+  } else {
+    stopEditorMenuVisualizer();
+    startPlayMenuVisualizers();
+    updateTitleBeatFromSelectedProject();
+  }
   setSetupMenuMode(visible ? 'editor' : 'play', true);
 }
 
@@ -3635,6 +3939,11 @@ async function saveProjectIndexAndSelection() {
 }
 
 async function persistProjectToStorage(project) {
+  // For built-in projects, only persist the score data — not the full binary project
+  if (project.isBuiltIn) {
+    await dbPutProject({ id: project.id, savedScores: project.savedScores, isBuiltIn: true });
+    return;
+  }
   await dbPutProject({
     ...project,
     midiBuffer: project.midiBuffer,
@@ -3665,11 +3974,22 @@ async function deleteCurrentProject() {
 
 async function refreshProjectListFromStorage() {
   const summaries = loadProjectIndex();
+
+  // Load any persisted scores for built-in songs from IDB (scores only, no full project data)
+  const builtInScoreOverrides = new Map();
+  await Promise.allSettled(
+    BUILT_IN_SONG_PROJECTS.map(p =>
+      dbGetProject(p.id)
+        .then(stored => { if (stored?.savedScores) builtInScoreOverrides.set(p.id, stored.savedScores); })
+        .catch(() => {})
+    )
+  );
+
   const builtInSummaries = BUILT_IN_SONG_PROJECTS.map(project => ({
     id:                project.id,
     title:             project.title,
     artist:            project.artist || '',
-    savedScores:       { ...project.savedScores },
+    savedScores:       builtInScoreOverrides.get(project.id) || { ...project.savedScores },
     midiName:          project.midiName,
     mp3Name:           '',
     updatedAt:         Date.now(),
@@ -3732,23 +4052,62 @@ async function loadProjectFromStorage(projectId) {
         const response = await fetch(encodeURI(builtIn.mmpUrl));
         if (!response.ok) throw new Error(`Failed to load built-in .mmp: ${builtIn.mmpUrl}`);
         const jsonText = await response.text();
-        cached = await importProjectFromJSON(jsonText);
-        window.__builtInSongProjectBuffers.set(builtIn.id + ':mmp', cached);
-      }
-      // Return a shallow copy so the cache stays clean, then stamp identity fields
-      return {
-        ...cached,
-        id:                builtIn.id,
-        title:             builtIn.title             ?? cached.title,
-        artist:            builtIn.artist            ?? cached.artist,
-        savedScores:       { ...builtIn.savedScores },
-        playerCharacterId: builtIn.playerCharacterId ?? cached.playerCharacterId,
-        rivalCharacterId:  builtIn.rivalCharacterId  ?? cached.rivalCharacterId,
-        playerMissSoundId: builtIn.playerMissSoundId ?? cached.playerMissSoundId,
-        rivalMissSoundId:  builtIn.rivalMissSoundId  ?? cached.rivalMissSoundId,
-        difficultyRating:  builtIn.difficultyRating  || cached.difficultyRating || 0,
-        isBuiltIn:         true,
+        // Parse the .mmp JSON directly WITHOUT calling importProjectFromJSON,
+        // which would save to IDB and add to the localStorage index causing duplicates.
+        let data;
+        try { data = JSON.parse(jsonText); } catch (e) { throw new Error('Invalid .mmp JSON'); }
+        if (!data?.meta) throw new Error('Invalid .mmp: missing meta');
+        const meta = data.meta;
+        const proj = createEmptyProject();
+        proj.id           = meta.id        || proj.id;
+        proj.title        = meta.title     || proj.title;
+        proj.settings     = meta.settings  || { ...DEFAULTS };
+        proj.trackRoles   = meta.trackRoles   || [];
+        proj.trackVolumes = meta.trackVolumes || [];
+        proj.trackClipIds = meta.trackClipIds || [];
+        proj.trackCollapsed = meta.trackCollapsed || [];
+        proj.mp3OffsetMs  = meta.mp3OffsetMs  || 0;
+        proj.manualMapEnabled = !!meta.manualMapEnabled;
+        proj.manualBeatmap = Array.isArray(meta.manualBeatmap) ? cloneManualBeatmap(meta.manualBeatmap) : [];
+        proj.midiName     = meta.midiName  || '';
+        proj.mp3Name      = meta.mp3Name   || '';
+        proj.midiDurationMs = meta.midiDurationMs || 0;
+        proj.mp3DurationMs  = meta.mp3DurationMs  || 0;
+        proj.playerCharacterId = meta.playerCharacterId || 'blank';
+        proj.rivalCharacterId  = meta.rivalCharacterId  || 'blank';
+        if (data.midiBase64)         proj.midiBuffer       = base64ToArrayBuffer(data.midiBase64);
+        if (data.mp3Base64)          proj.mp3Blob          = new Blob([base64ToArrayBuffer(data.mp3Base64)], { type: 'audio/mpeg' });
+        if (data.recorderVoiceBase64) proj.recorderVoiceBlob = new Blob([base64ToArrayBuffer(data.recorderVoiceBase64)], { type: 'audio/mpeg' });
+      cached = proj;
+      window.__builtInSongProjectBuffers.set(builtIn.id + ':mmp', cached);
+      // Store character IDs separately so builtInSummaries can use them without
+      // awaiting the full mmp fetch (summaries render synchronously on startup).
+      window.__builtInMmpMeta = window.__builtInMmpMeta || {};
+      window.__builtInMmpMeta[builtIn.id] = {
+        playerCharacterId: proj.playerCharacterId,
+        rivalCharacterId:  proj.rivalCharacterId,
+        artist:            proj.artist,
+        title:             proj.title,
       };
+      console.log('[BUILTIN] .mmp parsed (no DB write) for:', builtIn.id);
+    }
+    const localScores = await dbGetProject(builtIn.id).then(s => s?.savedScores).catch(() => null);
+    return {
+      ...cached,
+      id:                builtIn.id,
+      title:             builtIn.title             || cached.title,
+      artist:            builtIn.artist            || cached.artist,
+      savedScores:       localScores || { ...builtIn.savedScores },
+      // Merge builtIn.settings on top of the mmp settings so individual keys
+      // (e.g. backgroundScene) can be overridden from BUILT_IN_SONG_PROJECTS.
+      settings:          { ...DEFAULTS, ...(cached.settings || {}), ...(builtIn.settings || {}) },
+      playerCharacterId: builtIn.playerCharacterId || cached.playerCharacterId || 'blank',
+      rivalCharacterId:  builtIn.rivalCharacterId  || cached.rivalCharacterId  || 'blank',
+      playerMissSoundId: builtIn.playerMissSoundId || cached.playerMissSoundId || 'default',
+      rivalMissSoundId:  builtIn.rivalMissSoundId  || cached.rivalMissSoundId  || 'default',
+      difficultyRating:  builtIn.difficultyRating  || cached.difficultyRating  || 0,
+      isBuiltIn:         true,
+    };
     }
 
     // ── legacy midiUrl path ──────────────────────────────────────────────────
@@ -3759,11 +4118,12 @@ async function loadProjectFromStorage(projectId) {
       midiBuffer = await response.arrayBuffer();
       window.__builtInSongProjectBuffers.set(builtIn.id, midiBuffer);
     }
+    const localScores = await dbGetProject(builtIn.id).then(s => s?.savedScores).catch(() => null);
     return {
       id:               builtIn.id,
       title:            builtIn.title,
       artist:           builtIn.artist || '',
-      savedScores:      { ...builtIn.savedScores },
+      savedScores:      localScores || { ...builtIn.savedScores },
       midiName:         builtIn.midiName,
       mp3Name:          '',
       updatedAt:        Date.now(),
@@ -3811,32 +4171,61 @@ function cloneManualBeatmap(notes = []) {
   }));
 }
 
+// ── Manual tracking pitch config ─────────────────────────────────────────────
+// Adjust these to change the root note used for each lane during manual recording.
+// These are MIDI note numbers: 60=C4, 64=E4, 67=G4, 71=B4, 72=C5 etc.
+const MANUAL_LANE_PITCHES = {
+  down:  56,   // C4 — selects the clip whose range covers MIDI note 60
+  left:  60,   // E4
+  right: 68,   // G4
+  up:    73,   // B4
+};
+
 function manualLanePitch(lane, sourceRole = 'play') {
-  // Use the middle rootNote of the character's clip for this lane so the
-  // sound matches what the character/clip would produce during playback.
-  const clipId = sourceRole === 'reference'
-    ? resolveCharacterClipForPlayback('reference', lane, 60)
-    : resolveCharacterClipForPlayback('player', lane, 60);
-  if (clipId && clipId !== '__blank__') {
-    const clip = getClipById(clipId);
-    if (clip) {
-      if (typeof clip.rootNote === 'number') return clip.rootNote;
-      if (typeof clip.rangeMin === 'number' && typeof clip.rangeMax === 'number') {
-        return Math.round((clip.rangeMin + clip.rangeMax) / 2);
-      }
+  const targetNote = MANUAL_LANE_PITCHES[lane] ?? 64;
+
+  const charId = sourceRole === 'reference' ? currentRivalCharacterId : currentPlayerCharacterId;
+  const character = getCharacterById(charId);
+
+  if (character && character.id !== 'blank') {
+    // Find the clip whose range covers targetNote; return its rootNote so the
+    // audio engine plays at natural (unshifted) pitch. Falls back to nearest root.
+    const allClipIds = [];
+    for (const dir of ['up', 'left', 'right', 'down', 'idle']) {
+      const arr = character.soundClipIds?.[dir];
+      const ids = Array.isArray(arr) ? arr : (arr ? [arr] : []);
+      for (const id of ids) if (id && id !== '__blank__') allClipIds.push(id);
     }
+    let best = null, bestDist = Infinity;
+    for (const cid of allClipIds) {
+      const clip = getClipById(cid);
+      if (!clip) continue;
+      const root = typeof clip.rootNote === 'number' ? clip.rootNote
+        : (typeof clip.rangeMin === 'number' ? Math.round((clip.rangeMin + clip.rangeMax) / 2) : null);
+      if (root == null) continue;
+      const inRange = typeof clip.rangeMin === 'number'
+        && targetNote >= clip.rangeMin && targetNote <= clip.rangeMax;
+      const dist = inRange ? 0 : Math.abs(root - targetNote);
+      if (dist < bestDist) { bestDist = dist; best = root; }
+    }
+    if (best !== null) return best;
   }
-  // Fallback pitches
-  const pitches = { up: 84, left: 76, right: 67, down: 55 };
-  return pitches[lane] || 60;
+
+  return targetNote;
 }
 
 // For battle-mode recording, held notes per role
 const manualMappingHeldRef = {}; // reference track held notes
 
 function recordManualNoteStart(lane, sourceRole = 'play') {
+  if (!manualMappingActive) {
+    console.warn('[MANUAL] recordManualNoteStart called but manualMappingActive is false — ignoring. lane:', lane, '| gameRunning:', gameRunning, '| gameStartTime:', gameStartTime);
+    return;
+  }
   const elapsed = performance.now() - gameStartTime;
+  console.log('[MANUAL] noteStart — lane:', lane, '| role:', sourceRole, '| elapsed:', elapsed.toFixed(0) + 'ms | draftLen:', manualBeatmapDraft.length);
   const pitch = manualLanePitch(lane, sourceRole);
+  console.log('[MANUAL] pitch resolved:', pitch, '| gameMode:', gameMode, '| trackClipIds[0]:', trackClipIds?.[0]);
   const note = {
     time: elapsed, endTime: elapsed, lane,
     laneIdx: getActiveLaneOrder().indexOf(lane),
@@ -3853,22 +4242,31 @@ function recordManualNoteStart(lane, sourceRole = 'play') {
   }
   manualBeatmapDraft.push(note);
 
-  // Play the appropriate character sound
-  const resolvedClip = sourceRole === 'reference'
+  // Play the appropriate character sound; fall back to player clip if rival is blank
+  let resolvedClip = sourceRole === 'reference'
     ? resolveCharacterClipForPlayback('reference', lane, pitch)
     : resolveCharacterClipForPlayback('player', lane, pitch);
+  if (!resolvedClip || resolvedClip === '__blank__') {
+    resolvedClip = resolveCharacterClipForPlayback('player', lane, pitch);
+  }
   const trackConf = getTrackConfig(0);
-  const clipIdToPlay = (trackConf.clipId === '__character__') ? resolvedClip : trackConf.clipId;
+  const clipIdToPlay = (trackConf.clipId === '__character__' || !trackConf.clipId) ? resolvedClip : trackConf.clipId;
+  console.log('[MANUAL] audio — resolvedClip:', resolvedClip, '| trackConf.clipId:', trackConf?.clipId, '| clipIdToPlay:', clipIdToPlay);
   if (clipIdToPlay && clipIdToPlay !== '__blank__') {
     try {
-      createClipVoice({ clipId: clipIdToPlay, note: pitch, velocity: 100, volume: trackConf.volume, startTime: getAudioCtx().currentTime, duration: 400, lane });
-    } catch (_) {}
+      createClipVoice({ clipId: clipIdToPlay, note: pitch, velocity: 100, volume: trackConf.volume || 0.8, startTime: getAudioCtx().currentTime, duration: 400, lane });
+      console.log('[MANUAL] ✓ createClipVoice called');
+    } catch (err) {
+      console.error('[MANUAL] ✗ createClipVoice threw:', err.message, err);
+    }
+  } else {
+    console.warn('[MANUAL] no audio — clipIdToPlay is blank or empty:', clipIdToPlay);
   }
 
   // Trigger character animation
   if (sourceRole === 'reference') {
-    // Rival reacts
-    flashLane(lane); // still flash visual on reference side if available
+    lastRivalInputLane = lane;   // drives rival character sprite direction
+    flashLane(lane);
   } else {
     lastPlayerInputLane = lane;
     setPlayTargetSpriteState(lane, true);
@@ -3881,13 +4279,19 @@ function recordManualNoteEnd(lane, sourceRole = 'play') {
   const elapsed = performance.now() - gameStartTime;
   const heldMap = sourceRole === 'reference' ? manualMappingHeldRef : manualMappingHeld;
   const note = heldMap[lane];
-  if (!note) return;
+  if (!note) { console.log('[MANUAL] noteEnd — no held note for lane:', lane, 'role:', sourceRole); return; }
   note.endTime = Math.max(note.time, elapsed);
   note.hold = (note.endTime - note.time) >= getLongNoteThresholdMs();
   heldMap[lane] = null;
+  console.log('[MANUAL] noteEnd — lane:', lane, '| duration:', (note.endTime - note.time).toFixed(0) + 'ms | hold:', note.hold);
   if (sourceRole === 'play') {
     setPlayTargetSpriteState(lane, false);
     if (Object.values(manualMappingHeld).every(v => !v)) lastPlayerInputLane = null;
+  } else {
+    // Return rival to idle after release
+    if (Object.values(manualMappingHeldRef).every(v => !v)) {
+      setTimeout(() => { if (Object.values(manualMappingHeldRef).every(v => !v)) lastRivalInputLane = null; }, 120);
+    }
   }
 }
 
@@ -3906,66 +4310,41 @@ function setManualMapMode(enabled) {
 }
 
 function startManualMappingSession() {
+  console.log('[MANUAL] startManualMappingSession — clearing draft, setting active');
   manualMappingActive = true;
   manualRecordingAwaitingConfirm = false;
   manualBeatmapDraft = [];
   manualMappingHeld = {};
   Object.keys(manualMappingHeldRef).forEach(k => delete manualMappingHeldRef[k]);
   currentManualBeatmap = [];
+  console.log('[MANUAL] session started — manualMappingActive:', manualMappingActive, '| gameMode:', gameMode);
 }
 
 function finishManualMappingSession() {
+  console.log('[MANUAL] finishManualMappingSession — draft notes:', manualBeatmapDraft.length, '| manualMappingActive was:', manualMappingActive);
   manualMappingActive = false;
   manualMappingHeld = {};
   manualRecordingAwaitingConfirm = true;
+  console.log('[MANUAL] session finished — awaiting confirm:', manualRecordingAwaitingConfirm);
 }
 
 function confirmManualMappingSession() {
+  console.log('[MANUAL] confirmManualMappingSession — draft:', manualBeatmapDraft.length, 'notes | currentProjectId:', currentProjectId);
   currentManualBeatmap = cloneManualBeatmap(manualBeatmapDraft);
   manualRecordingAwaitingConfirm = false;
-  // Always persist the beatmap into the in-memory project so it survives a
-  // re-open of the editor. The checkbox state is applied separately when the
-  // editor reloads.
   if (currentProjectId) {
     const project = songProjects.find(item => item.id === currentProjectId);
     if (project) {
       project.manualMapEnabled = true;
       project.manualBeatmap = cloneManualBeatmap(currentManualBeatmap);
+      console.log('[MANUAL] ✓ committed to in-memory project:', project.id, '| notes:', project.manualBeatmap.length);
+    } else {
+      console.warn('[MANUAL] ✗ no project in songProjects matching id:', currentProjectId);
     }
+  } else {
+    console.warn('[MANUAL] ✗ no currentProjectId set at confirm time');
   }
   return currentManualBeatmap;
-}
-
-function recordManualNoteStart(lane) {
-  const elapsed = performance.now() - gameStartTime;
-  const note = {
-    time: elapsed,
-    endTime: elapsed,
-    lane,
-    laneIdx: getActiveLaneOrder().indexOf(lane),
-    note: manualLanePitch(lane),
-    velocity: 100,
-    trackIdx: 0,
-    hold: false,
-    auto: false,
-    sourceRole: 'manual',
-    playerMuted: false,
-    started: true,
-    completed: false,
-    missed: false,
-    hit: false,
-  };
-  manualMappingHeld[lane] = note;
-  manualBeatmapDraft.push(note);
-}
-
-function recordManualNoteEnd(lane) {
-  const elapsed = performance.now() - gameStartTime;
-  const note = manualMappingHeld[lane];
-  if (!note) return;
-  note.endTime = Math.max(note.time, elapsed);
-  note.hold = (note.endTime - note.time) >= getLongNoteThresholdMs();
-  manualMappingHeld[lane] = null;
 }
 
 // --------- Export / Import helpers (save projects to disk, verify checksums) ----------
@@ -4596,6 +4975,12 @@ function createCharacterConfig(config) {
     id: config.id,
     label: config.label,
     portraitSprite: config.portraitSprite || null,
+    // Sprite shown full-screen behind the victory screen when this character wins a tour.
+    // Set per-character e.g.: victorySprite: 'Art/Mushy/MM-MushyVictory.png'
+    victorySprite: config.victorySprite || null,
+    // Scale applied to this character's portrait on the main menu (default 1.0).
+    // Increase to make a portrait bigger, decrease to make it smaller.
+    menuPortraitScale: typeof config.menuPortraitScale === 'number' ? config.menuPortraitScale : 1.0,
     previewPortraitStyle: config.previewPortraitStyle || null,
     loadingPortraitStyle: config.loadingPortraitStyle || null,
     genres: Array.isArray(config.genres) ? config.genres.slice() : [],
@@ -4658,8 +5043,8 @@ function buildMushySoundClipIds() {
   };
 }
 
-function buildMartinSoundClipIds() {
-  const clipIds = Array.from({ length: 19 }, (_, index) => `martin-voice-${19 - index}`);
+function buildPuppetSoundClipIds() {
+  const clipIds = Array.from({ length: 19 }, (_, index) => `Puppet-voice-${19 - index}`);
   return {
     idle: clipIds,
     up: clipIds,
@@ -4705,6 +5090,7 @@ function buildVendorSoundClipIds() {
 const DEFAULT_MISS_SOUND_IDS = ['miss-1', 'miss-2', 'miss-3', 'miss-4'];
 
 // ─── CHARACTER DEFINITIONS ──────────────────────────────────────────────────
+// ─── CHARACTER DEFINITIONS ──────────────────────────────────────────────────
 const CHARACTERS = [
   createCharacterConfig({
     id: 'blank',
@@ -4729,11 +5115,14 @@ const CHARACTERS = [
     id: 'mushy',
     label: 'Mushy Singer',
     portraitSprite: 'Art/Mushy/MushyPortrait.png',
+    menuPortraitScale: 1.1,
     characterDescription:
     "An ever learning, biologically mutated mushroom who recently put down the paintbrush to give music a try. Though like with his career as a painter, his singer could do with some work.",
+    victorySprite: 'Art/MushyVictory.png',
 
-    previewPortraitStyle: { left: '2%', top: '-4%', width: '60%' },
-    loadingPortraitStyle: { top: '6%', height: '86%', maxWidth: '48%' },
+    previewPortraitStyle: { left: '28%', top: '-13%', width: '32%' },
+    loadingPortraitStyle: { top: '24%', height: '86%', maxWidth: '86%'},
+
     genres: ['Pop', 'Lo-Fi', 'Mycellial', "[GENRE CURRENTLY DOESN'T EFFECT TOUR MODE]"],
     spriteSheets: {
 // cols, rows, scale, frameCount, frameDuration
@@ -4750,14 +5139,16 @@ const CHARACTERS = [
     frameDuration: 60,
   }),
   createCharacterConfig({
-    id: 'martin',
-    label: 'Martin',
+    id: 'Puppet',
+    label: 'Puppet',
     portraitSprite:  'Art/PuppetFighter/PuppetPortrait.png',
-    previewPortraitStyle: { left: '-6%', top: '-8%', width: '90%' },
-    loadingPortraitStyle: { top: '2%', height: '92%', maxWidth: '52%' },
+    menuPortraitScale: 1.0,
+    previewPortraitStyle: { left: '18%', top: '-20%', width: '47%' },
+    loadingPortraitStyle: { top: '2%', height: '32%', maxWidth: '32%' },
     characterDescription:
-    "A puppet being controlled by an unknown force who seems to be seeking out an equally strong opponent, his one true adversary, another puppet.",
+    "A Puppet being controlled by an unknown force who seems to be seeking out an equally strong opponent, his one true adversary, another Puppet.",
 
+    victorySprite: 'Art/PuppetVictory.png',
     genres: ['Game Music', 'Chiptune', 'Rock', "[GENRE CURRENTLY DOESN'T EFFECT TOUR MODE]"],
     spriteSheets: {
       idle: createSpriteSheetConfig('Art/PuppetFighter/PuppetFighterIdle.png', 3, 2, 0.15, 6, 80),
@@ -4766,8 +5157,8 @@ const CHARACTERS = [
       right: createSpriteSheetConfig('Art/PuppetFighter/PuppetFighterRight.png', 3, 3, 0.15, 7, 80),
       down: createSpriteSheetConfig('Art/PuppetFighter/PuppetFighterDown.png', 3, 2, 0.15, 6, 80),
     },
-    soundClipIds: buildMartinSoundClipIds(),
-    tauntClips: ['mushy-purchase', 'mushy-shake', 'mushy-eating'],
+    soundClipIds: buildPuppetSoundClipIds(),
+    tauntClips: ['punch', 'punch', 'punch'],
     missSoundIds: DEFAULT_MISS_SOUND_IDS.slice(),
     frameCount: 8,
     frameDuration: 60,
@@ -4776,25 +5167,27 @@ const CHARACTERS = [
     id: 'mushsol',
     label: 'Mushroom Soldier',
     portraitSprite: 'Art/MushSol/MushroomSoldierPortrait.png',
-    previewPortraitStyle: { left: '-6%', top: '-8%', width: '90%' },
+    menuPortraitScale: 1.1,
+    previewPortraitStyle: { left: '-2%', top: '-6%', width: '80%' },
     loadingPortraitStyle: { top: '2%', height: '92%', maxWidth: '52%' },
     characterDescription:
     "A soldier being piloted by a rare type of fungus from some far off dystopia. Despite it's appearance, this fungus is actually produces very toxic spores that allow it to spread through plants, corpses, and apparently even buildings.",
 
+    victorySprite: 'Art/MushSolVictory.png',
     genres: ['Orchestral', 'Classical', 'Mycellial', "[GENRE CURRENTLY DOESN'T EFFECT TOUR MODE]"],
     spriteSheets: {
       // createSpriteSheetConfig(src, cols, rows, scale, frameCount, frameDuration, flipX)
       // src = sprite sheet image path, cols/rows = frame grid, scale = display scale,
       // frameCount = total animation frames to cycle, frameDuration = ms per frame,
       // flipX = mirror the sheet horizontally when drawn.
-      idle: createSpriteSheetConfig('Art/Mushsol/MushSolIdle.png', 6, 5, 0.4, 30, 90.91, true),
-      up: createSpriteSheetConfig('Art/Mushsol/MushSolUp.png', 3, 3, 0.4, 8, 90.91, true),
-      left: createSpriteSheetConfig('Art/Mushsol/MushSolRight.png', 3, 2, 0.4, 6, 90.91, true),
-      right: createSpriteSheetConfig('Art/Mushsol/MushSolLeft.png', 3, 3, 0.4, 8, 90.91, true),
-      down: createSpriteSheetConfig('Art/Mushsol/MushSolDown.png', 4, 3, 0.4, 10, 90.91, true),
+      idle: createSpriteSheetConfig('Art/Mushsol/MushSolIdle.png', 6, 5, 0.4, 30, 80.91, true),
+      up: createSpriteSheetConfig('Art/Mushsol/MushSolUp.png', 3, 3, 0.4, 8, 80.91, true),
+      left: createSpriteSheetConfig('Art/Mushsol/MushSolRight.png', 3, 2, 0.4, 6, 80.91, true),
+      right: createSpriteSheetConfig('Art/Mushsol/MushSolLeft.png', 3, 3, 0.4, 8, 80.91, true),
+      down: createSpriteSheetConfig('Art/Mushsol/MushSolDown.png', 4, 3, 0.4, 10, 80.91, true),
     },
     soundClipIds: buildMushsolSoundClipIds(),
-    tauntClips: ['mushy-purchase', 'mushy-shake', 'mushy-eating'],
+    tauntClips: ['gunshot', 'gunshot', 'mushy-shake'],
     missSoundIds: DEFAULT_MISS_SOUND_IDS.slice(),
     frameCount: 8,
     frameDuration: 60,
@@ -4803,30 +5196,35 @@ const CHARACTERS = [
   createCharacterConfig({
     id: 'recorder',
     label: 'Recorder',
-    portraitSprite: 'Art/Mushy/MushyPortrait.png',
-    previewPortraitStyle: { left: '-6%', top: '-8%', width: '90%' },
-    loadingPortraitStyle: { top: '2%', height: '92%', maxWidth: '52%' },
+    portraitSprite: "Art/Hero/Tomer'sWebsitePlayerIdle1-1.png.png",
+    menuPortraitScale: 0.8,
+    previewPortraitStyle: { left: '28%', top: '13%', width: '42%' },
+    loadingPortraitStyle: { top: '2%', height: '22%', maxWidth: '-22%' },
+    victorySprite: 'Art/MushyVictory.png',
     genres: ['Lo-fi', 'Experimental', 'Ambient', "[GENRE CURRENTLY DOESN'T EFFECT TOUR MODE]"],
     spriteSheets: {
-      idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
-      up: createSpriteSheetConfig('Art/Mushy/SS-MushySingerUP.png', 2, 1, 1.0, 2),
-      left: createSpriteSheetConfig('Art/Mushy/SS-MushySingerLeft.png', 2, 1, 1.0, 2),
-      right: createSpriteSheetConfig('Art/Mushy/SS-MushySingerRight.png', 2, 1, 1.0, 2),
-      down: createSpriteSheetConfig('Art/Mushy/SS-MushySingerDown.png', 2, 1, 1.0, 2),
+      idle: createSpriteSheetConfig('Art/Hero/MM-recorder-idle.png', 2, 1, 10.0, 2, 120, true),
+      up: createSpriteSheetConfig('Art/Hero/MM-recorder-up.png', 2, 1, 10, 2, 120, true),
+      left: createSpriteSheetConfig('Art/Hero/MM-recorder-left.png', 2, 1, 10, 2, 120, true),
+      right: createSpriteSheetConfig('Art/Hero/MM-recorder-right.png', 2, 1, 10, 2, 120, true),
+      down: createSpriteSheetConfig('Art/Hero/MM-recorder-down.png', 2, 1, 10, 2, 120, true),
     },
     soundClipIds: buildRecorderSoundClipIds(),
-    tauntClips: ['mushy-purchase', 'mushy-shake', 'mushy-eating'],
+    tauntClips: ['mushy-shake', 'mushy-eating'],
     missSoundIds: DEFAULT_MISS_SOUND_IDS.slice(),
     frameCount: 8,
     frameDuration: 60,
   }),
+  /* ── Tote (cut — not ready for release) ──────────────────────────────────
   createCharacterConfig({
     id: 'tote',
     label: 'Tote',
     portraitSprite: 'Art/Mushy/MushyPortrait.png',
-    previewPortraitStyle: { left: '-6%', top: '-8%', width: '90%' },
+    menuPortraitScale: 0.9,
+    previewPortraitStyle: { left: '28%', top: '-13%', width: '32%' },  
     loadingPortraitStyle: { top: '2%', height: '92%', maxWidth: '52%' },
     genres: ['Pop', 'Synthwave', 'Arcade', "[GENRE CURRENTLY DOESN'T EFFECT TOUR MODE]"],
+    victorySprite: 'Art/MushyVictory.png',
     spriteSheets: {
       idle: createSpriteSheetConfig('Art/Mushy/SS-MushySingerIdle.png', 3, 3, 1.0, 8, 100),
       up: createSpriteSheetConfig('Art/Mushy/SS-MushySingerUP.png', 2, 1, 1.0, 2),
@@ -4835,21 +5233,26 @@ const CHARACTERS = [
       down: createSpriteSheetConfig('Art/Mushy/SS-MushySingerDown.png', 2, 1, 1.0, 2),
     },
     soundClipIds: buildToteSoundClipIds(),
-    tauntClips: ['mushy-purchase', 'mushy-shake', 'mushy-eating'],
+    tauntClips: ['mushy-shake', 'mushy-eating'],
     missSoundIds: DEFAULT_MISS_SOUND_IDS.slice(),
     frameCount: 8,
     frameDuration: 60,
   }),
+  ── end Tote ────────────────────────────────────────────────────────────── */
 
   createCharacterConfig({
     id: 'vendor',
     label: 'Vendor',
-    portraitSprite: 'Art/Vendor/vendingIdle.png',
-    previewPortraitStyle: { left: '-6%', top: '-8%', width: '90%' },
+    portraitSprite: 'Art/Vendor/vendingPortrait.png',
+    menuPortraitScale: 1.1,
+    previewPortraitStyle: { left: '2%', top: '-8%', width: '90%' },
     loadingPortraitStyle: { top: '2%', height: '92%', maxWidth: '52%' },
+    //get better control of x offset for loading portrait for both sides of the screen
     characterDescription:
     "A vending machine, where not sure where it came from or how it got here but I wouldn't recommend drinking the soda inside.",
     
+    victorySprite: 'Art/VendorVictory.png',
+
     genres: ['Vending Machine', 'Electronic', 'Harsh Noise Wall', "[GENRE CURRENTLY DOESN'T EFFECT TOUR MODE]"],
     spriteSheets: {
       idle: createSpriteSheetConfig('Art/Vendor/vendingIdle.png', 1, 1, 0.5, 1, 100),
@@ -4859,7 +5262,7 @@ const CHARACTERS = [
       down: createSpriteSheetConfig('Art/Vendor/MM-vendingDown.png', 4, 3, 0.5, 12),
     },
     soundClipIds: buildVendorSoundClipIds(),
-    tauntClips: ['mushy-purchase', 'mushy-shake', 'mushy-eating'],
+    tauntClips: ['mushy-purchase', 'can-open', 'can-open'],
     missSoundIds: DEFAULT_MISS_SOUND_IDS.slice(),
     frameCount: 8,
     frameDuration: 60,
@@ -4909,15 +5312,15 @@ const BACKGROUND_SCENES = [
     label: 'Convenience Store',
     backgroundColor: '#050510',
     images: [
-      'Art/Mushy/World/ConvienceStore1.png',
-      'Art/Mushy/World/ConvienceStore2.png',
-      'Art/Mushy/World/ConvienceStore3.png',
-      'Art/Mushy/World/ConvienceStore4.png',
-      'Art/Mushy/World/ConvienceStore5.png',
-      'Art/Mushy/World/ConvienceStore6.png',
+      'Art/Mushy/World/ConvenienceStore01.png',
+      'Art/Mushy/World/ConvenienceStore02.png',
+      'Art/Mushy/World/ConvenienceStore03.png',
+      'Art/Mushy/World/ConvenienceStore04.png',
+      'Art/Mushy/World/ConvenienceStore05.png',
+      'Art/Mushy/World/ConvenienceStore06.png',
     ],
     beatOrder: [0, 1, 2, 3, 4, 5],
-    x: 0, y: -50, width: 90, height: 90,
+    x: 0, y: -50, width: 100, height: 130,
   },
 ];
 
@@ -4949,13 +5352,17 @@ function preloadBackgroundSceneImages() {
   return Promise.all(Array.from(urls).map(preloadImage));
 }
 
-// Character fallback vocal (used when primary vocal fails to load)
+// Character fallback vocal — uses the built-in Mushy synth voice (no file dependency)
 const CHARACTER_FALLBACK_VOCAL = {
   id: 'character-fallback',
   label: 'Character Fallback',
-  type: 'mp3',
-  url: 'SoundClip/Mushy/DialogueBlip.wav',
-  rootNote: 60
+  type: 'synth',
+  waveform: 'triangle',
+  attack: 0.01,
+  decay: 0.07,
+  sustain: 0.5,
+  release: 0.14,
+  rootNote: 60,
 };
 
 const TOTE_SOUND_CLIPS = buildToteSoundClipGroup();
@@ -4991,8 +5398,8 @@ const MUSHY_VOICE_CLIPS = {
     };
   }),
 };
-const MARTIN_VOICE_CLIPS = {
-  label: 'Martin Vocals',
+const Puppet_VOICE_CLIPS = {
+  label: 'Puppet Vocals',
   clips: Array.from({ length: 19 }, (_, index) => {
     const slot = 19 - index;
     const rootNote = [1, 8, 15, 22, 29, 36, 43, 50, 57, 64, 71, 78, 85, 92, 99, 106, 113, 120, 127][index];
@@ -5000,9 +5407,9 @@ const MARTIN_VOICE_CLIPS = {
     const rangeMax = Math.min(127, rootNote + 3);
     const lowfi = 0.25 + (index / 18) * 0.2;
     return {
-      id: `martin-voice-${slot}`,
-      label: `Martin Voice ${slot}`,
-      type: 'martinvoice',
+      id: `Puppet-voice-${slot}`,
+      label: `Puppet Voice ${slot}`,
+      type: 'Puppetvoice',
       rootNote,
       rangeMin,
       rangeMax,
@@ -5015,7 +5422,7 @@ const MARTIN_VOICE_CLIPS = {
       bodyWaveform: 'triangle',
       // Triangle air adds a soft top end instead of harsh fizz.
       airWaveform: 'triangle',
-      // Body formant is the low-mid resonance that gives Martin his chest tone.
+      // Body formant is the low-mid resonance that gives Puppet his chest tone.
       bodyFormant: 520 + (index * 18),
       // Air formant shapes the higher nasal edge.
       airFormant: 310 + (index * 28),
@@ -5069,7 +5476,7 @@ const MUSHSOL_VOICE_CLIPS = {
       bodyWaveform: 'sine',
       // Triangle air adds a soft top end instead of harsh fizz.
       airWaveform: 'triangle',
-      // Body formant is the low-mid resonance that gives Martin his chest tone.
+      // Body formant is the low-mid resonance that gives Puppet his chest tone.
       bodyFormant: 360 + (index * 18),
       // Air formant shapes the higher nasal edge.
       airFormant: 220 + (index * 28),
@@ -5140,6 +5547,7 @@ const VENDOR_VOICE_CLIPS = {
       rootNote,
       rangeMin,
       rangeMax,
+      tuneSemitones: -12,
       waveform: 'square',
       attack: 0.001,
       decay: 0.03,
@@ -5157,6 +5565,11 @@ const CHARACTER_SOUND_CLIPS = {
     { id: 'mushy-purchase', label: 'Mushy Purchase', type: 'mp3', url: 'SoundClip/Mushy/Purchase.mp3', rootNote: 60 },
     { id: 'mushy-shake', label: 'Mushy Shake', type: 'wav', url: 'SoundClip/Mushy/ShakeWake.wav', rootNote: 60 },
     { id: 'mushy-eating', label: 'Mushy Eating', type: 'wav', url: 'SoundClip/Mushy/Eating.wav', rootNote: 60 },
+    
+    { id: 'can-open', label: 'Can Open', type: 'mp3', url: 'SoundClip/Mushy/can-open.mp3', rootNote: 60 },
+    { id: 'punch', label: 'Punch', type: 'mp3', url: 'SoundClip/Mushy/punch.mp3', rootNote: 60 },
+    { id: 'gunshot', label: 'Gunshot', type: 'mp3', url: 'SoundClip/Mushy/gunshot.mp3', rootNote: 60 },
+    
     { id: 'miss-1', label: 'Miss 1', type: 'mp3', url: 'SoundClip/Mistake1.mp3', rootNote: 60 },
     { id: 'miss-2', label: 'Miss 2', type: 'mp3', url: 'SoundClip/Mistake2.mp3', rootNote: 60 },
     { id: 'miss-3', label: 'Miss 3', type: 'mp3', url: 'SoundClip/Mistake3.mp3', rootNote: 60 },
@@ -5172,7 +5585,7 @@ function rebuildSoundClipGroupsWithCharacters() {
   if (RECORDER_VOICE_CLIPS) specialGroups.push(RECORDER_VOICE_CLIPS);
   if (VENDOR_VOICE_CLIPS) specialGroups.push(VENDOR_VOICE_CLIPS);
   if (MUSHY_VOICE_CLIPS) specialGroups.push(MUSHY_VOICE_CLIPS);
-  if (MARTIN_VOICE_CLIPS) specialGroups.push(MARTIN_VOICE_CLIPS);
+  if (Puppet_VOICE_CLIPS) specialGroups.push(Puppet_VOICE_CLIPS);
   if (MUSHSOL_VOICE_CLIPS) specialGroups.push(MUSHSOL_VOICE_CLIPS);
   if (TOTE_SOUND_CLIPS) specialGroups.push(TOTE_SOUND_CLIPS);
   specialGroups.push(CHARACTER_SOUND_CLIPS);
@@ -5230,7 +5643,7 @@ function getTrackConfig(trackIdx) {
 
 function clipUsesPitchShiftAndExactDuration(clipId) {
   const clip = getClipById(clipId);
-  return !!clip && (clip.type === 'mp3' || clip.type === 'wav' || clip.type === 'mushyvoice' || clip.type === 'martinvoice' || clip.type === 'mushsolvoice' || clip.type === 'recordervoice') && typeof clip.rootNote === 'number';
+  return !!clip && (clip.type === 'mp3' || clip.type === 'wav' || clip.type === 'mushyvoice' || clip.type === 'Puppetvoice' || clip.type === 'mushsolvoice' || clip.type === 'recordervoice') && typeof clip.rootNote === 'number';
 }
 
 function getTrackCharacterId(trackIdx, sourceRole = 'player') {
@@ -5399,6 +5812,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (manualMapBtn) {
     manualMapBtn.addEventListener('click', () => {
       setManualMapMode(true);
+      
       startGame();
       checkReady();
     });
@@ -5616,6 +6030,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await continueTourRunFromResults();
       return;
     }
+    await preloadAllTrackAudio();
     startGame();
   });
   document.getElementById('btn-confirm-manual')?.addEventListener('click', async () => {
@@ -5689,35 +6104,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-back').addEventListener('click', goMenu);
 
   document.getElementById('btn-reset-recording')?.addEventListener('click', () => {
-    if (!manualMappingActive) return;
+    console.log('[MANUAL] Reset button clicked — manualMappingActive:', manualMappingActive, '| draft:', manualBeatmapDraft.length);
+    if (!manualMappingActive) { console.warn('[MANUAL] Reset ignored — not in active recording'); return; }
     manualBeatmapDraft = [];
     manualMappingHeld = {};
     currentManualBeatmap = [];
-    // Restart with 3-second countdown
+    console.log('[MANUAL] draft cleared — restarting game');
     stopGame();
     setTimeout(() => startGame(), 100);
   });
 
   document.getElementById('btn-finish-recording')?.addEventListener('click', () => {
-    if (!manualMappingActive) return;
+    console.log('[MANUAL] Finish button clicked — manualMappingActive:', manualMappingActive, '| draft:', manualBeatmapDraft.length);
+    if (!manualMappingActive) { console.warn('[MANUAL] Finish ignored — not in active recording'); return; }
     // Close any held notes
     const elapsed = performance.now() - gameStartTime;
+    console.log('[MANUAL] closing held notes at elapsed:', elapsed.toFixed(0) + 'ms');
     for (const lane of Object.keys(manualMappingHeld)) {
-      if (manualMappingHeld[lane]) {
-        manualMappingHeld[lane].endTime = elapsed;
-        manualMappingHeld[lane].hold = (elapsed - manualMappingHeld[lane].time) >= getLongNoteThresholdMs();
-        manualMappingHeld[lane] = null;
-      }
+      if (manualMappingHeld[lane]) { manualMappingHeld[lane].endTime = elapsed; manualMappingHeld[lane].hold = false; manualMappingHeld[lane] = null; }
     }
+    for (const lane of Object.keys(manualMappingHeldRef)) {
+      if (manualMappingHeldRef[lane]) { manualMappingHeldRef[lane].endTime = elapsed; manualMappingHeldRef[lane].hold = false; manualMappingHeldRef[lane] = null; }
+    }
+    // Finish and confirm BEFORE stopGame (stopGame resets manualMappingActive)
     finishManualMappingSession();
     confirmManualMappingSession();
-    stopGame();
+    console.log('[MANUAL] confirmed — notes:', currentManualBeatmap.length, '| now stopping game and showing editor');
     document.getElementById('btn-reset-recording')?.style.setProperty('display', 'none');
     document.getElementById('btn-finish-recording')?.style.setProperty('display', 'none');
-    // Show confirm button on results
-    const confirmBtn = document.getElementById('btn-confirm-manual');
-    if (confirmBtn) confirmBtn.style.display = 'block';
-    showResultsScreen({ perfect: 0, good: 0, bad: 0, miss: 0, score: 0, accuracy: 0 });
+    stopGame();
+    showSetupScreen(true); // go back to editor
   });
   document.getElementById('btn-delete-project')?.addEventListener('click', () => deleteCurrentProject());
   // btn-demo removed from HTML; listener guard keeps this safe if old HTML lingers
@@ -5762,6 +6178,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   initTourScreen();
   applyPlayMenuLayout();
+  initMenuVisualizers();
+  startPlayMenuVisualizers();
+  updateTitleBeatFromSelectedProject();
   await initMainMenuScreen();
   showMainMenu();
 });
@@ -5798,8 +6217,8 @@ function createClipVoice({ clipId, note, velocity, volume, startTime, duration =
     return createMushyVoice({ clip, clipId, note, velocity, volume, startTime, duration, exactDuration });
   }
 
-  if (clip.type === 'martinvoice') {
-    return createMartinVoice({ clip, clipId, note, velocity, volume, startTime, duration, exactDuration });
+  if (clip.type === 'Puppetvoice') {
+    return createPuppetVoice({ clip, clipId, note, velocity, volume, startTime, duration, exactDuration });
   }
 
   if (clip.type === 'mushsolvoice') {
@@ -5853,9 +6272,11 @@ function createClipVoice({ clipId, note, velocity, volume, startTime, duration =
 function createRecorderVoice({ clip, clipId, note, velocity, volume, startTime, duration = null, lane = null, exactDuration = false }) {
   // Don't play individual notes if Recorder background vocal is active
   if (recorderBackingNode) return { stop: () => {} };
-  const sourceUrl = getRecorderVoiceSourceUrl();
-  if (!sourceUrl) return { stop: () => {} };
   if (isRecorderMuted(lane != null ? lane : null)) return { stop: () => {} };
+
+  const sourceUrl = getRecorderVoiceSourceUrl();
+  // No recording loaded — fall back to the built-in Gavi synth piano voice
+  if (!sourceUrl) return createGaviSynthVoice({ note, velocity, volume, startTime, duration, exactDuration });
 
   return createSampleBufferVoice({
     clip,
@@ -5874,6 +6295,92 @@ function createRecorderVoice({ clip, clipId, note, velocity, volume, startTime, 
       crunchMix: finiteOr(clip.crunchMix, 0.18),
     },
   });
+}
+
+// ─── Gavi synth voice ─────────────────────────────────────────────────────────
+// Soft, slightly high-pitched, piano-like tone for the recorder character when
+// no vocal recording is loaded. Distinct from other voices: uses a sine
+// fundamental + a quiet 2nd harmonic, a sharp velocity-sensitive attack with a
+// fast decay (piano-style), a gentle low-pass, and no noise layer.
+function createGaviSynthVoice({ note, velocity, volume, startTime, duration = null, exactDuration = false }) {
+  const ctx = getAudioCtx();
+  const safeNote      = finiteOr(note, 60);
+  const safeVelocity  = finiteOr(velocity, 100);
+  const safeVolume    = finiteOr(volume, 0.8);
+  const safeStartTime = finiteOr(startTime, ctx.currentTime);
+  const safeDuration  = finiteOr(duration, null);
+
+  // Transpose up 5 semitones to give it a slightly brighter, higher character
+  const freq   = midiToFreq(safeNote + 5);
+  const velScale = safeVelocity / 127;
+  const peak   = velScale * safeVolume * 0.55;
+
+  // ── Nodes ──────────────────────────────────────────────────────────────────
+  const output  = ctx.createGain();
+  const lp      = ctx.createBiquadFilter();     // gentle low-pass for softness
+  const fund    = ctx.createOscillator();       // sine fundamental
+  const fundGain= ctx.createGain();
+  const harm2   = ctx.createOscillator();       // quiet 2nd harmonic (octave)
+  const harm2Gain = ctx.createGain();
+  const harm3   = ctx.createOscillator();       // very quiet 3rd harmonic for bell shimmer
+  const harm3Gain = ctx.createGain();
+
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(3200 + velScale * 1800, safeStartTime); // brighter when hit harder
+  lp.Q.setValueAtTime(0.7, safeStartTime);
+
+  fund.type = 'sine';
+  fund.frequency.setValueAtTime(freq, safeStartTime);
+  harm2.type = 'sine';
+  harm2.frequency.setValueAtTime(freq * 2, safeStartTime);
+  harm3.type = 'sine';
+  harm3.frequency.setValueAtTime(freq * 3, safeStartTime);
+
+  // Level mix: fundamental dominant, harmonics accent
+  fundGain.gain.setValueAtTime(1.0,  safeStartTime);
+  harm2Gain.gain.setValueAtTime(0.28, safeStartTime);
+  harm3Gain.gain.setValueAtTime(0.09, safeStartTime);
+
+  // Piano envelope: near-instant attack, short decay to a low sustain
+  const attack  = 0.004;
+  const decay   = 0.22;
+  const sustain = 0.08;
+  output.gain.setValueAtTime(0.0001, safeStartTime);
+  output.gain.linearRampToValueAtTime(Math.max(peak, 0.001), safeStartTime + attack);
+  output.gain.exponentialRampToValueAtTime(Math.max(peak * sustain, 0.0001), safeStartTime + attack + decay);
+
+  // Route: oscs → individual gains → lp → output → destination
+  fund.connect(fundGain);   fundGain.connect(lp);
+  harm2.connect(harm2Gain); harm2Gain.connect(lp);
+  harm3.connect(harm3Gain); harm3Gain.connect(lp);
+  lp.connect(output);
+  output.connect(ctx.destination);
+
+  let stopped = false;
+  function stop(stopTime = ctx.currentTime) {
+    if (stopped) return;
+    stopped = true;
+    try {
+      output.gain.cancelScheduledValues(stopTime);
+      output.gain.setValueAtTime(Math.max(output.gain.value, 0.0001), stopTime);
+      output.gain.exponentialRampToValueAtTime(0.0001, stopTime + 0.18);
+      fund.stop(stopTime + 0.20);
+      harm2.stop(stopTime + 0.20);
+      harm3.stop(stopTime + 0.20);
+    } catch (_) {}
+  }
+
+  fund.start(safeStartTime);
+  harm2.start(safeStartTime);
+  harm3.start(safeStartTime);
+
+  const minMs = exactDuration ? 0 : (CFG.minNoteLengthMs || 100);
+  let stopMs = safeDuration && safeDuration > 0 ? safeDuration : 1200;
+  stopMs = Math.max(stopMs, minMs);
+  const stopT = safeStartTime + stopMs / 1000;
+  setTimeout(() => stop(stopT), Math.max(0, (stopT - ctx.currentTime) * 1000));
+
+  return { osc: fund, gain: output, stop };
 }
 
 function startRecorderBackingVocal(startTime) {
@@ -5971,6 +6478,9 @@ function createSampleBufferVoice({ clip, clipId, volume, startTime, duration = n
   applyPitchShift(playbackRateState, clip, safeNote);
   const playbackRate = Math.max(0.5, Math.min(2, playbackRateState.playbackRate || 1));
 
+  // Declare state vars BEFORE the cached-buffer fast-path so that startWithBuffer
+  // and stop closures never reference them in TDZ (was causing "Cannot access
+  // 'started' before initialization" on taunt clips whose buffer was already cached).
   let started = false;
   let stopped = false;
   let sourceNodes = [];
@@ -6069,6 +6579,18 @@ function createSampleBufferVoice({ clip, clipId, volume, startTime, duration = n
     } catch (_) {}
   }
 
+  // ── Synchronous fast-path: buffer already decoded — safe to call now that
+  // started/stopped/stop/startWithBuffer are all in scope (no TDZ risk).
+  const cachedBuffer = decodedBufferCache.get(baseUrl) || null;
+  if (cachedBuffer) {
+    const voiceHandleSync = { stop: () => {}, ready: Promise.resolve() };
+    startWithBuffer(cachedBuffer);
+    _trackVoice(voiceHandleSync);
+    const origStop2 = stop;
+    voiceHandleSync.stop = (t) => { _untrackVoice(voiceHandleSync); origStop2(t); };
+    return voiceHandleSync;
+  }
+
   const tryUrls = [baseUrl, fallbackUrl].filter(Boolean);
   loadingPromise = (async () => {
     for (const u of tryUrls) {
@@ -6081,7 +6603,11 @@ function createSampleBufferVoice({ clip, clipId, volume, startTime, duration = n
     stop(ctx.currentTime, true);
   })();
 
-  return { stop, ready: loadingPromise };
+  const voiceHandle = { stop, ready: loadingPromise };
+  _trackVoice(voiceHandle);
+  const origStop = stop;
+  voiceHandle.stop = (t) => { _untrackVoice(voiceHandle); origStop(t); };
+  return voiceHandle;
 }
 
 function createSoundfontVoice({ clip, clipId, note, velocity, volume, startTime, duration = null, lane = null, exactDuration = false }) {
@@ -6255,7 +6781,7 @@ function createMushyVoice({ clip, clipId, note, velocity, volume, startTime, dur
   return { osc: voiceOsc, gain: output, stop };
 }
 
-function createMartinVoice({ clip, clipId, note, velocity, volume, startTime, duration = null, exactDuration = false }) {
+function createPuppetVoice({ clip, clipId, note, velocity, volume, startTime, duration = null, exactDuration = false }) {
   const ctx = getAudioCtx();
   const safeNote = finiteOr(note, 60);
   const safeVelocity = finiteOr(velocity, 100);
@@ -6374,9 +6900,17 @@ function createMartinVoice({ clip, clipId, note, velocity, volume, startTime, du
 }
 
 function createMushSolVoice({ clip, clipId, note, velocity, volume, startTime, duration = null, exactDuration = false }) {
+  // Index 0 = highest note slot (127), index 18 = lowest (1).
+  // Low slots are almost inaudible at default pitch; raise everything by 7 semitones
+  // and scale volume upward for the bottom third to keep them audible.
+  const slotIndex = 19 - (clip.rootNote > 0 ? Math.round((clip.rootNote - 1) / 7) : 0);
+  const isLowRegister = clip.rootNote !== undefined && clip.rootNote < 43;
+  const lowBoost = isLowRegister ? (1.0 + (1.0 - clip.rootNote / 43) * 0.9) : 1.0;
+
   const stringLikeClip = {
     ...clip,
-    tuneSemitones: finiteOr(clip.tuneSemitones, 0) - 12,
+    // Raise by 7 semitones to make low notes audible while keeping string character
+    tuneSemitones: finiteOr(clip.tuneSemitones, 0) - 5,
     oscWaveform: clip.oscWaveform || 'triangle',
     bodyWaveform: clip.bodyWaveform || 'sine',
     airWaveform: clip.airWaveform || 'triangle',
@@ -6384,15 +6918,16 @@ function createMushSolVoice({ clip, clipId, note, velocity, volume, startTime, d
     airFormant: finiteOr(clip.airFormant, 700),
     gritAmount: Math.max(0.0005, finiteOr(clip.gritAmount, 0.004)),
     breathAmount: Math.max(0.0005, finiteOr(clip.breathAmount, 0.002)),
-    lowpassHz: finiteOr(clip.lowpassHz, 950),
+    // Open the lowpass more so low-register harmonics come through
+    lowpassHz: Math.min(3200, finiteOr(clip.lowpassHz, 950) * (isLowRegister ? 2.2 : 1.4)),
     lowfi: finiteOr(clip.lowfi, 0.5),
     attack: finiteOr(clip.attack, 0.014),
     decay: finiteOr(clip.decay, 0.11),
     sustain: finiteOr(clip.sustain, 0.72),
     release: finiteOr(clip.release, 0.22),
-    volumeScale: finiteOr(clip.volumeScale, 0.26),
+    volumeScale: finiteOr(clip.volumeScale, 0.26) * lowBoost,
   };
-  return createMartinVoice({ clip: stringLikeClip, clipId, note, velocity, volume, startTime, duration, exactDuration });
+  return createPuppetVoice({ clip: stringLikeClip, clipId, note, velocity, volume, startTime, duration, exactDuration });
 }
 
 function createMp3Voice({ clip, clipId, volume, startTime, duration = null, note = 60, lane = null, exactDuration = false }) {
@@ -6587,35 +7122,73 @@ function scheduleBackingTrack(midi, trackIdx, startTime) {
   const ctx     = getAudioCtx();
   const resolve = ticksToMs(midi);
   const track   = midi.tracks[trackIdx];
-  const active  = new Map();
   const { volume, clipId } = getTrackConfig(trackIdx);
   const clip = getClipById(clipId);
   const useExactDuration = trackClipIds[trackIdx] === '__original__' || clipUsesPitchShiftAndExactDuration(clipId);
-  const nodes = [];
 
+  // Build a flat sorted list of note events with absolute time in seconds
+  const noteEvents = []; // { tSec, offSec, note, velocity, channel }
+  const pending = new Map(); // key → { noteSec, note, velocity, channel }
   for (const ev of track.events) {
     const tSec = startTime + resolve(ev.tick) / 1000;
     const key = `${ev.note}_${ev.channel || 0}`;
-    
     if (ev.type === 'noteOn' && ev.velocity > 0) {
+      pending.set(key, { tSec, note: ev.note, velocity: ev.velocity, channel: ev.channel || 0 });
+    } else if (ev.type === 'noteOff' || (ev.type === 'noteOn' && ev.velocity === 0)) {
+      const p = pending.get(key);
+      if (p) { noteEvents.push({ ...p, offSec: tSec }); pending.delete(key); }
+    }
+  }
+  // Flush any still-open notes
+  for (const p of pending.values()) noteEvents.push({ ...p, offSec: null });
+  noteEvents.sort((a, b) => a.tSec - b.tSec);
+
+  // ── Lookahead scheduler ──────────────────────────────────────────────────
+  // Schedule notes LOOKAHEAD_SEC ahead of ctx.currentTime in small batches.
+  // This keeps the number of live AudioNodes low at any moment.
+  const LOOKAHEAD_SEC  = 0.35;   // schedule this far ahead
+  const INTERVAL_MS    = 100;    // check interval
+  let cursor = 0;                // next index to schedule
+  let stopped = false;
+  const liveVoices = [];
+
+  const tick = () => {
+    if (stopped) return;
+    const ctx2 = getAudioCtx(); // may have been recreated
+    const horizon = ctx2.currentTime + LOOKAHEAD_SEC;
+    while (cursor < noteEvents.length && noteEvents[cursor].tSec <= horizon) {
+      const ev = noteEvents[cursor++];
+      if (ev.tSec < ctx2.currentTime - 0.05) continue; // already in the past
       const voice = createClipVoice({
         clipId,
         note: ev.note,
         velocity: ev.velocity,
         volume: volume * 0.35,
-        startTime: tSec,
+        startTime: ev.tSec,
         exactDuration: useExactDuration,
       });
-      if (clip.type !== 'mp3' || useExactDuration) active.set(key, voice);
-      nodes.push(voice);
-    } else if ((clip.type !== 'mp3' || useExactDuration) && (ev.type === 'noteOff' || (ev.type === 'noteOn' && ev.velocity === 0)) && active.has(key)) {
-      const voice = active.get(key);
-      voice.stop(tSec);
-      active.delete(key);
+      if ((clip?.type !== 'mp3' || useExactDuration) && ev.offSec != null) {
+        voice.stop(ev.offSec);
+      }
+      liveVoices.push(voice);
     }
-  }
-  
-  return nodes;
+    // Prune stopped voices to keep array small
+    if (liveVoices.length > 64) liveVoices.splice(0, liveVoices.length - 64);
+  };
+
+  tick(); // schedule first batch immediately
+  const intervalId = setInterval(tick, INTERVAL_MS);
+
+  // Return a single proxy node with stop() that cancels the scheduler
+  const handle = {
+    stop: (t) => {
+      stopped = true;
+      clearInterval(intervalId);
+      for (const v of liveVoices) { try { v.stop(t); } catch (_) {} }
+    },
+    osc: null, source: null, // duck-typed for backingNodes cleanup
+  };
+  return [handle]; // return array to match expected [...nodes] spread
 }
 </script>
 
@@ -6648,29 +7221,26 @@ let currentProjectHasMp3 = false;
 // title/artist/characters will fall back to whatever is stored in the .mmp.
 const BUILT_IN_SONG_PROJECTS = [
   {
-    id: 'builtin-copa70',
-    title: 'Copa70',
-    midiName: 'Copa70.mid',
-    midiUrl: 'Prebuild-Songs/Copa70.mid',
-    artist: '',
+    id: 'tutorial-song',
+    title: 'Tutorial Song',
+    mmpUrl: 'Prebuild-Songs/Tutorial_Song (2).mmp',
     savedScores: { easy: 0, normal: 0, hard: 0 },
-    settings: { mode: 'battle' },
-    playerCharacterId: 'Mushy Singer',
-    rivalCharacterId: 'Martin',
-    difficultyRating: 2,
+    playerCharacterId: 'mushy',
+    rivalCharacterId: 'Puppet',
+    difficultyRating: 0,
   },
+
   {
-    id: 'builtin-melody-no7',
-    title: 'Melody No.7',
-    midiName: 'Melody No.7.mid',
-    midiUrl: 'Prebuild-Songs/Melody No.7.mid',
-    artist: '',
+    id: 'builtin-hot-cross-buns',
+    title: 'Hot Cross Buns',
+    mmpUrl: 'Prebuild-Songs/Hot_Cross_Buns.mmp',
     savedScores: { easy: 0, normal: 0, hard: 0 },
-    settings: { mode: 'battle' },
-    playerCharacterId: 'Mushy Singer',
-    rivalCharacterId: 'Tote',
+    playerCharacterId: 'mushsol',
+    settings: { mode: 'solo', 
+     sceneId: 'dark',
+    },
     difficultyRating: 1,
-  },
+  },  
 
   {
   id: 'builtin-wii-channel',
@@ -6679,28 +7249,77 @@ const BUILT_IN_SONG_PROJECTS = [
   savedScores: { easy: 0, normal: 0, hard: 0 },
   difficultyRating: 2,
   },
-
-  {
-  id: 'builtin-hot-cross-buns',
-  title: 'Hot Cross Buns',
-  mmpUrl: 'Prebuild-Songs/Hot_Cross_Buns.mmp',
-  savedScores: { easy: 0, normal: 0, hard: 0 },
-  difficultyRating: 1,
-  },
   
   {
   id: 'builtin-a-easy',
   title: 'A Easy',
-  mmpUrl: 'Prebuild-Songs/A_Easy.mmp',
+  mmpUrl: 'Prebuild-Songs/A_Easy (1).mmp',
   savedScores: { easy: 0, normal: 0, hard: 0 },
-  difficultyRating: 3,
+  settings: { mode: 'battle', 
+    
+  },
+  sceneId: 'city-night',
+  playerCharacterId: 'vendor',
+  rivalCharacterId: 'vendor',
+  difficultyRating: 2,
   },
   
   {
+    id: 'builtin-melody-no7',
+    title: 'Melody No.7',
+    midiName: 'Melody No.7.mid',
+    midiUrl: 'Prebuild-Songs/Melody No.7.mid',
+    artist: 'Uknown',
+    savedScores: { easy: 0, normal: 0, hard: 0 },
+    settings: { mode: 'battle' },
+    playerCharacterId: 'mushy',
+    rivalCharacterId: 'mushsol',
+    difficultyRating: 3,
+  },
+
+  {   
+    id: 'builtin-copa70',
+    title: 'Copa70',
+    mmpUrl: 'Prebuild-Songs/Copa70.mmp',
+    difficultyRating: 3,
+  },
+
+  {   
+    id: 'builtin-machine-love',
+    title: 'Machine Love',
+    mmpUrl: 'Prebuild-Songs/Machine_Love.mmp',
+    difficultyRating: 4,
+  },
+
+  {
+    id: 'maawapa',
+    title: 'Maawapa',
+    mmpUrl: 'Prebuild-Songs/Maawapa.mmp',
+    savedScores: { easy: 0, normal: 0, hard: 0 },
+    settings: { mode: 'piano', 
+     sceneId: 'dark',
+    },
+    difficultyRating: 4,
+  },
+
+  {
+    id: 'super-smash-bros-theme',
+    title: 'Super Smash Bros. Brawl - Main Theme',
+    mmpUrl: 'Prebuild-Songs/Super_Smash_Bros_Brawl_-_Main_Theme.mmp',
+    savedScores: { easy: 0, normal: 0, hard: 0 },
+    difficultyRating: 4,
+  },
+
+  {
   id: 'builtin-in-the-hall-of-the-mountain-king',
   title: 'In the Hall of the Mountain King',
-  mmpUrl: 'Prebuild-Songs/In_the_Hall_of_the_Mountain_King.mmp',
+  mmpUrl: 'Prebuild-Songs/In_the_Hall_of_the_Mountain_King (1).mmp',
   savedScores: { easy: 0, normal: 0, hard: 0 },
+  settings: { mode: 'battle', 
+    sceneId: 'dam-view',
+  },
+  playerCharacterId: 'mushsol',
+  rivalCharacterId: 'mushsol',
   difficultyRating: 5,
   },
 
@@ -7266,16 +7885,14 @@ const PIANO_CENTER_SPLIT_GAP_PX = 12;
 // ─── Game Mode Settings ─────────────────────────────────────────────────────
 // Modes: auto, battle, solo, piano
 const PIANO_KEY_MAP = {
-  // Reduced to 8 piano lanes: A S D F  J K L ;
-  // Distribute MIDI note range roughly evenly across 8 keys (0-127)
-  'a': { key: 'a', minNote: 0,  maxNote: 15 },
-  's': { key: 's', minNote: 16, maxNote: 31 },
-  'd': { key: 'd', minNote: 32, maxNote: 47 },
-  'f': { key: 'f', minNote: 48, maxNote: 63 },
-  'j': { key: 'j', minNote: 64, maxNote: 79 },
-  'k': { key: 'k', minNote: 80, maxNote: 95 },
-  'l': { key: 'l', minNote: 96, maxNote: 111 },
-  ';': { key: ';', minNote: 112, maxNote: 127 }
+  // 6 piano lanes: S D F  G H J (centre split between F and G)
+  // 128 notes / 6 = ~21 notes per lane
+  's': { key: 's', minNote: 0,   maxNote: 21 },
+  'd': { key: 'd', minNote: 22,  maxNote: 42 },
+  'f': { key: 'f', minNote: 43,  maxNote: 63 },
+  'g': { key: 'g', minNote: 64,  maxNote: 84 },
+  'h': { key: 'h', minNote: 85,  maxNote: 105 },
+  'j': { key: 'j', minNote: 106, maxNote: 127 },
 };
 
 // Mode-specific character positioning is defined via per-mode constants above.
@@ -7339,7 +7956,7 @@ const TOUR_LOADING_LAYOUT = {
     height: '52px',// --tour-loading-play-height
   },
   backdrop: { background: 'rgba(0,0,0,0.82)' },
-  content:  { width: '95%', maxWidth: '980px', padding: '52px 44px 36px', borderRadius: '24px', gap: '20px' },
+  content:  { width: '75%', maxWidth: '980px', padding: '72px 44px 36px', borderRadius: '24px', gap: '20px' },
   slotContainer: { gap: '20px' },
   cancelButton:  { top: '14px', left: '16px' },
 };
@@ -7348,13 +7965,19 @@ const TOUR_LOADING_LAYOUT = {
 // These are the single authoritative source for portrait layout.
 // Adjust these numbers to move / resize the portraits without touching CSS.
 const TOUR_LOADING_PORTRAIT_LAYOUT = {
-  // Height as a fraction of viewport height (vh)
-  heightVh: 72,
-  // How far each portrait is from its respective screen edge (% of viewport width)
-  playerRightVw: 1,
-  rivalLeftVw:   1,
-  // Extra per-character override applied on top (from character.loadingPortraitStyle)
-  // — leave blank here; filled in at runtime by getCharacterPortraitStyle()
+  // ── Shared ────────────────────────────────────────────────────────────────
+  // Height of both portrait images (vh units)
+  heightVh: 92,
+
+  // ── Player portrait landed position ───────────────────────────────────────
+  // Distance from the RIGHT edge of the viewport where the player portrait rests
+  // after flying in. Set per-character via loadingPortraitStyle.right to override.
+  playerRightVw: 0.1,
+
+  // ── Rival portrait landed position ────────────────────────────────────────
+  // Distance from the LEFT edge of the viewport where the rival portrait rests
+  // after flying in. Set per-character via loadingPortraitStyle.left to override.
+  rivalLeftVw: 0.1,
 };
 
 const TOUR_CHARACTER_PREVIEW_LAYOUT = {
@@ -7363,7 +7986,7 @@ const TOUR_CHARACTER_PREVIEW_LAYOUT = {
   },
   portraitImage: {
     left: '10%',
-    top: '-2%',
+    top: '-30%',
     width: '170%',
   },
   backstory: {
@@ -7376,10 +7999,17 @@ const TOUR_CHARACTER_PREVIEW_LAYOUT = {
 // the actual values applied come from the layout variables above.
 function buildPlayerPortraitStyle(characterOverride = {}) {
   const L = TOUR_LOADING_PORTRAIT_LAYOUT;
+  // Per-character: use loadingPortraitStyle.right to set distance from right edge.
+  // Falls back to TOUR_LOADING_PORTRAIT_LAYOUT.playerRightVw if not set.
+  const rightEdge = characterOverride.right !== undefined
+    ? characterOverride.right
+    : `${L.playerRightVw}%`;
+  // Remove right from override so it doesn't double-apply
+  const { right: _r, left: _l, ...rest } = characterOverride;
   return {
     position: 'fixed',
     bottom: '0',
-    right:  `${L.playerRightVw}%`,
+    right:  rightEdge,
     left:   'auto',
     height: `${L.heightVh}vh`,
     width:  'auto',
@@ -7388,16 +8018,22 @@ function buildPlayerPortraitStyle(characterOverride = {}) {
     transformOrigin: 'bottom right',
     transform: 'none',
     zIndex: '3001',
-    ...characterOverride,
+    ...rest,
   };
 }
 
 function buildRivalPortraitStyle(characterOverride = {}) {
   const L = TOUR_LOADING_PORTRAIT_LAYOUT;
+  // Per-character: use loadingPortraitStyle.left to set distance from left edge.
+  // Falls back to TOUR_LOADING_PORTRAIT_LAYOUT.rivalLeftVw if not set.
+  const leftEdge = characterOverride.left !== undefined
+    ? characterOverride.left
+    : `${L.rivalLeftVw}%`;
+  const { left: _l, right: _r, ...rest } = characterOverride;
   return {
     position: 'fixed',
     bottom: '0',
-    left:   `${L.rivalLeftVw}%`,
+    left:   leftEdge,
     right:  'auto',
     height: `${L.heightVh}vh`,
     width:  'auto',
@@ -7406,7 +8042,7 @@ function buildRivalPortraitStyle(characterOverride = {}) {
     transformOrigin: 'bottom left',
     transform: 'scaleX(-1)',
     zIndex: '3001',
-    ...characterOverride,
+    ...rest,
   };
 }
 
@@ -7423,32 +8059,40 @@ function applyTourLoadingPortraits(playerCharacterId, rivalCharacterId) {
 
   const playerEl = document.getElementById('tour-loading-portrait-player');
   const rivalEl  = document.getElementById('tour-loading-portrait-rival');
-
   if (!playerEl) console.warn('%c[TOUR PORTRAITS] ⚠ tour-loading-portrait-player element not found', 'color: #ff9800;');
   if (!rivalEl)  console.warn('%c[TOUR PORTRAITS] ⚠ tour-loading-portrait-rival element not found',  'color: #ff9800;');
 
   const playerChar = getCharacterById(playerCharacterId);
   const rivalChar  = getCharacterById(rivalCharacterId);
+  const L = TOUR_LOADING_PORTRAIT_LAYOUT;
 
-  console.log('%c[TOUR PORTRAITS] Player character:', 'color: #9C27B0;', playerChar?.label ?? '(not found)', '| portraitSprite:', playerChar?.portraitSprite ?? 'none');
-  console.log('%c[TOUR PORTRAITS] Rival character:', 'color: #9C27B0;',  rivalChar?.label  ?? '(not found)', '| portraitSprite:', rivalChar?.portraitSprite  ?? 'none');
+  // Resolve landed positions: per-character override takes priority over layout vars
+  const playerOverride = getCharacterPortraitStyle(playerChar, 'loading');
+  const rivalOverride  = getCharacterPortraitStyle(rivalChar,  'loading');
+  const playerRight = playerOverride.right !== undefined ? playerOverride.right : `${L.playerRightVw}%`;
+  const rivalLeft   = rivalOverride.left   !== undefined ? rivalOverride.left   : `${L.rivalLeftVw}%`;
+  const height      = `${L.heightVh}vh`;
+
+  // Write CSS vars — the CSS rule uses these, and the keyframe animation lands at
+  // translateX(0), so right/left on the element fully control the resting position.
+  const root = document.documentElement;
+  root.style.setProperty('--portrait-player-right', playerRight);
+  root.style.setProperty('--portrait-rival-left',   rivalLeft);
+  root.style.setProperty('--portrait-height',       height);
+  console.log('%c[TOUR PORTRAITS] Landed positions —', 'color: #9C27B0;',
+    `player right: ${playerRight} | rival left: ${rivalLeft} | height: ${height}`);
 
   if (playerEl) {
     const src = playerChar?.portraitSprite || '';
     playerEl.src = src;
     playerEl.style.display = src ? '' : 'none';
-    const overrideStyle = getCharacterPortraitStyle(playerChar, 'loading');
-    Object.assign(playerEl.style, buildPlayerPortraitStyle(overrideStyle));
-    console.log('%c[TOUR PORTRAITS] Player portrait src set:', 'color: #9C27B0;', src || '(empty — portrait hidden)');
+    console.log('%c[TOUR PORTRAITS] Player src:', 'color: #9C27B0;', src || '(hidden)');
   }
-
   if (rivalEl) {
     const src = rivalChar?.portraitSprite || '';
     rivalEl.src = src;
     rivalEl.style.display = src ? '' : 'none';
-    const overrideStyle = getCharacterPortraitStyle(rivalChar, 'loading');
-    Object.assign(rivalEl.style, buildRivalPortraitStyle(overrideStyle));
-    console.log('%c[TOUR PORTRAITS] Rival portrait src set:', 'color: #9C27B0;', src || '(empty — portrait hidden)');
+    console.log('%c[TOUR PORTRAITS] Rival src:', 'color: #9C27B0;', src || '(hidden)');
   }
 
   // Trigger animations — remove and re-add class so animation replays on each stage
@@ -7516,10 +8160,10 @@ const LAYOUT = {
 };
 
 const BATTLE_LAYOUT = {
-  playTrackWidth: '28vw',
-  referenceTrackWidth: '28vw',
-  playTrackX: '4vw',
-  referenceTrackX: '4vw',
+  playTrackWidth: '26vw',
+  referenceTrackWidth: '26vw',
+  playTrackX: '2vw',
+  referenceTrackX: '2vw',
   noteSize: '44px',
   holdNoteWidth: '38px',
   laneGap: '1vw',
@@ -7597,7 +8241,7 @@ const PLAY_MENU_LAYOUT = {
   // ── Title sprite ─────────────────────────────────────────────────────────────
   titleSprite: {
     // Path to the title image asset. Set to '' to hide and show text fallback.
-    src: '',                        // e.g. 'Art/title-logo.png'
+    src: 'Art/MidiMashUpPlay1.png', // e.g. 'Art/title-logo.png'
     width:        '360px',          // --play-menu-title-width
     height:       'auto',           // --play-menu-title-height  ('auto' = proportional)
     marginTop:    '0px',            // --play-menu-title-margin-top
@@ -7696,6 +8340,279 @@ function applyPlayMenuLayout() {
 
 const MAIN_MENU_VISUAL_SRC = 'Art/MM-MainMenuDraft-Visual.png';
 const MAIN_MENU_HITBOX_SRC = 'Art/MM-MainMenuDraft-Hitboxes.png';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── MAIN MENU LAYOUT ────────────────────────────────────────────────────────
+// All position/size knobs for elements layered on top of the main menu art.
+// Percentages are relative to the menu screen dimensions.
+// ═══════════════════════════════════════════════════════════════════════════════
+const MAIN_MENU_LAYOUT = {
+  // ── Character portrait canvas (yellow area, left side) ───────────────────
+  portrait: {
+    // Position relative to the menu screen (% of screen width/height)
+    left:   '1%',       // distance from left edge
+    bottom: '0%',       // pin to bottom of menu
+    width:  '28%',      // canvas display width
+    height: 'auto',     // 'auto' = driven by sprite aspect ratio; or set e.g. '60%'
+    zIndex: '1600',     // above visual (1500) and hitbox layer (no explicit z) but below overlays
+    cursor: 'pointer',
+    imageRendering: 'pixelated',
+  },
+};
+
+// ─── Main menu sprite layout ──────────────────────────────────────────────────
+// Adjust these values to reposition the title and button sprites on the menu art.
+const MAIN_MENU_SPRITE_LAYOUT = {
+  title:  { top: '4%',  left: '50%', transform: 'translateX(-50%)', width: '38%', height: 'auto' },
+  play:   { top: '35%', left: '37%', width: '28%', height: 'auto' },
+  editor: { top: '55%', left: '37%', width: '28%', height: 'auto' },
+  tour:   { top: '75%', left: '37%', width: '28%', height: 'auto' },
+};
+
+function applyMainMenuSpriteLayout() {
+  const apply = (id, cfg) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    Object.assign(el.style, { position:'absolute', pointerEvents:'none', imageRendering:'pixelated', objectFit:'contain', zIndex:'1550', ...cfg });
+  };
+  apply('main-menu-title-sprite',  MAIN_MENU_SPRITE_LAYOUT.title);
+  apply('main-menu-sprite-play',   MAIN_MENU_SPRITE_LAYOUT.play);
+  apply('main-menu-sprite-editor', MAIN_MENU_SPRITE_LAYOUT.editor);
+  apply('main-menu-sprite-tour',   MAIN_MENU_SPRITE_LAYOUT.tour);
+}
+
+function highlightMainMenuSprite(action, on) {
+  const map = { play:'main-menu-sprite-play', editor:'main-menu-sprite-editor', tour:'main-menu-sprite-tour' };
+  const el = document.getElementById(map[action]);
+  if (!el) return;
+  const base = MAIN_MENU_SPRITE_LAYOUT[action]?.transform || '';
+  el.style.filter    = on ? 'brightness(1.35) drop-shadow(0 0 14px rgba(255,255,255,0.55))' : '';
+  el.style.transform = on ? (base + ' scale(1.07)').trim() : base;
+  el.style.transition = 'transform 0.12s ease, filter 0.12s ease';
+}
+
+// ─── Play-menu title beat-swap ────────────────────────────────────────────────
+const TITLE_SPRITES = ['Art/MidiMashUpPlay1.png', 'Art/MidiMashUpPlay2.png'];
+let _titleBeatInterval = null, _titleBeatPhase = 0;
+
+function startTitleBeatSwap(bpm) {
+  stopTitleBeatSwap();
+  const ms = 60000 / Math.max(40, Math.min(300, bpm || 120));
+  _titleBeatPhase = 0;
+  _titleBeatInterval = setInterval(() => {
+    _titleBeatPhase = 1 - _titleBeatPhase;
+    // Swap both the play-menu and editor-menu title sprites in sync
+    ['play-menu-title-sprite', 'editor-menu-title-sprite'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.style.display !== 'none') {
+        el.style.opacity = '0.6';
+        el.src = TITLE_SPRITES[_titleBeatPhase];
+        requestAnimationFrame(() => { el.style.opacity = '1'; });
+      }
+    });
+    pulseMenuVisualizers();
+  }, ms);
+}
+function stopTitleBeatSwap() { if (_titleBeatInterval) { clearInterval(_titleBeatInterval); _titleBeatInterval = null; } }
+
+function updateTitleBeatFromSelectedProject() {
+  const proj = songProjects.find(p => p.id === selectedProjectId);
+  let bpm = 120;
+  if (proj?.midiBuffer) {
+    try { const midi = parseMidi(proj.midiBuffer); bpm = getBpmFromMidi(midi) || 120; } catch(_) {}
+  }
+  startTitleBeatSwap(bpm);
+}
+
+// ─── Music Visualizer ─────────────────────────────────────────────────────────
+const VIZ_COLORS = ['#ff00aa', '#aaff00', '#00f5ff', '#ff6600'];
+const VIZ_CONFIG = {
+  barCount:   28,    // number of bars — spread across full viewport width
+  minHeight:  0.06,
+  maxHeight:  0.95,
+  lerpRate:   0.055,
+  retargetMs: 280,
+  beatPulse:  0.28,
+  beatDecay:  0.84,
+};
+
+class MenuVisualizer {
+  constructor(canvasId) {
+    this.canvas  = document.getElementById(canvasId);
+    this.bars    = Array.from({ length: VIZ_CONFIG.barCount }, () => ({ cur: Math.random()*0.5+0.1, tgt: Math.random()*0.7+0.1 }));
+    this.beatPls = 0; this._retimer = 0; this._raf = null; this._last = 0;
+  }
+  pulse_beat() { this.beatPls = VIZ_CONFIG.beatPulse; }
+  _retarget()  { this.bars.forEach(b => { b.tgt = VIZ_CONFIG.minHeight + Math.random()*(VIZ_CONFIG.maxHeight-VIZ_CONFIG.minHeight); }); }
+  draw(now) {
+    if (!this.canvas) return;
+    const dt = Math.min(50, now - this._last); this._last = now;
+    this._retimer += dt;
+    if (this._retimer >= VIZ_CONFIG.retargetMs) { this._retarget(); this._retimer = 0; }
+    this.beatPls *= VIZ_CONFIG.beatDecay;
+    this.bars.forEach(b => { b.cur += (b.tgt - b.cur) * VIZ_CONFIG.lerpRate; });
+    // Always match viewport size
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const c = this.canvas;
+    if (c.width !== vw || c.height !== vh) { c.width = vw; c.height = vh; }
+    const ctx = c.getContext('2d'); ctx.clearRect(0,0,vw,vh);
+    const unit = vw / this.bars.length, bw = unit * 0.80;
+    this.bars.forEach((b, i) => {
+      const frac = Math.min(1, b.cur + this.beatPls);
+      const barH = frac * vh, x = i * unit, y = vh - barH;
+      const color = VIZ_COLORS[i % VIZ_COLORS.length];
+      const g = ctx.createLinearGradient(x, y, x, vh);
+      g.addColorStop(0, color + 'bb'); g.addColorStop(1, color + '11');
+      ctx.fillStyle = g;
+      if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, bw, barH, [4, 4, 0, 0]); ctx.fill(); }
+      else ctx.fillRect(x, y, bw, barH);
+    });
+    this._raf = requestAnimationFrame(t => this.draw(t));
+  }
+  start() { if (this._raf) return; this._last = performance.now(); this._raf = requestAnimationFrame(t => this.draw(t)); }
+  stop()  { if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; } }
+}
+
+class EditorVisualizer {
+  constructor(canvasId) {
+    this.canvas = document.getElementById(canvasId);
+    // Each bar has its own independent retarget timer for varied randomness
+    this.bars = Array.from({ length: 32 }, () => ({
+      cur: Math.random()*0.4+0.05, tgt: Math.random()*0.6+0.05,
+      retimer: Math.random()*500,  // stagger initial timers
+      retargetMs: 200 + Math.random()*500,  // each bar changes at its own rate
+    }));
+    this._raf = null; this._last = 0;
+  }
+  draw(now) {
+    if (!this.canvas) return;
+    const dt = Math.min(50, now - this._last); this._last = now;
+    // Each bar independently picks a new target when its own timer fires
+    this.bars.forEach(b => {
+      b.retimer += dt;
+      if (b.retimer >= b.retargetMs) {
+        b.tgt = 0.04 + Math.random() * 0.90;
+        b.retimer = 0;
+        b.retargetMs = 150 + Math.random() * 600;
+      }
+      b.cur += (b.tgt - b.cur) * 0.06;
+    });
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const c = this.canvas;
+    if (c.width !== vw || c.height !== vh) { c.width = vw; c.height = vh; }
+    const ctx = c.getContext('2d'); ctx.clearRect(0, 0, vw, vh);
+    const n = this.bars.length, unit = vw / n, bw = unit * 0.78, cy = vh / 2;
+    this.bars.forEach((b, i) => {
+      const halfH = b.cur * cy, x = i * unit, color = VIZ_COLORS[i % VIZ_COLORS.length];
+      const g = ctx.createLinearGradient(x, cy - halfH, x, cy + halfH);
+      g.addColorStop(0, color + '00'); g.addColorStop(0.4, color + 'aa');
+      g.addColorStop(0.6, color + 'aa'); g.addColorStop(1, color + '00');
+      ctx.fillStyle = g; ctx.fillRect(x, cy - halfH, bw, halfH * 2);
+    });
+    this._raf = requestAnimationFrame(t => this.draw(t));
+  }
+  start() { if (this._raf) return; this._last = performance.now(); this._raf = requestAnimationFrame(t => this.draw(t)); }
+  stop()  { if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; } }
+}
+
+let _vizLeft=null, _vizRight=null, _vizEditor=null;
+function initMenuVisualizers() {
+  _vizLeft   = new MenuVisualizer('play-menu-viz-left');
+  _vizRight  = new MenuVisualizer('play-menu-viz-right');
+  _vizEditor = new EditorVisualizer('editor-menu-viz');
+}
+function startPlayMenuVisualizers()  { _vizLeft?.start();    _vizRight?.start();  }
+function stopPlayMenuVisualizers()   { _vizLeft?.stop();     _vizRight?.stop();   }
+function startEditorMenuVisualizer() { _vizEditor?.start();  }
+function stopEditorMenuVisualizer()  { _vizEditor?.stop();   }
+function pulseMenuVisualizers()      { _vizLeft?.pulse_beat(); _vizRight?.pulse_beat(); }
+
+
+// ─── Main menu character portrait state ──────────────────────────────────────
+let _mainMenuPortraitStop = null;  // cancel fn for the rAF loop
+let currentMenuRivalCharacterId = 'blank';
+
+function updateMainMenuCharacterPortrait() {
+  const playerEl = document.getElementById('main-menu-portrait-player');
+  const rivalEl  = document.getElementById('main-menu-portrait-rival');
+  if (!playerEl || !rivalEl) return;
+
+  // Stop old canvas animation if still running
+  if (_mainMenuPortraitStop) { _mainMenuPortraitStop(); _mainMenuPortraitStop = null; }
+
+  const eligible = (Array.isArray(CHARACTERS) ? CHARACTERS : [])
+    .filter(ch => ch.id !== 'blank' && ch.portraitSprite);
+  if (!eligible.length) return;
+
+  // Player character portrait
+  const playerCharId = currentPlayerCharacterId || 'blank';
+  const playerChar = getCharacterById(playerCharId);
+  const playerSrc = playerChar?.portraitSprite || eligible[0]?.portraitSprite || '';
+
+  // Rival: random different character
+  const rivalPool = eligible.filter(ch => ch.id !== playerCharId);
+  const rivalChar = rivalPool.length
+    ? rivalPool[Math.floor(Math.random() * rivalPool.length)]
+    : eligible[0];
+  const rivalSrc = rivalChar?.portraitSprite || '';
+
+  playerEl.src = playerSrc;
+  rivalEl.src  = rivalSrc;
+  playerEl.style.display = playerSrc ? 'block' : 'none';
+  rivalEl.style.display  = rivalSrc  ? 'block' : 'none';
+
+  // Apply per-character scale as a CSS width override (base width × scale)
+  const baseW = 28; // percentage — matches --main-menu-portrait-width default
+  const playerScale = playerChar?.menuPortraitScale ?? 1.0;
+  const rivalScale  = rivalChar?.menuPortraitScale  ?? 1.0;
+  playerEl.style.width = `${baseW * playerScale}%`;
+  rivalEl.style.width  = `${baseW * rivalScale}%`;
+
+  // Store rival id so portrait-click taunt can reference it
+  currentMenuRivalCharacterId = rivalChar?.id || 'blank';
+}
+
+// ─── Background music pool ────────────────────────────────────────────────────
+// Add paths to MP3 files in the repository here. Leave empty to stay silent.
+const MENU_BG_MUSIC_POOL = [
+  //'SoundClip/backgroundSong.mp3'
+  // 'Music/tour_ambient.mp3',
+];
+const MENU_BG_VOLUME = 0.25;
+
+let _menuBgToken  = 0;
+let _menuBgAudio  = null;
+let _menuBgNodes  = []; // kept for compat with any remaining refs
+let _menuBgObjUrl = '';
+
+function stopMenuBgMusic() {
+  _menuBgToken++;
+  if (_menuBgAudio) {
+    try { _menuBgAudio.pause(); _menuBgAudio.src = ''; } catch(_) {}
+    _menuBgAudio = null;
+  }
+}
+
+async function startMenuBgMusic() {
+  if (!MENU_BG_MUSIC_POOL.length) return;
+  // Don't start during gameplay, loading, or results
+  const gameScreen    = document.getElementById('game-screen');
+  const resultsScreen = document.getElementById('results-screen');
+  const loadingCard   = document.getElementById('tour-loading-card');
+  if (gameScreen?.style.display === 'block' ||
+      resultsScreen?.classList.contains('visible') ||
+      loadingCard?.classList.contains('visible')) return;
+
+  stopMenuBgMusic();
+  const token = ++_menuBgToken;
+
+  const src = MENU_BG_MUSIC_POOL[Math.floor(Math.random() * MENU_BG_MUSIC_POOL.length)];
+  const audio = new Audio(src);
+  audio.volume = MENU_BG_VOLUME;
+  audio.onended = () => { if (token === _menuBgToken) startMenuBgMusic(); };
+  _menuBgAudio = audio;
+  await audio.play().catch(() => {});
+}
 
 const TOUR_UI_LAYOUT = {
   backButton: { left: '2.5vw', top: '2.5vh', width: '10vw', height: '5.2vh' },
@@ -8273,7 +9190,7 @@ function pickRandomBackgroundSceneId() {
 function pickRandomRivalCharacterId(playerCharacterId) {
   const rivalPool = (Array.isArray(CHARACTERS) ? CHARACTERS : [])
     .map(character => character.id)
-    .filter(id => id && id !== 'blank' && id !== playerCharacterId);
+    .filter(id => id && id !== 'blank' && id !== 'tote' && id !== playerCharacterId); // 'tote' cut
   return pickRandomItem(rivalPool) || 'blank';
 }
 
@@ -8310,8 +9227,8 @@ async function buildTourSongQueue(difficulty, characterGenres = []) {
   // ── Random-sample approach: pick ~200 random URLs from across the full catalog,
   //    fetch them in parallel batches, stop when we have enough or 6 s elapse. ──
   const DEADLINE_MS   = 6000;
-  const TARGET_SAMPLE = 200;
-  const BATCH_SIZE    = 20;   // concurrent fetches per round
+  const TARGET_SAMPLE = 500;
+  const BATCH_SIZE    = 30;   // concurrent fetches per round
   const MIN_GOOD      = Math.max(TOUR_STAGE_COUNT * 2, 10); // need at least this many good tracks
 
   // Shuffle a random sample of catalog indices
@@ -8711,31 +9628,53 @@ async function loadTourSongAndStart() {
 
     // Show loading card with song info and stage metadata.
     if (midiChoice) {
-      const slotTitles = buildTourLoadingSlotTitles(tourRunState.stageQueue, songIndex, midiChoice);
-      showTourLoadingWithPool(slotTitles.titles, slotTitles.pickedIndex, {
+      // Fetch a second distinct song for the other slot so the player has a genuine choice.
+      // This runs concurrently while the loading card is being shown for the first time.
+      let midiChoiceB = null;
+      const fetchChoiceB = chooseTourMidiSource(difficulty, songIndex, genres).then(c => {
+        if (c && c.sourceUrl !== midiChoice.sourceUrl) midiChoiceB = c;
+      }).catch(() => {});
+
+      // Build a large filler pool from the stage queue (titles only — no re-fetching)
+      const queueTitles = (Array.isArray(tourRunState.stageQueue) ? tourRunState.stageQueue : [])
+        .filter(e => e?.title && e.title !== midiChoice.title)
+        .map(e => ({ title: e.title, noteCount: e.noteCount || 0, durationMs: e.durationMs || 0 }));
+
+      // Show the card immediately while choice B is still loading
+      const choiceAEntry = { title: midiChoice.title, noteCount: midiChoice.noteCount || 0, durationMs: 0, arrayBuffer: midiChoice.arrayBuffer, parsed: midiChoice.parsed, mainTrackIdx: midiChoice.mainTrackIdx };
+
+      // Wait for choice B, then open the two-slot screen
+      await fetchChoiceB;
+      const choiceBEntry = midiChoiceB
+        ? { title: midiChoiceB.title, noteCount: midiChoiceB.noteCount || 0, durationMs: 0, arrayBuffer: midiChoiceB.arrayBuffer, parsed: midiChoiceB.parsed, mainTrackIdx: midiChoiceB.mainTrackIdx }
+        : { ...choiceAEntry, title: (choiceAEntry.title + ' (Alt)') }; // rare fallback
+
+      if (tourRunState.loadingCancelled) { tourRunState.loadingSong = false; return; }
+
+      showTourLoadingWithTwoChoices(choiceAEntry, choiceBEntry, queueTitles, {
         mode,
         songName: midiChoice.title,
         artist: midiChoice.artist,
         genre: midiChoice.genre,
         noteCount: midiChoice.noteCount || 0,
         goalQuotaPercent: stageGoalPercent,
-      }, async () => {
+      }, async (chosenEntry) => {
         if (tourRunState.loadingCancelled) return;
         try {
           const transientProject = createTransientTourProject({
-            midiBuffer: midiChoice.arrayBuffer,
-            midiName: `${midiChoice.title || 'Tour MIDI'}.mid`,
+            midiBuffer: chosenEntry.arrayBuffer,
+            midiName: `${chosenEntry.title || 'Tour MIDI'}.mid`,
             mode,
             mapId,
             playerCharacterId,
             rivalCharacterId,
-            mainTrackIdx: midiChoice.mainTrackIdx,
+            mainTrackIdx: chosenEntry.mainTrackIdx,
           });
 
           transientGameplayProject = transientProject;
           currentProjectId = transientProject.id;
           tourRunState.songIndex = songIndex;
-          tourRunState.lastTrackNotes = midiChoice.noteCount;
+          tourRunState.lastTrackNotes = chosenEntry.noteCount;
           tourRunState.currentSongCounted = false;
           tourRunState.awaitingResultChoice = false;
 
@@ -8753,7 +9692,7 @@ async function loadTourSongAndStart() {
           const tourDiff = document.getElementById('tour-difficulty-select');
           if (tourDiff) tourDiff.value = currentDifficulty;
 
-          await loadMidiProjectBuffer(midiChoice.arrayBuffer, transientProject.midiName || 'tour.mid', false);
+          await loadMidiProjectBuffer(chosenEntry.arrayBuffer, transientProject.midiName || 'tour.mid', false);
           gameMode = mode;
           isAutoMode = gameMode === 'auto';
           const modeEl = document.getElementById('var-mode');
@@ -8768,6 +9707,7 @@ async function loadTourSongAndStart() {
           hideTourLoadingCard();
           tourRunState.loadingSong = false;
           tourRunState.loadStartTime = null;
+          await preloadAllTrackAudio();
           startGame();
         } catch (innerErr) {
           console.error('Failed to start game from loading card:', innerErr);
@@ -8790,6 +9730,7 @@ async function loadTourSongAndStart() {
 }
 
 function showTourLoadingCard(info, _unused, options = {}) {
+  stopMenuBgMusic(); // ensure bg music doesn't bleed into loading screen
   console.log('%c[TOUR LOAD CARD] showTourLoadingCard called', 'color: #00BCD4;', { info, options });
   const card = document.getElementById('tour-loading-card');
   if (!card) {
@@ -8919,17 +9860,26 @@ function animateSingleSlot(slotMachineEl, titles, targetIndex, spinDurationMs) {
   });
 }
 
-function buildSlotTitleList(chosen, filler, totalSlots = 7) {
+function buildSlotTitleList(chosen, filler, totalSlots = 9) {
   const seen = new Set([chosen.title]);
   const list = [];
   for (const f of filler) {
-    if (seen.has(f.title)) continue;
+    if (!f?.title || seen.has(f.title)) continue;
     seen.add(f.title);
-    list.push(f);
+    list.push({ title: f.title, noteCount: f.noteCount || 0, durationMs: f.durationMs || 0 });
     if (list.length >= totalSlots - 1) break;
   }
+  // Pad with synthetic placeholders so the wheel always looks full
+  const synth = ['Untitled Track', 'Mystery MIDI', 'Hidden Gem', 'Secret Stage', 'Random Beat',
+    'Unknown Rhythm', 'Bonus Track', 'Surprise Song', 'Deep Cut', 'Wild Card'];
+  let synthIdx = 0;
+  while (list.length < totalSlots - 1) {
+    const name = synth[synthIdx % synth.length] + (synthIdx >= synth.length ? ` ${Math.floor(synthIdx / synth.length) + 1}` : '');
+    if (!seen.has(name)) { seen.add(name); list.push({ title: name, noteCount: 0, durationMs: 0 }); }
+    synthIdx++;
+  }
   const insertAt = Math.min(Math.max(2, Math.floor(list.length / 2)), list.length);
-  list.splice(insertAt, 0, chosen);
+  list.splice(insertAt, 0, { title: chosen.title, noteCount: chosen.noteCount || 0, durationMs: chosen.durationMs || 0 });
   return { list, pickedIndex: insertAt };
 }
 
@@ -9186,19 +10136,118 @@ function renderTourCharacterPreview(characterId) {
   const backstoryEl = document.getElementById('tour-character-backstory');
   if (!portraitEl || !nameEl || !genresEl) return;
 
-  const portraitSrc = character?.portraitSprite || null;
+  // Stop any running preview animation
+  if (portraitEl._previewStop) { portraitEl._previewStop(); portraitEl._previewStop = null; }
+
   portraitEl.innerHTML = '';
-  if (portraitSrc) {
-    const img = document.createElement('img');
-    img.src = portraitSrc;
-    img.alt = `${character?.label || 'Character'} portrait`;
-    Object.assign(img.style, TOUR_CHARACTER_PREVIEW_LAYOUT.portraitImage, getCharacterPortraitStyle(character, 'preview'));
-    portraitEl.appendChild(img);
-  } else {
+
+  if (!character || character.id === 'blank') {
     const empty = document.createElement('div');
     empty.className = 'tour-portrait-empty';
     empty.textContent = 'NO PORTRAIT';
     portraitEl.appendChild(empty);
+  } else {
+    // Build canvas animated from idle sprite sheet, with occasional direction flashes
+    const canvas = document.createElement('canvas');
+    canvas.className = 'tour-portrait-canvas';
+    Object.assign(canvas.style, {
+      display: 'block',
+      position: 'absolute',
+      imageRendering: 'pixelated',
+    });
+    Object.assign(canvas.style, TOUR_CHARACTER_PREVIEW_LAYOUT.portraitImage, getCharacterPortraitStyle(character, 'preview'));
+    portraitEl.appendChild(canvas);
+
+    const DIRECTIONS = ['up', 'left', 'right', 'down'];
+    let currentDir = 'idle';
+    let frame = 0;
+    let frameTimer = 0;
+    let dirFlashTimer = 0;
+    let stopped = false;
+    let lastTs = null;
+
+    // Load all needed images once
+    const imgs = {};
+    const loadImg = (dir) => {
+      const sheet = character.spriteSheets[dir];
+      if (!sheet || !sheet.src) return null;
+      const img = new Image();
+      img.src = sheet.src;
+      return img;
+    };
+    imgs.idle = loadImg('idle');
+    DIRECTIONS.forEach(d => { imgs[d] = loadImg(d); });
+
+    // Schedule next direction flash (4–9 s from now)
+    const scheduleFlash = () => {
+      dirFlashTimer = 4000 + Math.random() * 5000;
+    };
+    scheduleFlash();
+
+    function tick(ts) {
+      if (stopped) return;
+      const delta = lastTs ? Math.min(ts - lastTs, 100) : 16;
+      lastTs = ts;
+
+      // Direction flash logic
+      dirFlashTimer -= delta;
+      if (dirFlashTimer <= 0) {
+        if (currentDir === 'idle') {
+          // Pick a random direction that has a sprite
+          const available = DIRECTIONS.filter(d => imgs[d]?.src);
+          if (available.length) {
+            currentDir = available[Math.floor(Math.random() * available.length)];
+            frame = 0; frameTimer = 0;
+            // Flash lasts one full animation cycle then returns to idle
+            const sheet = character.spriteSheets[currentDir];
+            const totalFrames = sheet?.frameCount || 1;
+            const dur = (sheet?.frameDuration || 80) * totalFrames;
+            dirFlashTimer = dur;
+          } else {
+            scheduleFlash();
+          }
+        } else {
+          currentDir = 'idle';
+          frame = 0; frameTimer = 0;
+          scheduleFlash();
+        }
+      }
+
+      const img = imgs[currentDir] || imgs.idle;
+      if (img && img.complete && img.naturalWidth > 0) {
+        const sheet = character.spriteSheets[currentDir] || character.spriteSheets.idle || {};
+        const cols = sheet.cols || 1;
+        const rows = sheet.rows || 1;
+        const totalFrames = sheet.frameCount || (cols * rows) || 1;
+        const frameDur = sheet.frameDuration || 100;
+        const scale = sheet.scale || 1;
+        const frameW = img.naturalWidth / cols;
+        const frameH = img.naturalHeight / rows;
+        const destW = Math.max(1, Math.round(frameW * scale));
+        const destH = Math.max(1, Math.round(frameH * scale));
+
+        if (canvas.width !== destW || canvas.height !== destH) {
+          canvas.width = destW;
+          canvas.height = destH;
+        }
+
+        frameTimer += delta;
+        if (frameTimer >= frameDur) { frame = (frame + 1) % totalFrames; frameTimer = 0; }
+
+        const sx = (frame % cols) * frameW;
+        const sy = Math.floor(frame / cols) * frameH;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, destW, destH);
+        ctx.save();
+        if (sheet.flipX) { ctx.translate(destW, 0); ctx.scale(-1, 1); }
+        ctx.drawImage(img, sx, sy, frameW, frameH, 0, 0, destW, destH);
+        ctx.restore();
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    portraitEl._previewStop = () => { stopped = true; };
   }
 
   applyTourCharacterPreviewLayoutVars();
@@ -9208,10 +10257,8 @@ function renderTourCharacterPreview(characterId) {
   genresEl.textContent = genres.length ? `Genre: ${genres.join(' • ')}` : 'Genre: Unspecified';
   if (backstoryEl) {
     const cached = tourCharacterBackstoryCache.get(characterId) ?? character?.characterDescription ?? '';
-    if (backstoryEl.value !== cached) backstoryEl.value = cached;
-    backstoryEl.oninput = () => {
-      tourCharacterBackstoryCache.set(characterId, backstoryEl.value);
-    };
+    backstoryEl.textContent = cached;
+    backstoryEl.oninput = null; // read-only div, no input handler needed
   }
 }
 
@@ -9327,12 +10374,19 @@ function showMainMenu() {
   const tourScreen = document.getElementById('tour-screen');
   const gameScreen = document.getElementById('game-screen');
   const resultsScreen = document.getElementById('results-screen');
+  const portraitEl = document.getElementById('tour-character-portrait');
+  if (portraitEl?._previewStop) { portraitEl._previewStop(); portraitEl._previewStop = null; }
   if (setupScreen) setupScreen.style.display = 'none';
   if (tourScreen) tourScreen.style.display = 'none';
   if (gameScreen) gameScreen.style.display = 'none';
   if (resultsScreen) resultsScreen.classList.remove('visible');
   setSetupMenuMode('play', false);
   if (mainMenu) mainMenu.classList.add('visible');
+  updateMainMenuCharacterPortrait();
+  stopTitleBeatSwap();
+  stopPlayMenuVisualizers();
+  stopEditorMenuVisualizer();
+  startMenuBgMusic();
 }
 
 function showSetupScreen(showEditor = false) {
@@ -9341,12 +10395,23 @@ function showSetupScreen(showEditor = false) {
   const tourScreen = document.getElementById('tour-screen');
   const gameScreen = document.getElementById('game-screen');
   const resultsScreen = document.getElementById('results-screen');
+  if (_mainMenuPortraitStop) { _mainMenuPortraitStop(); _mainMenuPortraitStop = null; }
   if (mainMenu) mainMenu.classList.remove('visible');
+  stopMenuBgMusic();
   if (tourScreen) tourScreen.style.display = 'none';
   if (gameScreen) gameScreen.style.display = 'none';
   if (resultsScreen) resultsScreen.classList.remove('visible');
   if (setupScreen) setupScreen.style.display = 'flex';
   setSetupMenuMode(showEditor ? 'editor' : 'play', false);
+  if (!showEditor) {
+    startPlayMenuVisualizers();
+    stopEditorMenuVisualizer();
+    updateTitleBeatFromSelectedProject();
+  } else {
+    stopPlayMenuVisualizers();
+    stopTitleBeatSwap();
+    startEditorMenuVisualizer();
+  }
 }
 
 function showTourScreen() {
@@ -9355,7 +10420,10 @@ function showTourScreen() {
   const tourScreen = document.getElementById('tour-screen');
   const gameScreen = document.getElementById('game-screen');
   const resultsScreen = document.getElementById('results-screen');
+  if (_mainMenuPortraitStop) { _mainMenuPortraitStop(); _mainMenuPortraitStop = null; }
   if (mainMenu) mainMenu.classList.remove('visible');
+  stopMenuBgMusic();
+  startMenuBgMusic(); // continue bg music in tour mode
   if (setupScreen) setupScreen.style.display = 'none';
   if (gameScreen) gameScreen.style.display = 'none';
   if (resultsScreen) resultsScreen.classList.remove('visible');
@@ -9409,12 +10477,22 @@ function classifyMainMenuPixel(r, g, b, a) {
   if (a < 32) return 0;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  if (max < 80 || (max - min) < 35) return 0;
+  if (max < 60 || (max - min) < 30) return 0;
   const hue = rgbToHue(r, g, b);
-  if (hue >= 85 && hue <= 155) return 1;
-  if (hue >= 18 && hue < 55) return 2;
-  if (hue >= 55 && hue < 85) return 3;
-  if (hue >= 345 || hue < 18) return 4;
+  const sat = max === 0 ? 0 : (max - min) / max;
+
+  // Bright pure yellow (portraits) — high saturation, hue ~50-65, green≈red, blue very low
+  if (hue >= 48 && hue <= 66 && sat > 0.75 && b < 60) return 4; // portrait zone
+
+  // Green (Play button)
+  if (hue >= 95 && hue <= 160 && sat > 0.25) return 1;
+
+  // Olive / dark yellow-green (Editor button) — lower saturation greens & yellows
+  if (hue >= 25 && hue < 95 && sat > 0.20) return 2;
+
+  // Red (Tour button)
+  if ((hue >= 340 || hue < 25) && sat > 0.25) return 3;
+
   return 0;
 }
 
@@ -9442,7 +10520,7 @@ function parseMainMenuHotspots(image) {
 
   const visited = new Uint8Array(labels.length);
   const regions = [];
-  const labelToAction = { 1: 'menu', 2: 'editor', 3: 'taunt', 4: 'tour' };
+  const labelToAction = { 1: 'play', 2: 'editor', 3: 'tour', 4: 'portrait' };
 
   for (let index = 0; index < labels.length; index += 1) {
     if (!labels[index] || visited[index]) continue;
@@ -9479,8 +10557,14 @@ function parseMainMenuHotspots(image) {
     const regionHeight = maxY - minY + 1;
     if (regionWidth < 24 || regionHeight < 24) continue;
 
+    let action = labelToAction[label] || null;
+    // Split portrait zone into left (rival) vs right (player) by x centre
+    if (action === 'portrait') {
+      const cx = (minX + maxX) / 2;
+      action = cx < width / 2 ? 'portrait-rival' : 'portrait-player';
+    }
     regions.push({
-      action: labelToAction[label] || null,
+      action,
       left: minX,
       top: minY,
       width: regionWidth,
@@ -9496,6 +10580,9 @@ function parseMainMenuHotspots(image) {
 function clearMainMenuHover() {
   const overlay = document.getElementById('main-menu-hover-overlay');
   if (overlay) overlay.style.display = 'none';
+  ['play','editor','tour'].forEach(a => highlightMainMenuSprite(a, false));
+  document.getElementById('main-menu-portrait-player')?.classList.remove('hovered');
+  document.getElementById('main-menu-portrait-rival')?.classList.remove('hovered');
   mainMenuHoverRegion = null;
 }
 
@@ -9511,6 +10598,12 @@ function setMainMenuHover(region) {
   overlay.style.height = `${region.heightPct}%`;
   overlay.style.display = 'block';
   mainMenuHoverRegion = region;
+  ['play','editor','tour'].forEach(a => highlightMainMenuSprite(a, a === region.action));
+  // Portrait hover grow
+  const playerEl = document.getElementById('main-menu-portrait-player');
+  const rivalEl  = document.getElementById('main-menu-portrait-rival');
+  playerEl?.classList.toggle('hovered', region.action === 'portrait-player');
+  rivalEl?.classList.toggle('hovered',  region.action === 'portrait-rival');
 }
 
 function runMainMenuAction(region) {
@@ -9519,12 +10612,35 @@ function runMainMenuAction(region) {
     goMenu();
     return;
   }
+  if (region.action === 'play') {
+    showSetupScreen(false);
+    return;
+  }
   if (region.action === 'editor') {
     openProjectEditor(selectedProjectId || currentProjectId || null);
     return;
   }
   if (region.action === 'tour') {
     showTourScreen();
+    return;
+  }
+  if (region.action === 'portrait-player' || region.action === 'portrait-rival') {
+    const isPlayer = region.action === 'portrait-player';
+    const id = isPlayer ? 'main-menu-portrait-player' : 'main-menu-portrait-rival';
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.add('clicked');
+      setTimeout(() => { el.classList.remove('clicked'); el.classList.add('hovered'); }, 280);
+    }
+    // Play taunt sound from the character's own pool
+    const charId = isPlayer ? (currentPlayerCharacterId || 'blank') : (currentMenuRivalCharacterId || currentRivalCharacterId || 'blank');
+    const char = getCharacterById(charId);
+    const pool = char?.tauntClips || [];
+    if (pool.length) {
+      const cid = pool[Math.floor(Math.random() * pool.length)];
+      try { createClipVoice({ clipId: cid, note: 60, velocity: 100, volume: 1.0, startTime: getAudioCtx().currentTime, duration: 400 }); }
+      catch (e) { console.warn('portrait taunt failed', e); }
+    }
     return;
   }
   if (region.action === 'taunt') {
@@ -9537,6 +10653,7 @@ async function initMainMenuScreen() {
   const layer = document.getElementById('main-menu-hitbox-layer');
   if (!visual || !layer) return;
   visual.src = MAIN_MENU_VISUAL_SRC;
+  applyMainMenuSpriteLayout();
   try {
     const image = await loadImageForMainMenu(MAIN_MENU_HITBOX_SRC);
     mainMenuHotspots = parseMainMenuHotspots(image).map(region => ({
@@ -9571,6 +10688,7 @@ async function initMainMenuScreen() {
     mainMenuHotspots = [];
     layer.innerHTML = '';
   }
+  updateMainMenuCharacterPortrait();
 }
 
 const BATTLE_LANE_KEYS = {
@@ -9589,27 +10707,23 @@ const BATTLE_LANE_META = {
 
 const BATTLE_LANE_ORDER = ['left', 'up', 'down', 'right'];
 
-const PIANO_LANE_ORDER = ['a', 's', 'd', 'f', 'j', 'k', 'l', ';'];
+const PIANO_LANE_ORDER = ['s', 'd', 'f', 'g', 'h', 'j'];
 const PIANO_LANE_KEYS = {
-  a: ['a', 'A'],
   s: ['s', 'S'],
   d: ['d', 'D'],
   f: ['f', 'F'],
+  g: ['g', 'G'],
+  h: ['h', 'H'],
   j: ['j', 'J'],
-  k: ['k', 'K'],
-  l: ['l', 'L'],
-  ';': [';'],
 };
 
 const PIANO_LANE_META = {
-  a: { color: '#ff5f6d', label: 'A', cls: 'lane-piano-a' },
-  s: { color: '#ff8c42', label: 'S', cls: 'lane-piano-s' },
+  s: { color: '#ff5f6d', label: 'S', cls: 'lane-piano-s' },
   d: { color: '#ffd166', label: 'D', cls: 'lane-piano-d' },
   f: { color: '#c0df85', label: 'F', cls: 'lane-piano-f' },
-  j: { color: '#5fa8d3', label: 'J', cls: 'lane-piano-j' },
-  k: { color: '#4f86c6', label: 'K', cls: 'lane-piano-k' },
-  l: { color: '#9b5de5', label: 'L', cls: 'lane-piano-l' },
-  ';': { color: '#f15bb5', label: ';', cls: 'lane-piano-semi' },
+  g: { color: '#5fa8d3', label: 'G', cls: 'lane-piano-g' },
+  h: { color: '#4f86c6', label: 'H', cls: 'lane-piano-h' },
+  j: { color: '#9b5de5', label: 'J', cls: 'lane-piano-j' },
 };
 
 let currentLaneOrder = BATTLE_LANE_ORDER.slice();
@@ -10342,8 +11456,9 @@ function playCharacterNote(characterId, direction, note, velocity, duration, pit
 }
 
 function initializeCharactersForGame(projectData) {
-  currentPlayerCharacterId = projectData.playerCharacterId || 'blank';
-  currentRivalCharacterId = projectData.rivalCharacterId || 'blank';
+  // projectData may be a summary object without character fields — fall back to globals
+  currentPlayerCharacterId = projectData?.playerCharacterId || currentPlayerCharacterId || 'blank';
+  currentRivalCharacterId  = projectData?.rivalCharacterId  || currentRivalCharacterId  || 'blank';
   // Offsets are code-level variables and are not taken from project data
   
   // Reset animation state
@@ -10464,7 +11579,7 @@ function transformToPianoMode(notes) {
   const pianoKeys = Object.keys(PIANO_KEY_MAP).sort();
   return notes.map(note => {
     // Find which piano key this note belongs to
-    let pianoKey = 'a'; // default
+    let pianoKey = 's'; // default to lowest 6-lane key
     for (const key of pianoKeys) {
       const range = PIANO_KEY_MAP[key];
       if (note.note >= range.minNote && note.note <= range.maxNote) {
@@ -10483,19 +11598,46 @@ function transformToPianoMode(notes) {
   });
 }
 
-function startGame() {
+async function startGame() {
+  stopMenuBgMusic();
   stopProjectSelectionPreview();
-  preloadBackgroundSceneImages().catch(() => {});
+  stopMenuBgMusic();
   console.debug('startGame called — midiData?', !!midiData, 'mp3?', !!currentMp3Blob, 'trackRoles=', trackRoles);
   clearRecorderMute();
 
   const recordingManual = manualMappingMode;
-  const manualEnabled   = !!document.getElementById('manual-map-enable-song')?.checked;
-  const hasManualBeatmap = Array.isArray(currentManualBeatmap) && currentManualBeatmap.length > 0;
+  // Use the project's own manualMapEnabled flag — never leak a previous project's
+  // manual beatmap into tour songs or other unrelated projects.
+  // For built-in mmp projects, songProjects won't contain the full loaded data —
+  // use the cached mmp project from __builtInSongProjectBuffers instead.
+  let currentProject = songProjects.find(p => p.id === currentProjectId) || transientGameplayProject;
+  if (!currentProject && currentProjectId) {
+    const cached = window.__builtInSongProjectBuffers?.get(currentProjectId + ':mmp');
+    if (cached) {
+      const builtIn = BUILT_IN_SONG_PROJECTS.find(b => b.id === currentProjectId);
+      currentProject = {
+        ...cached,
+        settings: { ...DEFAULTS, ...(cached.settings || {}), ...(builtIn?.settings || {}) },
+        isBuiltIn: true,
+      };
+    }
+  }
+  const isTourProject   = !!(transientGameplayProject && currentProject && currentProject.id === transientGameplayProject.id);
+  // Tour/transient projects never have manual tracking
+  const manualEnabled    = !isTourProject && !!(currentProject?.manualMapEnabled
+    ?? document.getElementById('manual-map-enable-song')?.checked);
+  // Only use the global currentManualBeatmap if it belongs to the current project
+  const projectBeatmap   = Array.isArray(currentProject?.manualBeatmap) && currentProject.manualBeatmap.length
+    ? currentProject.manualBeatmap
+    : currentManualBeatmap;
+  const hasManualBeatmap = !isTourProject && Array.isArray(projectBeatmap) && projectBeatmap.length > 0;
   const useManualTracking = manualEnabled && hasManualBeatmap;
   const hasMidi  = !!midiData;
   const hasMp3   = !!currentMp3Blob;
   const hasGame  = trackRoles.includes('game');
+  console.log('%c[MANUAL startGame] recordingManual:', 'color:#00BCD4;font-weight:bold;', recordingManual,
+    '| hasMidi:', hasMidi, '| hasMp3:', hasMp3, '| useManualTracking:', useManualTracking,
+    '| currentProjectId:', currentProjectId, '| gameMode:', gameMode);
 
   // ── Guard: nothing at all loaded and not recording ───────────────────────
   if (!hasMidi && !hasMp3 && !recordingManual && !useManualTracking) {
@@ -10506,10 +11648,8 @@ function startGame() {
   if (gameStartQueued) return;
   gameStartQueued = true;
 
-  const currentProject = songProjects.find(p => p.id === currentProjectId) || transientGameplayProject;
   const uiMode = document.getElementById('var-mode')?.value;
   const projectMode = (currentProject && currentProject.settings && currentProject.settings.mode) || DEFAULTS.mode || 'battle';
-  const isTourProject = !!(transientGameplayProject && currentProject && currentProject.id === transientGameplayProject.id);
   gameMode = isTourProject ? projectMode : (uiMode || projectMode);
   isAutoMode = gameMode === 'auto';
 
@@ -10545,18 +11685,18 @@ function startGame() {
 
   if (recordingManual) {
     // Cases 2 & 5: record manual tracking (MIDI and/or MP3 play as music)
+    console.log('[MANUAL] → startManualMappingSession');
     startManualMappingSession();
     beatmap = [];
     referenceBeatmap = [];
     manualMappingActive = true;
     currentManualBeatmap = [];
+    console.log('[MANUAL] post-session: manualMappingActive:', manualMappingActive, '| trackClipIds:', JSON.stringify(trackClipIds), '| laneOrder:', getActiveLaneOrder());
 
   } else if (useManualTracking) {
-    // Cases 2, 4, 5 (playback): use the saved manual beatmap as the note track.
-    // Notes must NOT be auto — the whole point is that the player hits them.
-    const manualNotes = getManualPlaybackBeatmap();
-    beatmap = manualNotes.map(n => ({ ...n, auto: false, playerMuted: false }));
-    referenceBeatmap = [];
+    const manualNotes = Array.isArray(projectBeatmap) ? cloneManualBeatmap(projectBeatmap) : [];
+    beatmap          = manualNotes.filter(n => n.sourceRole !== 'reference').map(n => ({ ...n, auto: false, playerMuted: false }));
+    referenceBeatmap = manualNotes.filter(n => n.sourceRole === 'reference').map(n => ({ ...n, auto: true  }));
     manualMappingActive = false;
 
   } else if (hasMidi) {
@@ -10610,6 +11750,64 @@ function startGame() {
   autoTimers = [];
   try { for (const t of countdownTimers) clearTimeout(t); } catch(_) {}
   countdownTimers = [];
+
+  // ── Pre-game loading overlay: preload audio + sprites, show progress ────────
+  {
+    const loadingOverlay = document.getElementById('pregame-loading-overlay');
+    const loadingLabel   = document.getElementById('pregame-loading-label');
+    const loadingFill    = document.getElementById('pregame-loading-bar-fill');
+
+    const setProgress = (done, total, label) => {
+      const pct = total > 0 ? Math.round(done / total * 100) : 100;
+      if (loadingFill)  loadingFill.style.width  = pct + '%';
+      if (loadingLabel) loadingLabel.textContent  = label + (total > 0 ? ` ${pct}%` : '');
+    };
+
+    if (loadingOverlay) loadingOverlay.classList.add('visible');
+    setProgress(0, 1, 'Loading…');
+
+    // Sprite wait: re-poll until all loaded
+    const spriteWaitPromise = new Promise(res => {
+      const check = () => {
+        const pending = [
+          ...Object.values(characterSprites.player || {}),
+          ...Object.values(characterSprites.rival  || {}),
+        ].filter(img => img && !img.complete);
+        if (!pending.length) { res(); return; }
+        Promise.all(pending.map(img => new Promise(r => { img.onload = r; img.onerror = r; }))).then(check);
+      };
+      check();
+    });
+
+    // Audio preload with progress — no hard cap, waits for full decode
+    const audioPromise = preloadAllTrackAudio(setProgress).catch(() => {});
+
+    // Background images with 2s cap (images are fast)
+    const bgPromise = Promise.race([
+      preloadBackgroundSceneImages().catch(() => {}),
+      new Promise(res => setTimeout(res, 2000)),
+    ]);
+
+    // Sprites and bg have a 2s cap; audio waits fully
+    await Promise.all([
+      Promise.race([spriteWaitPromise, new Promise(res => setTimeout(res, 2000))]),
+      bgPromise,
+      audioPromise,
+    ]);
+
+    if (loadingOverlay) loadingOverlay.classList.remove('visible');
+    setProgress(1, 1, 'Ready');
+
+    resetGameBackgroundScene();
+    updateGameBackgroundScene(0);
+    {
+      const pc = getCharacterById(currentPlayerCharacterId);
+      const rc = getCharacterById(currentRivalCharacterId);
+      if (pc && pc.id !== 'blank') renderCharacterSpriteSheet('character-canvas-player', 'player', 'idle');
+      if (rc && rc.id !== 'blank') renderCharacterSpriteSheet('character-canvas-rival',  'rival',  'idle');
+    }
+  }
+
   const countdownOverlay = document.getElementById('countdown-overlay');
   const countdownValue = document.getElementById('countdown-value');
   if (countdownOverlay && countdownValue) {
@@ -10667,7 +11865,10 @@ function startGame() {
     // ────────────────────────────────────────────────────────────────────────
 
     gameRunning = true;
-    gameStartTime = performance.now() - silenceSkipMs; // notes at time T fire at T-silenceSkipMs from now
+    gameStartTime = performance.now() - silenceSkipMs;
+    console.log('%c[MANUAL beginGameplay] gameRunning:', 'color:#4CAF50;font-weight:bold;', gameRunning,
+      '| gameStartTime set | manualMappingActive:', manualMappingActive,
+      '| silenceSkipMs:', silenceSkipMs, '| hasMidi:', !!midiData, '| hasMp3:', !!songAudio);
     if (countdownOverlay) countdownOverlay.classList.remove('visible');
     ctx.resume().then(() => {
       const startSec = ctx.currentTime + 0.1;
@@ -10771,6 +11972,7 @@ function startGame() {
 }
 
 function stopGame() {
+  if (manualMappingActive) console.warn('[MANUAL] stopGame called while manualMappingActive=true — recording state will be cleared');
   gameRunning = false;
   gameStartQueued = false;
   manualMappingActive = false;
@@ -10808,7 +12010,85 @@ function stopGame() {
   autoTimers = [];
 }
 
-// ─── PLAY FIELD SETUP ───────────────────────────────────────────────────────
+// ─── BATTLE FAIL / TOUR LOSS SCREENS ────────────────────────────────────────
+
+function showBattleFailScreen() {
+  const overlay = document.getElementById('battle-fail-overlay');
+  if (overlay) overlay.classList.add('visible');
+}
+
+function hideBattleFailScreen() {
+  const overlay = document.getElementById('battle-fail-overlay');
+  if (overlay) overlay.classList.remove('visible');
+}
+
+function showTourLossScreen(finalScore) {
+  const screen = document.getElementById('tour-loss-screen');
+  const scoreEl = document.getElementById('tour-loss-score');
+  if (scoreEl) scoreEl.textContent = String(finalScore ?? 0);
+  if (screen) screen.classList.add('visible');
+  // Hide game screen underneath
+  const gameScreen = document.getElementById('game-screen');
+  if (gameScreen) gameScreen.style.display = 'none';
+}
+
+function hideTourLossScreen() {
+  const screen = document.getElementById('tour-loss-screen');
+  if (screen) screen.classList.remove('visible');
+}
+
+function showTourVictoryScreen(finalScore) {
+  const screen  = document.getElementById('tour-victory-screen');
+  const scoreEl = document.getElementById('tour-victory-score');
+  const bgImg   = document.getElementById('tour-victory-bg-img');
+  if (scoreEl) scoreEl.textContent = String(finalScore ?? 0);
+  // Set character victory sprite
+  const charId = currentTourCharacterId || currentPlayerCharacterId || 'blank';
+  const char   = getCharacterById(charId);
+  if (bgImg) { bgImg.src = char?.victorySprite || ''; bgImg.style.display = char?.victorySprite ? '' : 'none'; }
+  if (screen) screen.classList.add('visible');
+  document.getElementById('game-screen').style.display = 'none';
+}
+
+function hideTourVictoryScreen() {
+  document.getElementById('tour-victory-screen')?.classList.remove('visible');
+}
+
+async function retryCurrentSong() {
+  await preloadAllTrackAudio();
+  startGame();
+}
+
+// Wire fail/loss screen buttons once DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('battle-fail-retry')?.addEventListener('click', () => {
+    hideBattleFailScreen();
+    retryCurrentSong();
+  });
+  document.getElementById('battle-fail-menu')?.addEventListener('click', () => {
+    hideBattleFailScreen();
+    showMainMenu();
+  });
+  document.getElementById('tour-loss-back-btn')?.addEventListener('click', () => {
+    hideTourLossScreen();
+    // Reset tour state and return to tour character select
+    tourRunState.active = false;
+    tourRunState.livesRemaining = TOUR_LIVES_START;
+    tourRunState.cumulativeScore = 0;
+    tourRunState.songIndex = 0;
+    tourRunState.stageQueue = [];
+    showTourScreen();
+  });
+  document.getElementById('tour-victory-back-btn')?.addEventListener('click', () => {
+    hideTourVictoryScreen();
+    tourRunState.active = false;
+    tourRunState.livesRemaining = TOUR_LIVES_START;
+    tourRunState.cumulativeScore = 0;
+    tourRunState.songIndex = 0;
+    tourRunState.stageQueue = [];
+    showTourScreen();
+  });
+});
 let referenceLaneEls = {};
 
 function buildPlayFields() {
@@ -10984,9 +12264,10 @@ function applyGameplayModeLayout(mode = gameMode) {
   referenceField.style.display = hideReference ? 'none' : 'grid';
   
   if (isPiano) {
-    playField.style.left = '0';
-    playField.style.right = '0';
-    playField.style.width = '100%';
+    // 6 lanes centred — leave ~12.5% empty on each side
+    playField.style.left  = '12.5%';
+    playField.style.right = '12.5%';
+    playField.style.width = '75%';
   } else {
     playField.style.left = '';
     playField.style.right = '';
@@ -11070,6 +12351,19 @@ function gameLoop(now) {
     const progress = songDurationMs ? Math.min(100, elapsed / songDurationMs * 100) : 0;
     document.getElementById('progress-bar').style.width = progress + '%';
     updateGameBackgroundScene(elapsed);
+
+    // Render characters so they animate to inputs during recording
+    const playerChar = getCharacterById(currentPlayerCharacterId);
+    const rivalChar  = getCharacterById(currentRivalCharacterId);
+    if (playerChar && playerChar.id !== 'blank') {
+      const dir = playerTauntActive ? 'left' : (playerCharacterDirection || 'idle');
+      renderCharacterSpriteSheet('character-canvas-player', 'player', dir);
+    }
+    if (rivalChar && rivalChar.id !== 'blank') {
+      renderCharacterSpriteSheet('character-canvas-rival', 'rival', rivalCharacterDirection || lastRivalInputLane || 'idle');
+    }
+    updateParticles(deltaTime);
+
     if (songDurationMs && elapsed >= songDurationMs) {
       stopSongPlayback();
       for (const node of backingNodes) {
@@ -11481,15 +12775,25 @@ document.addEventListener('keydown', e => {
       if (mapped) {
         e.preventDefault();
         const heldMap = mapped.role === 'reference' ? manualMappingHeldRef : manualMappingHeld;
-        if (!e.repeat && !heldMap[mapped.lane]) recordManualNoteStart(mapped.lane, mapped.role);
+        if (!e.repeat && !heldMap[mapped.lane]) {
+          console.log('[MANUAL] keydown battle — key:', e.key, '→ lane:', mapped.lane, 'role:', mapped.role);
+          recordManualNoteStart(mapped.lane, mapped.role);
+        }
         return;
       }
+      console.log('[MANUAL] keydown battle — key:', e.key, 'not mapped to any lane');
     }
     // Piano / other modes
     const lane = keyToLane(e.key);
-    if (!lane) return;
+    if (!lane) {
+      console.log('[MANUAL] keydown — key:', e.key, 'not mapped to any lane. keyToLane returned null. gameMode:', gameMode);
+      return;
+    }
     e.preventDefault();
-    if (!e.repeat && !manualMappingHeld[lane]) recordManualNoteStart(lane, 'play');
+    if (!e.repeat && !manualMappingHeld[lane]) {
+      console.log('[MANUAL] keydown standard — key:', e.key, '→ lane:', lane);
+      recordManualNoteStart(lane, 'play');
+    }
     return;
   }
 
@@ -11957,7 +13261,7 @@ function showResults() {
   const menuBtn = document.getElementById('btn-menu');
 
   document.getElementById('res-score').textContent   = String(score).padStart(6, '0');
-  document.getElementById('res-perfect').textContent = stats.perfect;
+  // res-perfect is set to perfectPct% below, after mode-specific logic
   document.getElementById('res-good').textContent    = stats.good;
   document.getElementById('res-bad').textContent     = stats.bad;
   document.getElementById('res-miss').textContent    = stats.miss;
@@ -11989,29 +13293,75 @@ function showResults() {
     // Lose a life if the stage misses quota; keep the run alive until lives are exhausted.
     const isFinalStage = tourRunState.songIndex >= TOUR_STAGE_COUNT;
     const metQuota = scorePercentage >= requiredQuota;
-    if (!metQuota) {
+    if (!metQuota && !tourRunState.lifeAlreadyDeducted) {
       tourRunState.livesRemaining = Math.max(0, (tourRunState.livesRemaining || 0) - TOUR_LIFE_LOSS_PER_FAILED_STAGE);
     }
+    tourRunState.lifeAlreadyDeducted = false; // reset for next stage
     const canContinue = !isFinalStage && tourRunState.livesRemaining > 0;
+
+    // If lives just hit zero (and it wasn't the final stage), show tour loss instead
+    if (!isFinalStage && tourRunState.livesRemaining <= 0 && !metQuota) {
+      // Brief delay so score is visible, then swap to tour loss screen
+      setTimeout(() => {
+        document.getElementById('results-screen')?.classList.remove('visible');
+        showTourLossScreen(tourRunState.cumulativeScore);
+      }, 1800);
+    }
     if (retryBtn) {
       retryBtn.textContent = isFinalStage ? 'VICTORY' : 'CONTINUE TOUR';
       retryBtn.disabled = !canContinue;
     }
     if (menuBtn) menuBtn.textContent = isFinalStage ? 'TOUR COMPLETE' : (tourRunState.livesRemaining > 0 ? 'END TOUR' : 'NO LIVES');
+
+    // Show victory screen on final stage
+    if (isFinalStage) {
+      setTimeout(() => {
+        document.getElementById('results-screen')?.classList.remove('visible');
+        showTourVictoryScreen(tourRunState.cumulativeScore);
+      }, 1800);
+    }
     
     const resultText = isFinalStage
-      ? `VICTORY!  |  Accuracy: ${acc}%  |  Perfect: ${perfectPct}%  |  Performance: ${scorePercentage}%  |  Quota: ${requiredQuota}%  |  Max Combo: ${maxCombo}  |  Tour Total: ${tourRunState.cumulativeScore}`
-      : `Accuracy: ${acc}%  |  Perfect: ${perfectPct}%  |  Performance: ${scorePercentage}%  |  Quota: ${requiredQuota}%  |  Lives: ${tourRunState.livesRemaining}  |  Max Combo: ${maxCombo}  |  Tour Song ${tourRunState.songIndex}  |  Tour Total: ${tourRunState.cumulativeScore}`;
+      ? `Performance: ${scorePercentage}%  |  Max Combo: ${maxCombo}  |  Tour Total: ${tourRunState.cumulativeScore}`
+      : `Performance: ${scorePercentage}%  |  Max Combo: ${maxCombo}`;
     document.getElementById('res-acc').textContent = resultText;
+
+    // Tour total row
+    const tourTotalRow = document.getElementById('res-tour-total-row');
+    const tourTotalEl  = document.getElementById('res-tour-total');
+    if (tourTotalRow) tourTotalRow.style.display = 'block';
+    if (tourTotalEl)  tourTotalEl.textContent = String(tourRunState.cumulativeScore);
+
+    // Lives row with sprites
+    const livesRow = document.getElementById('res-lives-row');
+    if (livesRow) {
+      livesRow.style.display = 'flex';
+      livesRow.innerHTML = '';
+      const total = TOUR_LIVES_START;
+      for (let i = 0; i < total; i++) {
+        const img = document.createElement('img');
+        img.src = 'Art/TourLives.png';
+        img.style.cssText = `height:28px; width:auto; image-rendering:pixelated; opacity:${i < tourRunState.livesRemaining ? '1' : '0.2'};`;
+        livesRow.appendChild(img);
+      }
+    }
   } else {
     tourRunState.awaitingResultChoice = false;
-    if (retryBtn) {
-      retryBtn.textContent = 'RETRY';
-      retryBtn.disabled = false;
-    }
+    if (retryBtn) { retryBtn.textContent = 'RETRY'; retryBtn.disabled = false; }
     if (menuBtn) menuBtn.textContent = 'MENU';
-    document.getElementById('res-acc').textContent = `Accuracy: ${acc}%  |  Perfect: ${perfectPct}%  |  Max Combo: ${maxCombo}`;
+    document.getElementById('res-acc').textContent = `Max Combo: ${maxCombo}`;
+    // Hide tour-only rows
+    const tourTotalRow = document.getElementById('res-tour-total-row');
+    const livesRow = document.getElementById('res-lives-row');
+    if (tourTotalRow) tourTotalRow.style.display = 'none';
+    if (livesRow) livesRow.style.display = 'none';
   }
+
+  // Set Accuracy stat (perfect%) regardless of mode
+  const perfectEl = document.getElementById('res-perfect-pct');
+  if (perfectEl) perfectEl.textContent = `${perfectPct}%`;
+  const perfectCountEl = document.getElementById('res-perfect');
+  if (perfectCountEl) perfectCountEl.textContent = stats.perfect;
 
   document.getElementById('results-screen').classList.add('visible');
   const confirmBtn = document.getElementById('btn-confirm-manual');
@@ -12028,15 +13378,89 @@ function showResults() {
   }
   
   if (currentProjectId && !isAutoMode && !tourRunState.active) {
-    const project = songProjects.find(item => item.id === currentProjectId);
+    const project = songProjects.find(item => item.id === currentProjectId)
+      || BUILT_IN_SONG_PROJECTS.find(item => item.id === currentProjectId);
     if (project) {
       ensureProjectScoresFormat(project);
-      project.savedScores[currentDifficulty] = Math.max(project.savedScores[currentDifficulty] || 0, finalScore);
+
+      project.savedScores[currentDifficulty] =
+          Math.max(
+              project.savedScores[currentDifficulty] || 0,
+              finalScore
+          );
+
       project.updatedAt = Date.now();
-      persistProjectToStorage(project).catch(err => console.warn('Failed to save project score', err));
+
+      // Don't save built-in projects as normal projects
+      if (!project.isBuiltIn) {
+          persistProjectToStorage(project)
+              .catch(err =>
+                  console.warn('Failed to save project score', err)
+              );
+      }
+
       updateSelectedProjectSummary();
     }
   }
+}
+
+// Preload a single clip's sample buffer(s) by clip id
+function preloadClip(clipId) {
+  if (!clipId || clipId === '__blank__' || clipId === '__original__') return Promise.resolve();
+  const clip = getClipById(clipId);
+  if (!clip) return Promise.resolve();
+  const urls = [];
+  if (clip.url) urls.push(clip.url);
+  for (const dir of ['left', 'up', 'down', 'right']) {
+    if (clip[`url_${dir}`]) urls.push(clip[`url_${dir}`]);
+  }
+  return Promise.allSettled(urls.map(u => getSampleBuffer(u)));
+}
+
+function getCharacterClipIds(characterId) {
+  const char = getCharacterById(characterId);
+  if (!char || char.id === 'blank') return [];
+  const ids = new Set();
+  for (const dir of ['up', 'down', 'left', 'right', 'idle']) {
+    const entry = char.soundClipIds?.[dir];
+    const arr = Array.isArray(entry) ? entry : (entry ? [entry] : []);
+    for (const id of arr) if (id && id !== '__blank__') ids.add(id);
+  }
+  return [...ids];
+}
+
+async function preloadAllTrackAudio(onProgress) {
+  const clipsToLoad = new Set();
+  for (let i = 0; i < trackClipIds.length; i++) {
+    const clipId = trackClipIds[i];
+    if (!clipId || clipId === '__blank__' || clipId === '__original__') continue;
+    if (clipId === '__character__') {
+      getCharacterClipIds(currentPlayerCharacterId).forEach(id => clipsToLoad.add(id));
+      getCharacterClipIds(currentRivalCharacterId).forEach(id => clipsToLoad.add(id));
+    } else {
+      clipsToLoad.add(clipId);
+    }
+  }
+  getCharacterClipIds(currentPlayerCharacterId).forEach(id => clipsToLoad.add(id));
+  getCharacterClipIds(currentRivalCharacterId).forEach(id => clipsToLoad.add(id));
+
+  // For songs with no clip assignments (blank characters), preload the fallback vocal
+  if (typeof CHARACTER_FALLBACK_VOCAL !== 'undefined' && CHARACTER_FALLBACK_VOCAL?.url) {
+    getSampleBuffer(CHARACTER_FALLBACK_VOCAL.url).catch(() => {});
+  }
+
+  const total = clipsToLoad.size;
+  let done = 0;
+  console.log('[AUDIO] Preloading', total, 'clips for', currentPlayerCharacterId, '+', currentRivalCharacterId);
+  if (onProgress) onProgress(0, total, 'Loading audio…');
+
+  await Promise.allSettled([...clipsToLoad].map(id =>
+    preloadClip(id).then(() => {
+      done++;
+      if (onProgress) onProgress(done, total, 'Loading audio…');
+    })
+  ));
+  console.log('[AUDIO] Preload complete —', done, '/', total);
 }
 </script>
 <!-- Confirmation modal (simple styled modal used by editor unsaved-change flow) -->
