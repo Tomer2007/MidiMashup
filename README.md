@@ -109,7 +109,7 @@ Due to time constraints, these modifiers were removed.
 
 ![loadingSlots](ReadMeReferences/TourModeSLots2.png)
 
-![PuppetFighterZ](Art\\PuppetVictory.png)
+![PuppetFighterZ](Art\PuppetVictory.png)
 
 ## UI Redesigns and Improvements
 Around this time I also wanted to overhaul the UI, as up until that point most of it had been built in the same style as Claude's initial prototype rather than my own. So I first made a Main Menu screen with a new title and buttons for the three different menus: Play, Editor, and Tour. Originally the Editor was a pop-up menu overlaid on the Play screen with some tweakable values — since this overcrowded the screen and was awkward to use, I sketched up a new menu design and got CoPilot to code it using a more deliberate layout where songs could be selected and their settings were separated into Project Settings and Song Settings windows.
@@ -124,7 +124,7 @@ In the end, the least-changed menu was the Tour Mode Character Select, as I didn
 ## Added More Characters While Making Tour Mode — Mushroom Soldier and Vendor
 I was also spending some of my time finishing animations for two new characters: Mushroom Soldier, planned from the start to use the 3D model I made for my Game Design project last year (Mushrum), and Vendor, a vending machine character I made at 2AM by moving the Convenience Store's vending machine around in Blender. There was one other 3D character I wanted to add at this point but also cut for time — the Bleeder, an enemy model I had made over the summer for my movement-shooter game. Each character also received new character vocals: Mushroom Soldier has a lower, more string-instrument-like sound, and Vendor has a high-pitched electronic beep to sound more like a machine.
 
-![vending](Art\\Vendor\\vendingIdle.png)
+![vending](Art\Vendor\vendingIdle.png)
 ![Zombie](ReadMeReferences/BleederInBlender.png)
 
 ## Prebuilt / Free Play Songs
@@ -174,7 +174,7 @@ From my own tests I haven't found any game-breaking bugs. I unfortunately haven'
 ## For Next Time
 In the future I definitely want to improve the built-in songs, possibly making a campaign mode and having the songs sound more refined and less ear-grating at moments. I would also want to add the other planned modes, as I personally think they would be a lot of fun to play with. The main takeaway from this project is being willing to drop things that are taking too long and to pull the scope back towards the end to properly focus on polish — most of the last week was spent still adding content rather than refining what was there. Though given all the other work I had on at the same time, there wasn't much room for a consistent schedule and plan.
 
-![loadingSlots](Art\\MushyVictory.png)
+![endOfProcess](Art\MushyVictory.png)
 
 # Some More Planning and Early Notes I Didn't Want to Remove
 
@@ -246,4 +246,4 @@ Difficulties:
 - **Master** — Perfect windows are only a few frames, and missing 3 notes in a row will instantly end the song.
 
 
-![TitleScreen!](Art\TourLives.png)
+![endArt](Art\TourLives.png)
