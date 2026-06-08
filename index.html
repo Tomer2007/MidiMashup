@@ -7277,18 +7277,18 @@ const BUILT_IN_SONG_PROJECTS = [
     difficultyRating: 3,
   },
 
+  //{   
+  //  id: 'do-no-harm',
+  //  title: 'Do No Harm (Recorder Test)',
+  //  mmpUrl: 'Prebuild-Songs/Do_No_Harm.mmp',
+  //  difficultyRating: 3,
+  //}, File was too big to add :(
+
   {   
     id: 'builtin-copa70',
     title: 'Copa70',
     mmpUrl: 'Prebuild-Songs/Copa70.mmp',
     difficultyRating: 3,
-  },
-
-  {   
-    id: 'builtin-machine-love',
-    title: 'Machine Love',
-    mmpUrl: 'Prebuild-Songs/Machine_Love.mmp',
-    difficultyRating: 4,
   },
 
   {
@@ -7303,9 +7303,26 @@ const BUILT_IN_SONG_PROJECTS = [
   },
 
   {
+    id: 'openyourheart',
+    title: 'Open Your Heart (Manual Tracking Test)',
+    mmpUrl: 'Prebuild-Songs/Open_Your_Heart.mmp',
+    savedScores: { easy: 0, normal: 0, hard: 0 },
+    difficultyRating: 3,
+  },
+
+  {
     id: 'super-smash-bros-theme',
     title: 'Super Smash Bros. Brawl - Main Theme',
     mmpUrl: 'Prebuild-Songs/Super_Smash_Bros_Brawl_-_Main_Theme.mmp',
+    savedScores: { easy: 0, normal: 0, hard: 0 },
+    difficultyRating: 4,
+  },
+
+  
+  {
+    id: 'never-ending-night',
+    title: 'Neverending Night (First Song Test)',
+    mmpUrl: 'Prebuild-Songs/Neverending_Night.mmp',
     savedScores: { easy: 0, normal: 0, hard: 0 },
     difficultyRating: 4,
   },
@@ -7321,6 +7338,13 @@ const BUILT_IN_SONG_PROJECTS = [
   playerCharacterId: 'mushsol',
   rivalCharacterId: 'mushsol',
   difficultyRating: 5,
+  },
+
+  {   
+    id: 'builtin-machine-love',
+    title: 'Machine Love (Note Speed Test)',
+    mmpUrl: 'Prebuild-Songs/Machine_Love.mmp',
+    difficultyRating: 5,
   },
 
   {
@@ -9692,6 +9716,12 @@ async function loadTourSongAndStart() {
           const tourDiff = document.getElementById('tour-difficulty-select');
           if (tourDiff) tourDiff.value = currentDifficulty;
 
+          // Tour songs never have an MP3 or recorder voice — clear any leftovers
+          // from a previously played project so they don't bleed into this game.
+          stopSongPlayback();
+          clearMp3ProjectBlob(false);
+          clearRecorderVoiceBlob(false);
+
           await loadMidiProjectBuffer(chosenEntry.arrayBuffer, transientProject.midiName || 'tour.mid', false);
           gameMode = mode;
           isAutoMode = gameMode === 'auto';
@@ -11155,6 +11185,14 @@ function goMenu() {
     return;
   }
   stopProjectSelectionPreview();
+  stopSongPlayback();
+  // If returning from a tour game, clear any transient MP3 so it doesn't
+  // bleed into the next song played from the regular play menu.
+  if (transientGameplayProject) {
+    clearMp3ProjectBlob(false);
+    clearRecorderVoiceBlob(false);
+    transientGameplayProject = null;
+  }
   stopGame();
   showSetupScreen(false);
 }
